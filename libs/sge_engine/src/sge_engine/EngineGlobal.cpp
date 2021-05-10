@@ -84,6 +84,13 @@ struct EngineGlobal final : public IEngineGlobal {
 	// Assets for the engine.
 	EngineGlobalAssets& getEngineAssets() override;
 
+	void setEngineAllowingRelativeCursor(bool isRelativeCursorAllowed) override;
+	bool getEngineAllowingRelativeCursor() const override;
+
+	void setNeedForRelativeCursorThisFrame() override;
+	bool doesAnyoneNeedForRelativeCursorThisFrame() const override;
+	void clearAnyoneNeedForRelativeCursorThisFrame() override;
+
   private:
 	std::unordered_map<TypeId, PropertyEditorGeneratorForTypeFn> m_propertyEditorUIGenFuncs;
 
@@ -99,6 +106,9 @@ struct EngineGlobal final : public IEngineGlobal {
 	IPlugin* m_activePlugin = nullptr;
 	EventEmitter<> m_onPluginPreUnloadEvent;
 	EventEmitter<> m_onPluginChangeEvent;
+
+	bool m_isEngineAllowingRelativeCursor = false;
+	bool m_doesAnythingNeedsRelativeCursorThisFrame = false;
 };
 
 void EngineGlobal::addPropertyEditorIUGeneratorForType(TypeId type, PropertyEditorGeneratorForTypeFn function) {
@@ -137,7 +147,7 @@ void EngineGlobal::changeActivePlugin(IPlugin* pPlugin) {
 		}
 	}
 
-	m_onPluginChangeEvent();
+	m_onPluginChangeEvent.invokeEvent();
 }
 
 IPlugin* EngineGlobal::getActivePlugin() {
@@ -145,7 +155,7 @@ IPlugin* EngineGlobal::getActivePlugin() {
 }
 
 void EngineGlobal::notifyOnPluginPreUnload() {
-	m_onPluginPreUnloadEvent();
+	m_onPluginPreUnloadEvent.invokeEvent();
 }
 
 EventSubscription EngineGlobal::subscribeOnPluginChange(std::function<void()> fn) {
@@ -225,6 +235,26 @@ int EngineGlobal::getNotificationCount() const {
 
 EngineGlobalAssets& EngineGlobal::getEngineAssets() {
 	return m_globalAssets;
+}
+
+void EngineGlobal::setEngineAllowingRelativeCursor(bool isRelativeCursorAllowed) {
+	m_isEngineAllowingRelativeCursor = isRelativeCursorAllowed;
+}
+
+bool EngineGlobal::getEngineAllowingRelativeCursor() const {
+	return m_isEngineAllowingRelativeCursor;
+}
+
+void EngineGlobal::setNeedForRelativeCursorThisFrame() {
+	m_doesAnythingNeedsRelativeCursorThisFrame |= true;
+}
+
+bool EngineGlobal::doesAnyoneNeedForRelativeCursorThisFrame() const {
+	return m_doesAnythingNeedsRelativeCursorThisFrame;
+}
+
+void EngineGlobal::clearAnyoneNeedForRelativeCursorThisFrame() {
+	m_doesAnythingNeedsRelativeCursorThisFrame = false;
 }
 
 //------------------------------------------------------------------

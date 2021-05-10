@@ -105,8 +105,7 @@ struct SGEGameWindow : public WindowBase {
 		// initialized the device and the immediate context
 		SGEDevice* const device = SGEDevice::create(mainTargetDesc);
 
-		SGEImGui::initialize(device->getContext(), device->getWindowFrameTarget(), &GetInputState(),
-		                     device->getWindowFrameTarget()->getViewport());
+		SGEImGui::initialize(device->getContext(), device->getWindowFrameTarget(), device->getWindowFrameTarget()->getViewport());
 
 #if !defined(__EMSCRIPTEN__)
 		ImGui::SetCurrentContext(getImGuiContextCore());
@@ -130,6 +129,9 @@ struct SGEGameWindow : public WindowBase {
 
 		typeLib().performRegistration();
 		createAndInitializeEngineGlobal();
+		// When we are playing the game (in sge_player) we needs to allow the game
+		// to do whatever it wants with the cursor, there is no editor to restrict that.
+		getEngineGlobal()->setEngineAllowingRelativeCursor(true);
 
 		if (pluginName.empty()) {
 			return;
@@ -137,6 +139,7 @@ struct SGEGameWindow : public WindowBase {
 			loadPlugin();
 		}
 #else
+		createAndInitializeEngineGlobal();
 		loadPlugin();
 #endif
 
@@ -148,9 +151,10 @@ struct SGEGameWindow : public WindowBase {
 	}
 
 	void loadPlugin() {
+		printf("1\n");
 		// Notify that we are about to unload the plugin.
 		getEngineGlobal()->notifyOnPluginPreUnload();
-
+		printf("2\n");
 #if !defined(__EMSCRIPTEN__)
 		// Unload the old plugin DLL and load the new one.
 		m_dllHandler.load(pluginName.c_str());
@@ -164,21 +168,31 @@ struct SGEGameWindow : public WindowBase {
 #else
 		m_pluginInst = getInterop();
 #endif
-
+		printf("3\n");
 		m_pluginInst->onLoaded(ImGui::GetCurrentContext(), getCore());
+		printf("4\n");
 		typeLib().performRegistration();
+		printf("5\n");
 		getEngineGlobal()->changeActivePlugin(m_pluginInst);
+		printf("6\n");
 		typeLib().performRegistration();
+		printf("7\n");
 	}
 
 	void run() {
 		m_timer.tick();
 		getEngineGlobal()->update(m_timer.diff_seconds());
 
+		if (getEngineGlobal()->getEngineAllowingRelativeCursor() && getEngineGlobal()->doesAnyoneNeedForRelativeCursorThisFrame()) {
+			setMouseCursorRelative(true);
+		} else {
+			setMouseCursorRelative(false);
+		}
+		getEngineGlobal()->clearAnyoneNeedForRelativeCursorThisFrame();
 
 		float const bgColor[] = {0.f, 0.f, 0.f, 1.f};
 
-		SGEImGui::newFrame();
+		SGEImGui::newFrame(GetInputState());
 
 		SGEContext* const sgecon = getCore()->getDevice()->getContext();
 		sgecon->clearColor(getCore()->getDevice()->getWindowFrameTarget(), -1, bgColor);

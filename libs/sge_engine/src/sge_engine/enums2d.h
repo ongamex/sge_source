@@ -19,7 +19,7 @@ enum Anchor : int {
 	anchor_topLeft,
 };
 
-/// Assuming that the plane faces +X and has corners (0,0,0) and (0,1,1),
+/// Assuming that the quad faces +X and has corners (0,0,0) and (0,1,1),
 /// computes the matrix that is going to align the plane, so the (0,0,0) coordinates
 /// related to the anchor position according to the size of the plane.
 /// Usually @planeSizeZY is proprtional ot the texture size that is going to be glued on the plane.

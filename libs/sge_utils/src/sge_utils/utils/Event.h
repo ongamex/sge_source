@@ -21,7 +21,7 @@ struct EventSubscription : public NoncopyableMovable {
 
 	~EventSubscription() { unsubscribe(); }
 
-	/// Unregisters the callback for the ownging EventEmitter.
+	/// Unregisters the callback for the owning EventEmitter.
 	void unsubscribe() {
 		if (unsubscribeFn != nullptr) {
 			unsubscribeFn();
@@ -29,7 +29,7 @@ struct EventSubscription : public NoncopyableMovable {
 		}
 	}
 
-	/// if called the lifetime of the callback will no longer be maintained
+	/// If called the lifetime of the callback will no longer be maintained
 	/// and it will get called until the owning EventEmitter exists.
 	void abandon() { unsubscribeFn = nullptr; }
 
@@ -39,7 +39,10 @@ struct EventSubscription : public NoncopyableMovable {
 	}
 
 	EventSubscription& operator=(EventSubscription&& other) noexcept {
+		// Unsubscribe from the current event, as this EventSubscription
+		// will start taking care of another one.
 		this->unsubscribe();
+
 		this->unsubscribeFn = std::move(other.unsubscribeFn);
 		other.unsubscribeFn = nullptr;
 
@@ -50,12 +53,13 @@ struct EventSubscription : public NoncopyableMovable {
 	std::function<void()> unsubscribeFn;
 };
 
-/// A EventEmitter holds callbacks which are subscribed to it.
-/// These callbacks could be invoked.
+/// EventEmitter holds callbacks which are subscribed to it.
+/// These callbacks could be invoked by the EventEmitter, with EventEmitter::invokeEvent.
 template <typename... TArgs>
 struct EventEmitter : public NoncopyableMovable {
   private:
 	struct Internal {
+		/// @callbacks maps the id of the sucbscriber to its callback function.
 		std::unordered_map<int, std::function<void(TArgs...)>> callbacks;
 		int nextFreeId = 0;
 		std::mutex dataLock;
@@ -81,8 +85,11 @@ struct EventEmitter : public NoncopyableMovable {
 	/// Add a new callback to be called.
 	/// @retval a EventSubscription used to manage the lifetime of the
 	///         registered callback, can be used to unsubscribe.
+	///         Basically the event provider needs to hold this token as long
+	///         as it the callback is callable. Once the object dies the EventSubscription
+	/// Will kick in and unregister the subscription.
 	[[nodiscard]] EventSubscription subscribe(std::function<void(TArgs...)> fn) {
-		std::lock_guard<std::mutex> g(data->dataLock);
+		const std::lock_guard<std::mutex> g(data->dataLock);
 		const int id = data->nextFreeId++;
 		sgeAssert(data->callbacks.count(id) == 0);
 		data->callbacks[id] = std::move(fn);
@@ -99,17 +106,23 @@ struct EventEmitter : public NoncopyableMovable {
 		    });
 	}
 
-	void operator()(TArgs... args) const {
-		std::lock_guard<std::mutex> g(data->dataLock); // if you crash here, then this mutex is probably locked for a second time.
+	void invokeEvent(TArgs... args) const {
+		// If you crash here, then this mutex is probably locked for a second time.
+		const std::lock_guard<std::mutex> g(data->dataLock);
+
 		for (auto& callback : data->callbacks) {
 			if_checked(callback.second) { callback.second(args...); }
 		}
 	}
 
-	bool isEmpty() const { return data->callbacks.empty(); }
+	/// @brief Returns true if there aren't any subscribes to the event.
+	bool isEmpty() const {
+		const std::lock_guard<std::mutex> g(data->dataLock);
+		return data->callbacks.empty();
+	}
 
 	void discardAllCallbacks() {
-		std::lock_guard<std::mutex> g(data->dataLock);
+		const std::lock_guard<std::mutex> g(data->dataLock);
 		data->callbacks.clear();
 	}
 };

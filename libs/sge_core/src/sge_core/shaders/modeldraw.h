@@ -48,7 +48,6 @@ struct GeneralDrawMod {
 	float shadowMapPointLightDepthRange = 0.f;
 
 	vec4f highlightColor = vec4f(0.f);
-	vec4f darkSpotPosition = vec4f(0.f); // TODO: Support for multiple dark spot.
 	vec3f ambientLightColor = vec3f(1.f);
 	vec4f uRimLightColorWWidth = vec4f(vec3f(0.1f), 0.7f);
 

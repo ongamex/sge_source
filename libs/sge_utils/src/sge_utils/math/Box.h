@@ -91,8 +91,8 @@ struct AABox {
 	}
 
 	void expand(const VEC_TYPE& point) {
-		min = component_min(min, point);
-		max = component_max(max, point);
+		min = min.pickMin(point);
+		max = max.pickMax(point);
 	}
 
 	void expandEdgesByCoefficient(float value) {
@@ -145,11 +145,11 @@ struct AABox {
 
 	void expand(const AABox& other) {
 		if (other.IsEmpty() == false) {
-			min = component_min(min, other.min);
-			min = component_min(min, other.max);
+			min = min.pickMin(other.min);
+			min = min.pickMin(other.max);
 
-			max = component_max(max, other.min);
-			max = component_max(max, other.max);
+			max = max.pickMax(other.min);
+			max = max.pickMax(other.max);
 		}
 	}
 

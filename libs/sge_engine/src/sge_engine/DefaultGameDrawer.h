@@ -3,7 +3,7 @@
 #include "sge_core/shaders/ConstantColorShader.h"
 #include "sge_core/shaders/modeldraw.h"
 #include "sge_engine/GameDrawer.h"
-#include "sge_engine/GameWorld.h"
+#include "sge_engine/GameObject.h"
 #include "sge_engine/TexturedPlaneDraw.h"
 #include "sge_engine/actors/ALight.h"
 #include "sge_engine/traits/TraitParticles.h"
@@ -18,7 +18,8 @@ struct TraitMultiModel;
 struct TraitViewportIcon;
 struct TraitPath3DFoQuickPlatform;
 struct TraitRenderableGeom;
-
+struct TraitParticles;
+struct TraitParticles2;
 struct ANavMesh;
 
 struct LightShadowInfo {
@@ -34,9 +35,8 @@ struct SGE_ENGINE_API DefaultGameDrawer : public IGameDrawer {
 	void updateShadowMaps(const GameDrawSets& drawSets) final;
 
 	void drawActor(
-	    const GameDrawSets& drawSets, EditMode const editMode, Actor* actor, int const itemIndex, DrawReason const drawReason) final;
+	    const GameDrawSets& drawSets, EditMode const editMode, Actor* actor, int const itemIndex, DrawReason const drawReason) override;
 
-  public:
 	virtual void drawWorld(const GameDrawSets& drawSets, const DrawReason drawReason) override;
 
 	// A Legacy function that should end up not being used.
@@ -66,8 +66,8 @@ struct SGE_ENGINE_API DefaultGameDrawer : public IGameDrawer {
 
 	void drawTraitRenderableGeom(TraitRenderableGeom* ttRendGeom, const GameDrawSets& drawSets, const GeneralDrawMod& generalMods);
 
-
 	void drawTraitParticles(TraitParticles* particlesTrait, const GameDrawSets& drawSets, GeneralDrawMod generalMods);
+
 	void drawTraitParticles2(TraitParticles2* particlesTrait, const GameDrawSets& drawSets, GeneralDrawMod generalMods);
 
 	void drawANavMesh(ANavMesh* navMesh,
@@ -86,21 +86,11 @@ struct SGE_ENGINE_API DefaultGameDrawer : public IGameDrawer {
 	TexturedPlaneDraw m_texturedPlaneDraw;
 	ParticleRenderDataGen m_partRendDataGen;
 
-	std::vector<ShadingLightData> shadingLights;
+	std::vector<ShadingLightData> m_shadingLights;
 	std::vector<const ShadingLightData*> m_shadingLightPerObject;
 
 	// TODO: find a proper place for this
-	std::map<ObjectId, LightShadowInfo> perLightShadowFrameTarget;
-
-	std::vector<TraitTexturedPlane*> texturedPlanes;
-	std::vector<TraitModel*> staticModels;
-	std::vector<TraitMultiModel*> multiModels;
-	std::vector<TraitRenderableGeom*> renderableGeoms;
-	std::vector<TraitParticles*> particles;
-	std::vector<TraitParticles2*> particles2;
-	std::vector<TraitViewportIcon*> viewportIcons;
-
-	std::vector<Actor*> specialDrawnActors;
+	std::map<ObjectId, LightShadowInfo> m_perLightShadowFrameTarget;
 
 	GpuHandle<Buffer> m_skySphereVB;
 	int m_skySphereNumVerts = 0;

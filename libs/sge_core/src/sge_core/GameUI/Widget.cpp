@@ -333,7 +333,7 @@ void Checkbox::onRelease(bool wasReleaseInside) {
 	m_isPressed = false;
 	if (wasReleaseInside) {
 		m_isOn = !m_isOn;
-		m_onReleaseListeners(m_isOn);
+		m_onReleaseListeners.invokeEvent(m_isOn);
 	}
 }
 

@@ -14,18 +14,20 @@ struct ShadowMapBuildInfo;
 struct IGameDrawer;
 
 enum DrawReason : int {
-	drawReason_editing,
-	drawReason_selectionTool,
-	drawReason_wireframePrimary,
-	drawReason_wireframe,
-
-	drawReason_gameplay,
-	drawReason_gameplayShadow,
+	drawReason_editing, ///< Specified when the editor is displaying the level being editied. 
+						///< For a lot of game objects the rendering is going to be the same as for @drawReason_gameplay.
+	drawReason_selectionTool, ///< Specified when the selection tools performs rendering to find which actors needs to be affected by it.
+							  ///< For a lot of game objects the rendering is going to be the same as for @drawReason_gameplay or maybe a verion without the shading.
+	drawReason_visualizeSelectionPrimary, ///< Specified when we want to draw an overlay of the actor showing that it is selected as a
+	                                      ///< primary.
+	drawReason_visualizeSelection,        ///< Specified when we want to draw an overlay of the actor showing that it is selected.
+	drawReason_gameplay,                  ///< Specified when we draw the actual game that is going to be used as a display to the player.
+	drawReason_gameplayShadow,            ///< Specified when we draw shadow maps.
 };
 
 // Returns true if we are rendering a to visualize selection or some other helper usually as an overaly on top of the existing scene.
-inline bool drawReason_IsWireframe(DrawReason const reason) {
-	return reason == drawReason_wireframePrimary || reason == drawReason_wireframe;
+inline bool drawReason_IsVisualizeSelection(DrawReason const reason) {
+	return reason == drawReason_visualizeSelectionPrimary || reason == drawReason_visualizeSelection;
 }
 
 // Returns true if the drawing pupouse is to fully visualize the game with its edditing tools and helpers like
@@ -35,11 +37,11 @@ inline bool drawReason_IsSelection(DrawReason const reason) {
 }
 
 inline bool drawReason_IsEditView(DrawReason const reason) {
-	return reason == drawReason_editing || drawReason_IsWireframe(reason);
+	return reason == drawReason_editing || drawReason_IsVisualizeSelection(reason);
 }
 
-inline bool drawReason_IsEditOrSelection(DrawReason const reason) {
-	return reason == drawReason_selectionTool || drawReason_IsEditView(reason) || drawReason_IsWireframe(reason);
+inline bool drawReason_IsEditOrSelectionTool(DrawReason const reason) {
+	return reason == drawReason_selectionTool || drawReason_IsEditView(reason) || drawReason_IsVisualizeSelection(reason);
 }
 
 // Returns true if the rending is becuase we are displaying what the user should see.
@@ -49,11 +51,11 @@ inline bool drawReason_IsGameplay(DrawReason const reason) {
 
 // Returns true if we are rendering the actual game or something in editmode.
 inline bool drawReason_IsGameOrEdit(DrawReason const reason) {
-	return drawReason_IsGameplay(reason) || drawReason_IsEditOrSelection(reason);
+	return drawReason_IsGameplay(reason) || drawReason_IsEditOrSelectionTool(reason);
 }
 
 inline bool drawReason_IsGameOrEditNoShadowPass(DrawReason const reason) {
-	return (drawReason_IsGameplay(reason) || drawReason_IsEditOrSelection(reason)) && reason != drawReason_gameplayShadow;
+	return (drawReason_IsGameplay(reason) || drawReason_IsEditOrSelectionTool(reason)) && reason != drawReason_gameplayShadow;
 }
 
 //--------------------------------------------------------------------

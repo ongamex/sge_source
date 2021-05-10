@@ -11,9 +11,6 @@ struct PluginGame final : public IPlugin {
 	void onLoaded(ImGuiContext* imguiCtx, ICore* global) override {
 		ImGui::SetCurrentContext(imguiCtx);
 		setCore(global);
-
-		auto c = typeid(vec3f).name();
-		SGE_DEBUG_LOG(c);
 	}
 
 	void onUnload() {}

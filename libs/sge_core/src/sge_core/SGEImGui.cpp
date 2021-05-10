@@ -160,7 +160,6 @@ float4 psMain(VERTEX_OUT OUT) : COLOR {
 } // namespace
 
 SGEContext* SGEImGui::sgecon;
-const InputState* SGEImGui::input_state = NULL;
 Timer SGEImGui::timer;
 GpuHandle<Buffer> SGEImGui::vertBuffer;
 GpuHandle<Buffer> SGEImGui::idxBuffer;
@@ -184,7 +183,7 @@ GpuHandle<sge::ShadingProgram> SGEImGui::shadingProgram;
 //--------------------------------------------------------------------
 // struct SGEImGui
 //--------------------------------------------------------------------
-void SGEImGui::initialize(SGEContext* sgecon_arg, FrameTarget* frameTarget, const InputState* inputState, const Rect2s& viewport_arg) {
+void SGEImGui::initialize(SGEContext* sgecon_arg, FrameTarget* frameTarget, const Rect2s& viewport_arg) {
 	// Create the texture.
 	ImGuiContext* imContext = ImGui::CreateContext();
 	ImGui::SetCurrentContext(imContext);
@@ -209,7 +208,6 @@ void SGEImGui::initialize(SGEContext* sgecon_arg, FrameTarget* frameTarget, cons
 	// use FONT_ICON_FILE_NAME_FAR if you want regular instead of solid
 
 	sgecon = sgecon_arg;
-	input_state = inputState;
 	frame_target = frameTarget;
 	viewport = viewport_arg;
 
@@ -286,49 +284,53 @@ void SGEImGui::setViewport(const Rect2s& viewport_arg) {
 	ImGui::GetIO().DisplaySize = ImVec2(viewport.width, viewport.height);
 }
 
-void SGEImGui::newFrame() {
+void SGEImGui::newFrame(const InputState& inputState) {
 	timer.tick();
 
 	ImGui::GetIO().DeltaTime = timer.diff_seconds();
 
-	ImGui::GetIO().MousePos.x = input_state->GetCursorPos().x;
-	ImGui::GetIO().MousePos.y = input_state->GetCursorPos().y;
+	if (!inputState.isCursorRelative()) {
+		ImGui::GetIO().MousePos.x = inputState.GetCursorPos().x;
+		ImGui::GetIO().MousePos.y = inputState.GetCursorPos().y;
+	}
 
-	if (input_state->wasActiveWhilePolling()) {
+	if (inputState.wasActiveWhilePolling()) {
 		auto& io = ImGui::GetIO();
 
-		io.MouseDown[0] = input_state->IsKeyDown(Key::Key_MouseLeft);
-		io.MouseDown[1] = input_state->IsKeyDown(Key::Key_MouseRight);
-		io.MouseDown[2] = input_state->IsKeyDown(Key::Key_MouseMiddle);
-		io.MouseWheel = float(-input_state->GetWheelCount());
+		if (!inputState.isCursorRelative()) {
+			io.MouseDown[0] = inputState.IsKeyDown(Key::Key_MouseLeft);
+			io.MouseDown[1] = inputState.IsKeyDown(Key::Key_MouseRight);
+			io.MouseDown[2] = inputState.IsKeyDown(Key::Key_MouseMiddle);
+		}
+		io.MouseWheel = float(-inputState.GetWheelCount());
 
-		io.KeyCtrl = input_state->IsKeyDown(Key::Key_LCtrl) || input_state->IsKeyDown(Key::Key_RCtrl);
-		io.KeyShift = input_state->IsKeyDown(Key::Key_LShift) || input_state->IsKeyDown(Key::Key_RShift);
-		io.KeyAlt = input_state->IsKeyDown(Key::Key_LAlt) || input_state->IsKeyDown(Key::Key_RAlt);
+		io.KeyCtrl = inputState.IsKeyDown(Key::Key_LCtrl) || inputState.IsKeyDown(Key::Key_RCtrl);
+		io.KeyShift = inputState.IsKeyDown(Key::Key_LShift) || inputState.IsKeyDown(Key::Key_RShift);
+		io.KeyAlt = inputState.IsKeyDown(Key::Key_LAlt) || inputState.IsKeyDown(Key::Key_RAlt);
 
-		io.KeysDown[ImGuiKey_Tab] = input_state->IsKeyDown(Key::Key_Tab);
-		io.KeysDown[ImGuiKey_LeftArrow] = input_state->IsKeyDown(Key::Key_Left);
-		io.KeysDown[ImGuiKey_RightArrow] = input_state->IsKeyDown(Key::Key_Right);
-		io.KeysDown[ImGuiKey_UpArrow] = input_state->IsKeyDown(Key::Key_Up);
-		io.KeysDown[ImGuiKey_DownArrow] = input_state->IsKeyDown(Key::Key_Down);
-		io.KeysDown[ImGuiKey_PageUp] = input_state->IsKeyDown(Key::Key_PageUp);
-		io.KeysDown[ImGuiKey_PageDown] = input_state->IsKeyDown(Key::Key_PageDown);
-		io.KeysDown[ImGuiKey_Home] = input_state->IsKeyDown(Key::Key_Home);
-		io.KeysDown[ImGuiKey_End] = input_state->IsKeyDown(Key::Key_End);
-		io.KeysDown[ImGuiKey_Delete] = input_state->IsKeyDown(Key::Key_Delete);
-		io.KeysDown[ImGuiKey_Backspace] = input_state->IsKeyDown(Key::Key_Backspace);
-		io.KeysDown[ImGuiKey_Enter] = input_state->IsKeyDown(Key::Key_Enter);
-		io.KeysDown[ImGuiKey_Escape] = input_state->IsKeyDown(Key::Key_Escape);
-		io.KeysDown[ImGuiKey_A] = input_state->IsKeyDown(Key::Key_A);
-		io.KeysDown[ImGuiKey_C] = input_state->IsKeyDown(Key::Key_C);
-		io.KeysDown[ImGuiKey_V] = input_state->IsKeyDown(Key::Key_V);
-		io.KeysDown[ImGuiKey_X] = input_state->IsKeyDown(Key::Key_X);
-		io.KeysDown[ImGuiKey_Y] = input_state->IsKeyDown(Key::Key_Y);
-		io.KeysDown[ImGuiKey_Z] = input_state->IsKeyDown(Key::Key_Z);
-		io.KeysDown[ImGuiKey_S] = input_state->IsKeyDown(Key::Key_S);
+		io.KeysDown[ImGuiKey_Tab] = inputState.IsKeyDown(Key::Key_Tab);
+		io.KeysDown[ImGuiKey_LeftArrow] = inputState.IsKeyDown(Key::Key_Left);
+		io.KeysDown[ImGuiKey_RightArrow] = inputState.IsKeyDown(Key::Key_Right);
+		io.KeysDown[ImGuiKey_UpArrow] = inputState.IsKeyDown(Key::Key_Up);
+		io.KeysDown[ImGuiKey_DownArrow] = inputState.IsKeyDown(Key::Key_Down);
+		io.KeysDown[ImGuiKey_PageUp] = inputState.IsKeyDown(Key::Key_PageUp);
+		io.KeysDown[ImGuiKey_PageDown] = inputState.IsKeyDown(Key::Key_PageDown);
+		io.KeysDown[ImGuiKey_Home] = inputState.IsKeyDown(Key::Key_Home);
+		io.KeysDown[ImGuiKey_End] = inputState.IsKeyDown(Key::Key_End);
+		io.KeysDown[ImGuiKey_Delete] = inputState.IsKeyDown(Key::Key_Delete);
+		io.KeysDown[ImGuiKey_Backspace] = inputState.IsKeyDown(Key::Key_Backspace);
+		io.KeysDown[ImGuiKey_Enter] = inputState.IsKeyDown(Key::Key_Enter);
+		io.KeysDown[ImGuiKey_Escape] = inputState.IsKeyDown(Key::Key_Escape);
+		io.KeysDown[ImGuiKey_A] = inputState.IsKeyDown(Key::Key_A);
+		io.KeysDown[ImGuiKey_C] = inputState.IsKeyDown(Key::Key_C);
+		io.KeysDown[ImGuiKey_V] = inputState.IsKeyDown(Key::Key_V);
+		io.KeysDown[ImGuiKey_X] = inputState.IsKeyDown(Key::Key_X);
+		io.KeysDown[ImGuiKey_Y] = inputState.IsKeyDown(Key::Key_Y);
+		io.KeysDown[ImGuiKey_Z] = inputState.IsKeyDown(Key::Key_Z);
+		io.KeysDown[ImGuiKey_S] = inputState.IsKeyDown(Key::Key_S);
 
 		// TODO: This seems correct, but is it?
-		const char* inputText = input_state->GetText();
+		const char* inputText = inputState.GetText();
 		while (*inputText != '\0') {
 			// Skip tabs, as they are handled by the ImGuiKey_Tab in ImGui.
 			// if(*inputText != '\t')

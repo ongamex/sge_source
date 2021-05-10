@@ -89,10 +89,6 @@ void GamePlayWindow::update(SGEContext* const sgecon, const InputState& isOrigin
 		drawSets.drawCamera = gameCamera;
 		drawSets.gameCamera = gameCamera;
 
-		if (is.IsKeyReleased(Key_F2)) {
-			m_sceneInstance.getWorld().isLockedCursorAllowed = !m_sceneInstance.getWorld().isLockedCursorAllowed;
-		}
-
 		getCore()->getQuickDraw().drawWired_Clear();
 		getCore()->getQuickDraw().drawWiredAdd_Grid(vec3f(0.f), vec3f::getAxis(0) * 1.f, vec3f::getAxis(2) * 1.f, 10, 10, 0x33FFFFFF);
 		getCore()->getQuickDraw().drawWired_Execute(drawSets.rdest, drawSets.drawCamera->getProjView(),
@@ -103,17 +99,18 @@ void GamePlayWindow::update(SGEContext* const sgecon, const InputState& isOrigin
 		m_gameDrawer->updateShadowMaps(drawSets);
 		m_gameDrawer->drawWorld(drawSets, world->m_useEditorCamera ? drawReason_editing : drawReason_gameplay);
 
+		const ImVec2 imGuiCursorPreGameplayFrame = ImGui::GetCursorPos();
+
 		// Display the rendered image to the ImGui window.
 		if (kIsTexcoordStyleD3D)
 			ImGui::Image(m_frameTarget->getRenderTarget(0), ImVec2(canvasSize.x, canvasSize.y));
 		else
 			ImGui::Image(m_frameTarget->getRenderTarget(0), ImVec2(canvasSize.x, canvasSize.y), ImVec2(0, 1), ImVec2(1, 0));
 
-		if (ImGui::BeginChild("Message", ImVec2(10.f, 10.f))) {
-			ImGui::Text("Press F2 to toggle mouse capture.");
-		}
-
-		ImGui::EndChild();
+		// [SGE_EDITOR_MOUSE_CAPTURE_HOTKEY]
+		// Draw a message telling the user that he can capture/uncapture mouse with F2.
+		ImGui::SetCursorPos(imGuiCursorPreGameplayFrame);
+		ImGui::Text("Press F2 to toggle mouse capture.");
 	}
 	ImGui::End();
 }

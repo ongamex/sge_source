@@ -19,7 +19,7 @@ bool IGameDrawer::drawItem(const GameDrawSets& drawSets, const SelectedItem& ite
 	}
 
 	// Todo: Draw reason
-	drawActor(drawSets, item.editMode, actor, item.index, selectionMode ? drawReason_wireframe : drawReason_editing);
+	drawActor(drawSets, item.editMode, actor, item.index, selectionMode ? drawReason_visualizeSelection : drawReason_editing);
 	return true;
 }
 

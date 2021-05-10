@@ -29,6 +29,8 @@ struct SGE_ENGINE_API GamePlayWindow : public IImGuiWindow {
 
 	bool m_isOpened;
 	std::string m_windowName;
+
+	bool m_isAllowingRelativeMouse = false;
 };
 
 

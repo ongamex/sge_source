@@ -337,7 +337,7 @@ struct vec2 {
 	friend DATA_TYPE distance(const vec2& a, const vec2& b) { return a.distance(b); }
 
 	/// Rentusn a vector containing min/max components from each vector.
-	vec2 ComponentMin(const vec2& other) const {
+	vec2 pickMin(const vec2& other) const {
 		vec2 result;
 
 		result.data[0] = minOf(data[0], other.data[0]);
@@ -346,18 +346,13 @@ struct vec2 {
 		return result;
 	}
 
-	friend vec2 component_min(const vec2& a, const vec2& b) { return a.ComponentMin(b); }
-
-	vec2 ComponentMax(const vec2& other) const {
+	vec2 pickMax(const vec2& other) const {
 		vec2 result;
 		result.data[0] = maxOf(data[0], other.data[0]);
 		result.data[1] = maxOf(data[1], other.data[1]);
 
 		return result;
 	}
-
-	friend vec2 component_max(const vec2& a, const vec2& b) { return a.ComponentMax(b); }
-
 
 	/// Returns the min/max component in the vector.
 	DATA_TYPE componentMin() const {
@@ -370,7 +365,7 @@ struct vec2 {
 		return retval;
 	}
 
-	friend vec2 component_min(const vec2& v) { return v.componentMin(); }
+	friend vec2 pick_min(const vec2& v) { return v.componentMin(); }
 
 	DATA_TYPE componentMinAbs() const {
 		DATA_TYPE retval = std::abs(data[0]);
@@ -395,8 +390,6 @@ struct vec2 {
 		return retval;
 	}
 
-	friend vec2 component_max(const vec2& v) { return v.componentMax(); }
-
 	DATA_TYPE componentMaxAbs() const {
 		DATA_TYPE retval = std::abs(data[0]);
 
@@ -410,7 +403,7 @@ struct vec2 {
 		return retval;
 	}
 
-	vec2 comonents_sorted_inc() const {
+	vec2 getSorted() const {
 		vec2 retval = *this;
 
 		for (int t = 0; t < vec2::NUM_ELEMS; ++t)

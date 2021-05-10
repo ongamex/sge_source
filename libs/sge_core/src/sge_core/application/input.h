@@ -146,6 +146,7 @@ struct SGE_CORE_API InputState {
 
 	bool m_wasActiveWhilePolling; // True if the window was active while polling.
 	bool m_hadkeyboardOrMouseInputThisPoll;
+	bool m_isCursorRelative = false;
 	vec2f m_cursorClient; // The position of the cursor in client space in pixels.
 	vec2f m_cursorDomain; // The position of the cursor in some specific domain. Used when we pass the input structure to some other
 	                      // structure that doesn't where it's origin of the curosr should be.
@@ -168,7 +169,7 @@ struct SGE_CORE_API InputState {
 	// Moves the crrent input state into previous
 	void Advance();
 
-	void addCursorPos(const vec2f& c) {
+	void setCursorPos(const vec2f& c) {
 		if (m_cursorClient != c) {
 			m_hadkeyboardOrMouseInputThisPoll = true;
 			m_cursorClient = c;
@@ -196,7 +197,9 @@ struct SGE_CORE_API InputState {
 		m_wheelCount = v;
 	}
 
-	void setMouseMotion(const vec2f& moution) { m_cursorMotion = moution; }
+	void addMouseMotion(const vec2f& moution) { m_cursorMotion += moution; }
+	bool isCursorRelative() const { return m_isCursorRelative; }
+	void setCusorIsRelative(bool isRelative) { m_isCursorRelative = isRelative; }
 
 	void setWasActiveDuringPoll(bool v) { m_wasActiveWhilePolling = v; }
 	bool wasActiveWhilePolling() const { return m_wasActiveWhilePolling; }

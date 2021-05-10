@@ -28,14 +28,14 @@ AssetModel* AssetProperty::getAssetModel() {
 }
 
 const AssetModel* AssetProperty::getAssetModel() const {
-	if (isAssetLoaded(m_asset) == false || m_asset->getType() != AssetType::Model) {
+	if (!isAssetLoaded(m_asset, AssetType::Model)) {
 		return nullptr;
 	}
 	return m_asset->asModel();
 }
 
 GpuHandle<Texture>* AssetProperty::getAssetTexture() {
-	if (isAssetLoaded(m_asset) == false || m_asset->getType() != AssetType::TextureView) {
+	if (!isAssetLoaded(m_asset, AssetType::TextureView)) {
 		return nullptr;
 	}
 
@@ -43,14 +43,14 @@ GpuHandle<Texture>* AssetProperty::getAssetTexture() {
 }
 
 const GpuHandle<Texture>* AssetProperty::getAssetTexture() const {
-	if (isAssetLoaded(m_asset) == false || m_asset->getType() != AssetType::TextureView) {
+	if (!isAssetLoaded(m_asset, AssetType::TextureView)) {
 		return nullptr;
 	}
 	return m_asset->asTextureView();
 }
 
 SpriteAnimationAsset* AssetProperty::getAssetSprite() {
-	if (isAssetLoaded(m_asset) == false || m_asset->getType() != AssetType::Sprite) {
+	if (!isAssetLoaded(m_asset, AssetType::Sprite)) {
 		return nullptr;
 	}
 
@@ -58,7 +58,7 @@ SpriteAnimationAsset* AssetProperty::getAssetSprite() {
 }
 
 const SpriteAnimationAsset* AssetProperty::getAssetSprite() const {
-	if (isAssetLoaded(m_asset) == false || m_asset->getType() != AssetType::Sprite) {
+	if (!isAssetLoaded(m_asset, AssetType::Sprite)) {
 		return nullptr;
 	}
 

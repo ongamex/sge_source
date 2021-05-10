@@ -111,14 +111,17 @@ struct SGE_CORE_API WindowBase {
 };
 
 /// @brief Enables/Disables the mouse being captured.
-/// @param isRelative if true the mouse
-/// will be invisible and will not go ouside the current window. Useful for
-/// camera controls like FPS.
+/// Useful for camera controls like FPS.
 /// If you are using the SGEEditor with GameWorld, do not call this directly,
-/// instead use GameWorld::setNeedsLockedCursor
-void setMouseCaptureAndCenter(bool isRelative);
+/// instead use GameWorld::setNeedsLockedCursor() inside your game logic.
+/// The reason is that the editor needs to be able to toggle between allowing
+/// cursor capturing or not.
+/// Search for [SGE_EDITOR_MOUSE_CAPTURE_HOTKEY] for more details.
+/// @param isRelative if true the mouse will be invisible and will not go ouside the current window.
+SGE_CORE_API void setMouseCursorRelative(bool isRelative);
 
-/// @brief Retrieves if the mouse if currently captured or not.
-bool getMouseCaptureAndCenter();
+/// @brief Checks if the mouse if currently captured or not.
+/// If you have access to InputState, you can use InputState::isCursorRelative for gameplay.
+SGE_CORE_API bool getMouseCursorRelative();
 
 } // namespace sge

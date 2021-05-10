@@ -4,7 +4,6 @@
 #include "GameSerialization.h"
 #include "IWorldScript.h"
 #include "InspectorCmd.h"
-#include "SDL.h"
 #include "sge_core/ICore.h"
 #include "sge_utils/utils/strings.h"
 #include "traits/TraitCamera.h"
@@ -104,7 +103,7 @@ void GameWorld::iterateOverPlayingObjects(const std::function<bool(GameObject*)>
 	}
 
 	if (includeAwaitCreationObject) {
-		for (GameObject* const object : awaitsCreationObjects) {
+		for (GameObject* const object : objectsAwaitingCreation) {
 			sgeAssert(object);
 			if (object) {
 				if (lambda(object) == false) {
@@ -140,7 +139,7 @@ void GameWorld::iterateOverPlayingObjects(const std::function<bool(const GameObj
 	}
 
 	if (includeAwaitCreationObject) {
-		for (GameObject* const object : awaitsCreationObjects) {
+		for (GameObject* const object : objectsAwaitingCreation) {
 			sgeAssert(object);
 			if (object) {
 				if (lambda(object) == false) {
@@ -183,7 +182,7 @@ GameObject* GameWorld::allocObject(TypeId const type, ObjectId const specificId,
 		object->worldInitializeMe(this, newObjectId, type, std::move(displayName));
 		object->create();
 
-		awaitsCreationObjects.push_back(object);
+		objectsAwaitingCreation.push_back(object);
 
 		return object;
 	}
@@ -234,10 +233,10 @@ void GameWorld::clear() {
 
 	playingObjects.clear();
 
-	for (GameObject* const object : awaitsCreationObjects) {
+	for (GameObject* const object : objectsAwaitingCreation) {
 		delete object;
 	}
-	awaitsCreationObjects.clear();
+	objectsAwaitingCreation.clear();
 
 	m_nextNameIndex = 0;
 	totalStepsTaken = 0;
@@ -263,8 +262,6 @@ void GameWorld::clear() {
 	gridNumSegments = vec2i(10);
 	gridSegmentsSpacing = 1.f;
 
-	isLockedCursorAllowed = true;
-	needsLockedCursor = false;
 	m_cameraPovider = ObjectId();
 	m_useEditorCamera = true;
 	m_editorCamera.m_orbitCamera.yaw = -sgeHalfPi;
@@ -277,35 +274,28 @@ void GameWorld::clear() {
 }
 
 void GameWorld::update(const GameUpdateSets& updateSets) {
-	if (isLockedCursorAllowed && needsLockedCursor && m_useEditorCamera == false) {
-		SDL_SetRelativeMouseMode(SDL_TRUE);
-	} else {
-		SDL_SetRelativeMouseMode(SDL_FALSE);
-	}
+	debug.numCallsToGetObjectByIdThisFrame = 0;
 
 	if (debug.forceSleepMs != 0) {
 		std::this_thread::sleep_for(std::chrono::milliseconds(debug.forceSleepMs));
 	}
 
-	debug.numCallsToGetObjectByIdThisFrame = 0;
-
-	// Update Audio device
+	// Update the audio device.
 	getCore()->getAudioDevice()->setMasterVolume(m_masterVolume);
 
-	m_cachedUpdateSets = updateSets;
-
-	// Add the objects that were created.
-	for (int t = 0; t < awaitsCreationObjects.size(); ++t) {
-		GameObject* const object = awaitsCreationObjects[t];
+	// Add the objects that were created during the last update to the list of playing objects.
+	for (int t = 0; t < objectsAwaitingCreation.size(); ++t) {
+		GameObject* const object = objectsAwaitingCreation[t];
 		playingObjects[object->getType()].emplace_back(object);
 		object->onPlayStateChanged(true);
 	}
-	awaitsCreationObjects.clear();
+	objectsAwaitingCreation.clear();
 
 	// Remove the objects that want to be suspended.
-	// Caution: Assumes that awaitsCreationObjects is already processed, as objects in that list do not
+	// Caution:
+	// Assumes that objectsAwaitingCreation is already processed, as objects in that list do not
 	// yet participate in the playing actors list.
-	sgeAssert(awaitsCreationObjects.empty());
+	sgeAssert(objectsAwaitingCreation.empty());
 	for (const ObjectId objToKillId : objectsWantingPermanentKill) {
 		GameObject* const object = this->getObjectById(objToKillId);
 		if (object != nullptr) {
@@ -316,22 +306,22 @@ void GameWorld::update(const GameUpdateSets& updateSets) {
 			object->onPlayStateChanged(false);
 
 			// Now erase the object form the playing actors list.
-			auto& actorsOfType = playingObjects[object->getType()];
-			for (int t = 0; t < actorsOfType.size(); ++t) {
-				if (actorsOfType[t]->getId() == objToKillId) {
-					GameObject* objectToKill = actorsOfType[t];
-					// Unparent the object, so it's current no longer thinks that the deleted object
+			auto& gameObjectsOfType = playingObjects[object->getType()];
+			for (int t = 0; t < gameObjectsOfType.size(); ++t) {
+				if (gameObjectsOfType[t]->getId() == objToKillId) {
+					GameObject* objectToKill = gameObjectsOfType[t];
+					// Unparent the object, so it's current parent no longer thinks that the deleted object
 					// is present.
 					if (objectToKill->isActor()) {
 						setParentOf(objectToKill->getId(), ObjectId());
 
 						// Unparent all childrend objects.
-						vector_set<ObjectId> childrenList = getChildensOfAsList(actorsOfType[t]->getId());
+						vector_set<ObjectId> childrenList = getChildensOfAsList(gameObjectsOfType[t]->getId());
 						for (int iChild = 0; iChild < childrenList.size(); iChild++) {
 							setParentOf(childrenList.getNth(iChild), ObjectId());
 						}
 					}
-					actorsOfType.erase(actorsOfType.begin() + t);
+					gameObjectsOfType.erase(gameObjectsOfType.begin() + t);
 					delete objectToKill;
 					objectToKill = nullptr;
 					break;
@@ -341,79 +331,85 @@ void GameWorld::update(const GameUpdateSets& updateSets) {
 	}
 	objectsWantingPermanentKill.clear();
 
-	// Call pre update for scripts.
+	// Call pre update for world scripts.
 	for (ObjectId scriptObj : m_scriptObjects) {
 		if (IWorldScript* script = dynamic_cast<IWorldScript*>(getObjectById(scriptObj))) {
 			script->onPreUpdate(updateSets);
 		}
 	}
 
-	// Do the simulation step.
-	{
-		// Update the physics
-		if (updateSets.isGamePaused() == false) {
-			const int numSubStepsForPhysics = std::max(1, m_physicsSimNumSubSteps);
-			physicsWorld.dynamicsWorld->stepSimulation(updateSets.dt, numSubStepsForPhysics, updateSets.dt / float(numSubStepsForPhysics));
+	// Perform the needed physics engine update.
+	// If the game is paused, update just the bounding boxes tree,
+	// as the collision geometry might be needed by some tools (like the PlantingTool or the nav mesh)
+	// we do not want any physics simulations while the game is paused.
+	// If not paused, then perform the normal physics simulation.
+	if (updateSets.isGamePaused()) {
+		physicsWorld.dynamicsWorld->updateAabbs();
+	} else {
+		const int numSubStepsForPhysics = std::max(1, m_physicsSimNumSubSteps);
+		const float physicsSubStepDeltaTime = updateSets.dt / float(numSubStepsForPhysics);
+		physicsWorld.dynamicsWorld->stepSimulation(updateSets.dt, numSubStepsForPhysics, physicsSubStepDeltaTime);
 
-			// Get all collision manifolds
-			m_physicsManifoldList.clear();
+		// Get all collision manifolds and store them in a data structure
+		// so it would be easier for the gameplay logic to find collision between actors.
+		// Keep in mind that not all rigid bodies represent an actor.
+		m_physicsManifoldList.clear();
 
-			btDynamicsWorld* const dworld = physicsWorld.dynamicsWorld.get();
-			int const numManifolds = dworld->getDispatcher()->getNumManifolds();
-			for (int t = 0; t < numManifolds; ++t) {
-				const btPersistentManifold* const manifold = dworld->getDispatcher()->getManifoldByIndexInternal(t);
-
-				if (manifold->getNumContacts() != 0) {
-					const RigidBody* const rb0 = fromBullet(manifold->getBody0());
-					const RigidBody* const rb1 = fromBullet(manifold->getBody1());
-
-					if (rb0) {
-						m_physicsManifoldList[rb0].emplace_back(manifold);
-					}
-					if (rb1) {
-						m_physicsManifoldList[rb1].emplace_back(manifold);
-					}
+		btDynamicsWorld* const dworld = physicsWorld.dynamicsWorld.get();
+		int const numManifolds = dworld->getDispatcher()->getNumManifolds();
+		for (int t = 0; t < numManifolds; ++t) {
+			// Obtain the two rigid bodies that participate in the manifold and add them to
+			// our list of manifolds for both rigid bodies.
+			const btPersistentManifold* const manifold = dworld->getDispatcher()->getManifoldByIndexInternal(t);
+			if (manifold->getNumContacts() != 0) {
+				if (const RigidBody* const rb0 = fromBullet(manifold->getBody0())) {
+					m_physicsManifoldList[rb0].emplace_back(manifold);
+				}
+				if (const RigidBody* const rb1 = fromBullet(manifold->getBody1())) {
+					m_physicsManifoldList[rb1].emplace_back(manifold);
 				}
 			}
-		} else {
-			// If the game is not running update the bounding boxes tree,
-			// as the collision geometry might be needed by some tools (like the PlantingTool).
-			physicsWorld.dynamicsWorld->updateAabbs();
 		}
+	}
 
-		// Update the game objects.
-		for (auto& itrActorByType : playingObjects) {
-			// TODO: skip object that have no update.
-			// This might help:
-			// https://stackoverflow.com/questions/4741271/ways-to-detect-whether-a-c-virtual-function-has-been-redefined-in-a-derived-cl
-			for (int t = 0; t < itrActorByType.second.size(); ++t) {
-				GameObject* const object = itrActorByType.second[t];
-				sgeAssert(object != nullptr);
+	// Call GameObject::update for all playing game objects.
+	for (auto& itrActorByType : playingObjects) {
+		// TODO: it would be neat to skip this for all types that did not override GameObject::update().
+		// The link below might be useful:
+		// https://stackoverflow.com/questions/4741271/ways-to-detect-whether-a-c-virtual-function-has-been-redefined-in-a-derived-cl
+		for (int t = 0; t < itrActorByType.second.size(); ++t) {
+			GameObject* const object = itrActorByType.second[t];
+			if (object != nullptr) {
 				object->update(updateSets);
+			} else {
+				sgeAssertFalse("It is expected that all actors in GameWorld::playingObjects are not nullptr!");
 			}
 		}
+	}
 
-		// Post-Update the game objects.
-		for (auto& itrActorByType : playingObjects) {
-			// TODO: skip object that have no update.
-			for (int t = 0; t < itrActorByType.second.size(); ++t) {
-				GameObject* const object = itrActorByType.second[t];
-				sgeAssert(object != nullptr);
+	// Call GameObject::postUpdate for all playing game objects.
+	for (auto& itrActorByType : playingObjects) {
+		// TODO: skip object that have no update.
+		for (int t = 0; t < itrActorByType.second.size(); ++t) {
+			GameObject* const object = itrActorByType.second[t];
+			if (object != nullptr) {
 				object->postUpdate(updateSets);
+			} else {
+				sgeAssertFalse("It is expected that all actors in GameWorld::playingObjects are not nullptr!");
 			}
 		}
+	}
 
-		// Call post update for scripts.
-		for (ObjectId scriptObj : m_scriptObjects) {
-			if (IWorldScript* script = dynamic_cast<IWorldScript*>(getObjectById(scriptObj))) {
-				script->onPostUpdate(updateSets);
-			}
+	// Call postUpdate for world scripts.
+	for (ObjectId scriptObj : m_scriptObjects) {
+		if (IWorldScript* script = dynamic_cast<IWorldScript*>(getObjectById(scriptObj))) {
+			script->onPostUpdate(updateSets);
 		}
+	}
 
-		if (updateSets.isGamePaused() == false) {
-			timeSpendPlaying += updateSets.dt;
-			totalStepsTaken++;
-		}
+	if (updateSets.isGamePaused() == false) {
+		timeSpendPlaying += updateSets.dt;
+		totalStepsTaken++;
 	}
 }
 
@@ -609,7 +605,7 @@ void sge::GameWorld::instantiatePrefab(const GameWorld& prefabWorld,
 			return;
 		}
 
-		// FIXME:
+		// TODO:
 		// Kind of a lazy solution here...
 		// To instantiate the entities from a prefab we serialize the entity we've just loaded in the prefabWorld
 		// and then deserialize it back in the current world, while creating a new entity id for it.
@@ -643,12 +639,12 @@ void sge::GameWorld::instantiatePrefab(const GameWorld& prefabWorld,
 		}
 	}
 
-	for (GameObject* const prefabObject : prefabWorld.awaitsCreationObjects) {
+	for (GameObject* const prefabObject : prefabWorld.objectsAwaitingCreation) {
 		processActor(prefabObject);
 	}
 
-	// Fix the object relationships stored as members in the entites themselves and also fix the
-	// object hierarchy.
+	// Fix the object relationships stored as members in the entites themselves
+	// and also fix the object hierarchy.
 	for (GameObject* newObjectFromPrefab : createdObjects) {
 		MemberChain chain;
 
@@ -735,7 +731,7 @@ void GameWorld::removeRigidBodyManifold(RigidBody* const rb) {
 		return;
 	}
 
-	// Remove all manifolds where we participate. Including in other actor manifold list.
+	// Remove all manifolds where the specified rigid body participates. Including in other actor manifold list.
 	btCollisionObject* coToRemove = rb->getBulletRigidBody();
 	for (const btPersistentManifold* manifold : itrFind->second) {
 		// Get the other collision object, which rb has contacted, go to its manifolds and remove all manifolds with rb.

@@ -193,9 +193,13 @@ InspectorToolResult SelectionTool::updateTool(GameInspector* const inspector,
 		return result;
 	}
 
-	if (is.IsKeyPressed(Key::Key_MouseLeft)) {
-		m_pickingPointStartCS = is.GetCursorPos();
-		m_isSelecting = true;
+	if (is.isCursorRelative()) {
+		m_isSelecting = false;
+	} else {
+		if (is.IsKeyPressed(Key::Key_MouseLeft)) {
+			m_pickingPointStartCS = is.GetCursorPos();
+			m_isSelecting = true;
+		}
 	}
 
 	if (m_isSelecting && is.IsKeyReleased(Key::Key_MouseLeft)) {

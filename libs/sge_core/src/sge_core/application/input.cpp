@@ -22,6 +22,8 @@ void InputState::Advance() {
 	m_wasActiveWhilePolling = false;
 	m_inputText.clear();
 	m_wheelCount = 0;
+	m_cursorMotion = vec2f(0.f);
+
 	// Advance the polled input one step ahead, while keeping the current.
 	for (auto& state : m_keyStates) {
 		state = (state << 1) | (state & 1);
@@ -35,7 +37,8 @@ void InputState::Advance() {
 		winapiGamepads[t].Advance(false);
 	}
 
-	m_cursorMotion = vec2f(0.f);
+	// Keep the cursor position unmodified.
+	m_isCursorRelative = false;
 }
 const GamepadState* InputState::getHookedGemepad(const int playerIndex) const {
 	int numFoundHooked = 0;

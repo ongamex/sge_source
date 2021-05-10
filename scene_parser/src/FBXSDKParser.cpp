@@ -1231,7 +1231,7 @@ void FBXSDKParser::parseCollisionGeometry() {
 		}
 
 		vec3f const halfDiagonal = bbox.halfDiagonal();
-		vec3f const ssides = halfDiagonal.comonents_sorted_inc();
+		vec3f const ssides = halfDiagonal.getSorted();
 		float halfHeight = ssides[0];
 		float const radius = maxOf(ssides[1], ssides[2]);
 
@@ -1277,7 +1277,7 @@ void FBXSDKParser::parseCollisionGeometry() {
 		}
 
 		vec3f const halfDiagonal = bboxOS.halfDiagonal();
-		float const radius = halfDiagonal.comonents_sorted_inc().x;
+		float const radius = halfDiagonal.getSorted().x;
 		for (int const iInstance : range_int(int(itrSphereInstantiations.second.size()))) {
 			transf3d const n2w = m_collision_transfromCorrection * itrSphereInstantiations.second[iInstance];
 

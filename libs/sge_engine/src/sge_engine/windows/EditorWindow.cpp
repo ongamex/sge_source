@@ -279,6 +279,17 @@ void EditorWindow::update(SGEContext* const sgecon, const InputState& is) {
 	ImGui::SetNextWindowSize(ImVec2(float(m_nativeWindow.GetClientWidth()), float(m_nativeWindow.GetClientHeight())));
 	ImGui::Begin(m_windowName.c_str(), nullptr, mainWndFlags);
 
+	// [SGE_EDITOR_MOUSE_CAPTURE_HOTKEY]
+	// while editing some games might need the cursor to be relative
+	// (hidden and not moving while getting move events) for games file first pesron shooters.
+	// In order to test them we need to allow the game to capture the cursor, however
+	// when done testing we need to be able to remove that capture and have a normal mouse cursor
+	// behaviour to continue editing the game. By pressing F2 we toggle if the game is able or not
+	// to capture the cursor.
+	if (is.IsKeyPressed(Key::Key_F2)) {
+		getEngineGlobal()->setEngineAllowingRelativeCursor(!getEngineGlobal()->getEngineAllowingRelativeCursor());
+	}
+
 	if (loadLevelFile.empty() == false) {
 		this->loadWorldFromFile(loadLevelFile.c_str());
 		loadLevelFile.clear();

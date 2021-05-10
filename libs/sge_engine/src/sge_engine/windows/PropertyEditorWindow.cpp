@@ -423,7 +423,7 @@ void ProperyEditorUIGen::doMemberUI(GameInspector& inspector, GameObject* const 
 
 		ImGuiEx::Label(memberName);
 		if (member.flags & MFF_Vec4fAsColor) {
-			change = SGEImGui::ColorPicker4(memberName, v4edit.data, &justReleased, &justActivated, 0);
+			change = SGEImGui::ColorPicker4(memberName, v4edit.data, &justReleased, &justActivated, ImGuiColorEditFlags_AlphaBar);
 		} else {
 			change = SGEImGui::DragFloats(memberName, v4edit.data, 4, &justReleased, &justActivated);
 		}

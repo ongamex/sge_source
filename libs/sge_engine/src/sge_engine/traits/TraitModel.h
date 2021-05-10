@@ -8,6 +8,9 @@
 
 
 namespace sge {
+
+struct ICamera;
+
 /// @brief TraitModel is a trait designed to be attached in an Actor.
 /// It provides a simple way to assign a renderable 3D Model to the game object (both animated and static).
 /// The trait is not automatically updateable, the user needs to manually call @postUpdate() method in their objects.
@@ -64,13 +67,23 @@ struct SGE_ENGINE_API TraitModel : public Trait {
 	void setAdditionalTransform(const mat4f& tr) { m_additionalTransform = tr; }
 
 	AABox3f getBBoxOS() const {
+		// If the attached asset is a model use it to compute the bounding box.
 		const AssetModel* const assetModel = getAssetProperty().getAssetModel();
 		if (assetModel && assetModel->staticEval.isInitialized()) {
 			AABox3f bbox = assetModel->staticEval.aabox;
 			return bbox;
 		}
 
-		return AABox3f(); // Return an empty box.
+		// If the attached asset is a texture or a sprite compute the bounding box using them.
+		const SpriteAnimationAsset* const assetSprite = getAssetProperty().getAssetSprite();
+		const GpuHandle<Texture>* const assetTexture = getAssetProperty().getAssetTexture();
+
+		if ((assetSprite || assetTexture) && isAssetLoaded(getAssetProperty().getAsset())) {
+			return imageSettings.computeBBoxOS(*getAssetProperty().getAsset().get(), m_additionalTransform);
+		}
+
+		// Not implemented or no asset is loaded.
+		return AABox3f();
 	}
 
 	void setRenderable(bool v) { isRenderable = v; }
@@ -119,9 +132,25 @@ struct SGE_ENGINE_API TraitModel : public Trait {
 			const float sz = imageWidth / m_pixelsPerUnit;
 			const float sy = imageHeight / m_pixelsPerUnit;
 
-			const mat4f anchorAlineMtx = anchor_getPlaneAlignMatrix(m_anchor, vec2f(sz, sy));
-			return anchorAlineMtx;
+			const mat4f anchorAlignMtx = anchor_getPlaneAlignMatrix(m_anchor, vec2f(sz, sy));
+			return anchorAlignMtx;
 		}
+
+		/// @brief Computes the matrix that needs to be applied to a quad
+		/// that faces +X and has corners (0,0,0) and (0,1,1), So it appears as described by this structure:
+		/// its size, orientation (billboarding), aligment and so on.
+		/// @param [in] asset is the asset that is going to be attached to the plane. it needs to be a texture or a sprite.
+		/// @param [in] drawCamera the camera that is going to be used for rendering. If null the billboarding effect will be missing.
+		/// @param [in] nodeToWorldTransform the transform that indicates the location of the object(for example, could be the transform of
+		/// an actor).
+		/// @param [in] additionaTransform an additional transform to be applied before before all other transforms.
+		/// @return the matrix to be used as object-to-world transform form the quad described above.
+		mat4f computeObjectToWorldTransform(const Asset& asset,
+		                                    const ICamera* const drawCamera,
+		                                    const transf3d& nodeToWorldTransform,
+		                                    const mat4f& additionaTransform) const;
+
+		AABox3f computeBBoxOS(const Asset& asset, const mat4f& additionaTransform) const;
 
 		/// Adds a color tint to the final color and the alpha of the object.
 		vec4f colorTint = vec4f(1.f);

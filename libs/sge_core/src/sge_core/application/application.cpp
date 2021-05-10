@@ -251,10 +251,10 @@ void ApplicationHandler::PollEvents() {
 
 	m_inputState.m_wasActiveWhilePolling = true;
 
-	int sdlMouseX, sdlMouseY;
-	SDL_GetMouseState(&sdlMouseX, &sdlMouseY);
+	// int sdlMouseX, sdlMouseY;
+	// SDL_GetMouseState(&sdlMouseX, &sdlMouseY);
 
-	m_inputState.addCursorPos(vec2f(float(sdlMouseX), float(sdlMouseY)));
+	// m_inputState.setCursorPos(vec2f(float(sdlMouseX), float(sdlMouseY)));
 
 	SDL_Event event;
 	// Bacause SDL keyboard text event doesn't report Enter key presses as text (unlike WINAPI),
@@ -341,7 +341,8 @@ void ApplicationHandler::PollEvents() {
 				m_inputState.addMouseWheel(-event.wheel.y);
 			} break;
 			case SDL_MOUSEMOTION: {
-				m_inputState.setMouseMotion(vec2f(float(event.motion.xrel), float(event.motion.yrel)));
+				m_inputState.addMouseMotion(vec2f(float(event.motion.xrel), float(event.motion.yrel)));
+				m_inputState.setCursorPos(vec2f(float(event.motion.x), float(event.motion.y)));
 			} break;
 			case SDL_JOYDEVICEADDED: {
 				const int sdlJoystickIndex = event.cdevice.which;
@@ -563,6 +564,8 @@ void ApplicationHandler::PollEvents() {
 		};
 	}
 
+	m_inputState.setCusorIsRelative(SDL_GetRelativeMouseMode() == SDL_TRUE);
+
 	for (char ch : additionalTextInput) {
 		m_inputState.addInputText(ch);
 	}
@@ -572,10 +575,6 @@ void ApplicationHandler::PollEvents() {
 		wnd->m_implData->isActive = wasActiveWhilePolling;
 		wnd->m_inputState = m_inputState;
 
-		vec2f const prevCursorClient = wnd->m_inputState.m_cursorClient;
-		vec2f const newCursorClient = vec2f((float)sdlMouseX, (float)sdlMouseY);
-
-		wnd->m_inputState.m_cursorClient = newCursorClient;
 		wnd->m_inputState.m_cursorDomain = wnd->m_inputState.m_cursorClient;
 		wnd->m_inputState.m_cursorDomainSize = vec2f(float(wnd->GetClientWidth()), float(wnd->GetClientHeight()));
 		wnd->m_inputState.setWasActiveDuringPoll(wasActiveWhilePolling);
@@ -647,6 +646,14 @@ void WindowBase::setWindowTitle(const char* title) {
 	if (title) {
 		SDL_SetWindowTitle(m_implData->window, title);
 	}
+}
+
+void setMouseCursorRelative(bool isRelative) {
+	SDL_SetRelativeMouseMode(isRelative ? SDL_TRUE : SDL_FALSE);
+}
+
+bool getMouseCursorRelative() {
+	return SDL_GetRelativeMouseMode() == SDL_TRUE;
 }
 
 } // namespace sge

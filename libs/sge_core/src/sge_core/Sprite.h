@@ -12,6 +12,7 @@ struct AssetLibrary;
 struct Asset;
 
 struct SGE_CORE_API SpriteAnimation {
+	/// @brief Frame describes a region for a texture that contains a sub image.
 	struct Frame {
 		vec2i xy = vec2i(0);         /// The position of the 1st pixel of the frame.
 		vec2i wh = vec2i(0);         /// The width and height of the region of the frame starting form "xy".

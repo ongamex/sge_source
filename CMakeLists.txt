@@ -45,6 +45,9 @@ if(EMSCRIPTEN)
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s USE_WEBGL2=1")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s FULL_ES3=1") # TODO: Does it work without this one?
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s ALLOW_MEMORY_GROWTH=1") # By default Emscripten has a fixed pool size for dynamic allocations.
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Os")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g0") # Emscripten debug symbols take a lot of space for disable it by default.
+	#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g3")
 endif()
 
 # Create the NoOpt configuration, which is the same as Release, but without optimizations.
@@ -128,19 +131,19 @@ macro(sgePromoteWarningsOnTarget target)
 			"/wd4275"
 			"/wd4127" # The controlling expression of an if statement or while loop evaluates to a constant. 
 			"/wd4201" # nonstandard extension used : nameless struct/union
-			"/wd4245" # 'conversion' : conversion from 'type1' to 'type2', signed/unsigned mismatch
-			"/wd4324" # 'struct_name' : structure was padded due to __declspec(align())
+			"/wd4245" # conversion from 'type1' to 'type2', signed/unsigned mismatch
+			"/wd4324" # structure was padded due to __declspec(align())
 					 
 			"/wd4061" # enumerator 'identifier' in switch of enum 'enumeration' is not explicitly handled by a case label
-			"/wd4191" # 'operator/operation' : unsafe conversion from 'type of expression' to 'type required'
-			"/wd4264" # 'virtual_function' : no override available for virtual member function from base 'class'; function is hidden
-			"/wd4266" # 'function' : no override available for virtual member function from base 'type'; function is hidden
-			"/wd4355" # 'this' : used in base member initializer list
-			"/wd4365" # 'action' : conversion from 'type_1' to 'type_2', signed/unsigned mismatch
-			"/wd4371" # lassname': layout of class may have changed from a previous version of the compiler due to better packing of member 'member'
+			"/wd4191" # unsafe conversion from 'type of expression' to 'type required'
+			"/wd4264" # no override available for virtual member function from base 'class'; function is hidden
+			"/wd4266" # no override available for virtual member function from base 'type'; function is hidden
+			"/wd4355" # this used in base member initializer list
+			"/wd4365" # action conversion from 'type_1' to 'type_2', signed/unsigned mismatch
+			"/wd4371" # class layout of class may have changed from a previous version of the compiler due to better packing of member 'member'
 			"/wd4388"
-			"/wd4514" # 'function' : unreferenced inline function has been removed
-			"/wd4571" # Informational: catch(...) semantics changed since Visual C++ 7.1; structured exceptions (SEH) are no longer caught
+			"/wd4514" # function unreferenced inline function has been removed
+			"/wd4571" # catch(...) semantics changed since Visual C++ 7.1; structured exceptions (SEH) are no longer caught
 			"/wd4582"
 			"/wd4583"
 			"/wd4623" # 'derived class' : default constructor was implicitly defined as deleted because a base class default constructor is inaccessible or deleted

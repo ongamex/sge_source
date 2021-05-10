@@ -82,6 +82,20 @@ struct IEngineGlobal {
 	virtual int getNotificationCount() const = 0;
 
 	virtual EngineGlobalAssets& getEngineAssets() = 0;
+
+	/// @brief  When creating a game you do not need to modify this. This is intended
+	/// for the editor to restrict the usage of a relative cursor (a hidden cursor useful for FPS like games).
+	/// This function sets if relative cursors are allowed or not. They migth not be allowed when we are
+	/// in the editor editing the game.
+	/// If you want to use relative cursor in the game use @setNeedForRelativeCursorThisFrame.
+	virtual void setEngineAllowingRelativeCursor(bool isRelativeCursorAllowed) = 0;
+
+	/// @brief Returns true if relative cursor is allowed, not that it is relative.
+	virtual bool getEngineAllowingRelativeCursor() const = 0;
+
+	virtual void setNeedForRelativeCursorThisFrame() = 0;
+	virtual bool doesAnyoneNeedForRelativeCursorThisFrame() const = 0;
+	virtual void clearAnyoneNeedForRelativeCursorThisFrame() = 0;
 };
 
 SGE_ENGINE_API int addPluginRegisterFunction(void (*fnPtr)());

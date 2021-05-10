@@ -18,9 +18,6 @@ uniform float4 cameraPositionWs;
 uniform float4 uCameraLookDirWs;
 
 uniform float4 uiHighLightColor;
-uniform float4 darkSpotPositonWs;
-
-
 
 uniform sampler2D uTexNormalMap;
 
@@ -207,26 +204,6 @@ float4 psMain(VS_OUTPUT IN)
 	}
 
 	// DOING SHADING HERE
-
-	float darkSpotXZDistance = length(IN.v_posWS.xz - darkSpotPositonWs.xz);
-	float darkSpotYDiff = IN.v_posWS.y - darkSpotPositonWs.y;
-	float darkSpotFactor = 1.f;
-	float4 darkSpotColor = float4(0, 0, 0, 0);
-
-	if (darkSpotYDiff < 1.f) {
-		float darkSpotYDistance = clamp(abs(darkSpotYDiff), 0.f, 20.f);
-		float darkSpotVerticalCoeff = darkSpotYDistance / 20.f;
-
-		float darkSpotRadius = lerp(0.4f, 0.f, darkSpotVerticalCoeff);
-
-		if (darkSpotXZDistance <= darkSpotRadius) {
-			darkSpotColor = float4(0.33f, 0.66f, 0.05f, 0.8f);
-		}
-
-		if (darkSpotXZDistance <= darkSpotRadius * 0.8f) {
-			darkSpotColor = float4(0.f, 0.f, 0.f, 0.8f);
-		}
-	}
 
 #if OPT_UseNormalMap == 1
 	float3 normalMapNorm = 2.f * tex2D(uTexNormalMap, IN.v_uv).xyz - float3(1.f, 1.f, 1.f);
@@ -417,9 +394,6 @@ float4 psMain(VS_OUTPUT IN)
 	//finalColor.x = saturate(finalColor.x);
 	//finalColor.y = saturate(finalColor.y);
 	//finalColor.z = saturate(finalColor.z);
-
-	//finalColor.xyz = (1.f - darkSpotColor.w) * (finalColor.xyz * (1.f - uiHighLightColor.w) + uiHighLightColor.xyz * uiHighLightColor.w) +
-	//                 darkSpotColor.w * darkSpotColor.xyz;
 
 	// Apply tone mapping.
 	//finalColor.xyz = finalColor / (finalColor + float3(1.f, 1.f, 1.f));

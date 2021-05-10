@@ -10,10 +10,11 @@
 #include "sgecore_api.h"
 
 namespace sge {
+struct AssetLibrary;
+
 struct AudioTrack;
 using AudioAsset = std::shared_ptr<AudioTrack>;
 
-struct AssetLibrary;
 struct AssetModel {
 	Model::Model model;
 	EvaluatedModel staticEval;
@@ -22,7 +23,7 @@ struct AssetModel {
 
 // Defines all posible asset types.
 enum class AssetType : int {
-	None,
+	None,        ///< Just an invalid asset type, used as a default.
 	Model,       ///< A 3D model.
 	TextureView, ///< sge::GpuHandle<sge::Texture>
 	Text,        ///< A file containing some text (including code).
@@ -81,45 +82,70 @@ struct SGE_CORE_API Asset {
 		}
 	}
 
+	const void* asVoid() const { return m_pAsset; }
+
 	GpuHandle<Texture>* asTextureView() {
-		sgeAssert(getType() == AssetType::TextureView);
-		return (GpuHandle<Texture>*)m_pAsset;
+		if (getType() == AssetType::TextureView) {
+			return (GpuHandle<Texture>*)m_pAsset;
+		}
+		return nullptr;
+	}
+
+	const GpuHandle<Texture>* asTextureView() const {
+		if (getType() == AssetType::TextureView) {
+			return (const GpuHandle<Texture>*)m_pAsset;
+		}
+		return nullptr;
 	}
 
 	SpriteAnimationAsset* asSprite() {
-		sgeAssert(getType() == AssetType::Sprite);
-		return (SpriteAnimationAsset*)m_pAsset;
-	}
-
-	sge::AudioAsset* asAudio() {
-		sgeAssert(getType() == AssetType::Audio);
-		return (AudioAsset*)m_pAsset;
-	}
-
-	const void* asVoid() const { return m_pAsset; }
-	AssetModel* asModel() {
-		sgeAssert(getType() == AssetType::Model);
-		return (AssetModel*)m_pAsset;
-	}
-
-	const AssetModel* asModel() const {
-		sgeAssert(getType() == AssetType::Model);
-		return (AssetModel*)m_pAsset;
-	}
-
-	const std::string* asText() const {
-		sgeAssert(getType() == AssetType::Text);
-		return (const std::string*)m_pAsset;
+		if (getType() == AssetType::Sprite) {
+			return (SpriteAnimationAsset*)m_pAsset;
+		}
+		return nullptr;
 	}
 
 	const SpriteAnimationAsset* asSprite() const {
-		sgeAssert(getType() == AssetType::Sprite);
-		return (const SpriteAnimationAsset*)m_pAsset;
+		if (getType() == AssetType::Sprite) {
+			return (SpriteAnimationAsset*)m_pAsset;
+		}
+		return nullptr;
+	}
+
+	sge::AudioAsset* asAudio() {
+		if (getType() == AssetType::Audio) {
+			return (AudioAsset*)m_pAsset;
+		}
+		return nullptr;
 	}
 
 	const sge::AudioAsset* asAudio() const {
-		sgeAssert(getType() == AssetType::Audio);
-		return (const AudioAsset*)m_pAsset;
+		if (getType() == AssetType::Audio) {
+			return (AudioAsset*)m_pAsset;
+		}
+		return nullptr;
+	}
+
+	AssetModel* asModel() {
+		if (getType() == AssetType::Model) {
+			return (AssetModel*)m_pAsset;
+		}
+		return nullptr;
+	}
+
+	const AssetModel* asModel() const {
+		if (getType() == AssetType::Model) {
+			return (AssetModel*)m_pAsset;
+		}
+		return nullptr;
+	}
+
+	const std::string* asText() const {
+		if (getType() == AssetType::Text) {
+			return (const std::string*)m_pAsset;
+		}
+
+		return nullptr;
 	}
 
 	AssetType getType() const { return m_type; }
@@ -198,8 +224,19 @@ struct SGE_CORE_API AssetLibrary {
 	SGEDevice* m_sgedev;
 };
 
-// Some helpers.
+/// @brief Returns true if the specified asset is loaded.
+inline bool isAssetLoaded(const Asset& asset) {
+	bool loaded = asset.getStatus() == AssetStatus::Loaded;
+	return loaded && asset.asVoid() != nullptr;
+}
 
+/// @brief Returns true if the specified asset is loaded and if it is of the specified type.
+inline bool isAssetLoaded(const Asset& asset, const AssetType type) {
+	bool loaded = asset.getStatus() == AssetStatus::Loaded;
+	return loaded && asset.asVoid() != nullptr && asset.getType() == type;
+}
+
+/// @brief Returns true if the specified asset is loaded.
 inline bool isAssetLoaded(const std::shared_ptr<Asset>& asset) {
 	bool loaded = asset && (asset->getStatus() == AssetStatus::Loaded);
 	if (loaded) {
@@ -208,6 +245,7 @@ inline bool isAssetLoaded(const std::shared_ptr<Asset>& asset) {
 	return loaded;
 }
 
+/// @brief Returns true if the specified asset is loaded and if it is of the specified type.
 inline bool isAssetLoaded(const std::shared_ptr<Asset>& asset, const AssetType type) {
 	bool loaded = asset && (asset->getStatus() == AssetStatus::Loaded);
 	if (loaded) {
@@ -216,11 +254,13 @@ inline bool isAssetLoaded(const std::shared_ptr<Asset>& asset, const AssetType t
 	return loaded && asset->getType() == type;
 }
 
+/// @brief Returns true if the asset is not loaded or loading it failed.
 inline bool isAssetNotLoadedOrLoadFailed(const std::shared_ptr<Asset>& asset) {
 	const bool notLoadedOrFailed = !asset || (asset->getStatus() == AssetStatus::LoadFailed);
 	return notLoadedOrFailed;
 }
 
+/// @brief Returns true if the asset is not allocated or if the loading failed.
 inline bool isAssetLoadFailed(const std::shared_ptr<Asset>& asset) {
 	const bool res = asset && (asset->getStatus() == AssetStatus::LoadFailed);
 	return res;

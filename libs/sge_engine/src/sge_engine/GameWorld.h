@@ -269,16 +269,7 @@ struct SGE_ENGINE_API GameWorld {
 
 	ICamera* getRenderCamera();
 
-	/// Sets if the cursor needs to be hidden and locked to the center of the window.
-	/// Useful for situations like first person mouse control.
-	/// This will take effect only when in gameplay and when we look trough the game play camera.
-	void setNeedsLockedCursor(bool isLocked) { needsLockedCursor = isLocked; }
-
-	bool getNeedsLockedCursor() const { return needsLockedCursor; }
-
   public:
-	/// The update settings passed to the current update() function call.
-	GameUpdateSets m_cachedUpdateSets;
 
 	/// The projection settings specified by the user. (Some of them are window dependad and we update them manully).
 	/// TODO: This is an old idea, and no longer has its place in the game world.
@@ -299,7 +290,7 @@ struct SGE_ENGINE_API GameWorld {
 	/// A pointer to the attached inspector(if any).
 	GameInspector* inspector = nullptr;
 
-	std::vector<GameObject*> awaitsCreationObjects; // A set of object ready to start playing at the beginning of the next step.
+	std::vector<GameObject*> objectsAwaitingCreation; // A set of object ready to start playing at the beginning of the next step.
 	std::unordered_map<TypeId, std::vector<GameObject*>> playingObjects; // All playing game object sorted by type.
 	vector_set<ObjectId> objectsWantingPermanentKill; // A set of actors that are going to be compleatley deleted for the game world.
 
@@ -345,9 +336,6 @@ struct SGE_ENGINE_API GameWorld {
 	bool gridShouldDraw = true;
 	vec2i gridNumSegments = vec2i(10);
 	float gridSegmentsSpacing = 1.f;
-
-	bool isLockedCursorAllowed = true;
-	bool needsLockedCursor = false;
 
 	/// Debugging variables.
 	mutable struct {

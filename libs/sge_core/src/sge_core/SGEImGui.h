@@ -26,10 +26,10 @@ struct transf3d;
 //--------------------------------------------------------------------
 struct SGE_CORE_API SGEImGui {
   public:
-	static void initialize(SGEContext* con, FrameTarget* frameTarget, const InputState* inputState, const Rect2s& viewport_arg);
+	static void initialize(SGEContext* con, FrameTarget* frameTarget, const Rect2s& viewport_arg);
 	static void destroy();
 
-	static void newFrame();
+	static void newFrame(const InputState& inputState);
 	static void render();
 	static void setViewport(const Rect2s& viewport_arg);
 
@@ -77,7 +77,6 @@ struct SGE_CORE_API SGEImGui {
 	static StateGroup stateGroup;
 
 	static SGEContext* sgecon;
-	static const InputState* input_state;
 	static Timer timer;
 
 	static GpuHandle<Buffer> vertBuffer;

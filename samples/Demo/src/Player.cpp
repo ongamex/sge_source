@@ -1,5 +1,6 @@
 #include "sge_core/ICore.h"
 #include "sge_engine/Actor.h"
+#include "sge_engine/EngineGlobal.h"
 #include "sge_engine/GameWorld.h"
 #include "sge_engine/traits/TraitModel.h"
 #include "sge_engine/traits/TraitRigidBody.h"
@@ -54,7 +55,7 @@ struct Player : public Actor {
 
 		// Lock the cursor to the center of the screen and hide it
 		// as we want to control the camera with the mouse.
-		getWorld()->setNeedsLockedCursor(true);
+		getEngineGlobal()->setNeedForRelativeCursorThisFrame();
 
 		if (this->getPosition().y < yPositionRestart) {
 			this->setPosition(respawnPosition);
@@ -69,7 +70,7 @@ struct Player : public Actor {
 		vec3f wsRight = vec3f(1.f, 0.f, 0.f);
 
 		if (cameraActor) {
-			float motionCamera = -u.is.GetCursorMotion().x;
+			float motionCamera = u.is.isCursorRelative() ? -u.is.GetCursorMotion().x * 0.25f : 0.f;
 			if (auto gamepad = u.is.getHookedGemepad(0); gamepad && motionCamera == 0) {
 				motionCamera = -gamepad->axisR.x * 3.f;
 			}
@@ -95,7 +96,13 @@ struct Player : public Actor {
 		wobbleForce -= wobbleForce * u.dt * 2.f;
 		wobbleAmplitude += wobbleForce * u.dt;
 
-		const vec2f inputDir = u.is.GetArrowKeysDir(true, true, 0);
+		// Fake touch screen input.
+		vec2f inputDir = u.is.GetArrowKeysDir(true, true, 0);
+		if (u.is.IsKeyDown(Key_MouseLeft)) {
+			inputDir.x = 2.f * u.is.getCursorPosUV().x - 1.f;
+			inputDir.y = -(2.f * u.is.getCursorPosUV().y - 1.f);
+		}
+
 		const vec3f inputDirWs = wsRight * inputDir.x + inputDir.y * wsForward;
 		const vec3f inputDirWsRight = vec3f(-inputDirWs.z, 0.f, inputDirWs.x);
 

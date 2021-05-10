@@ -110,8 +110,7 @@ struct SGEGameWindow : public WindowBase {
 		// initialized the device and the immediate context
 		SGEDevice* const device = SGEDevice::create(mainTargetDesc);
 
-		SGEImGui::initialize(device->getContext(), device->getWindowFrameTarget(), &GetInputState(),
-		                     device->getWindowFrameTarget()->getViewport());
+		SGEImGui::initialize(device->getContext(), device->getWindowFrameTarget(), device->getWindowFrameTarget()->getViewport());
 		ImGui::SetCurrentContext(getImGuiContextCore());
 		setImGuiContextEngine(getImGuiContextCore());
 
@@ -197,9 +196,16 @@ struct SGEGameWindow : public WindowBase {
 
 		loadPlugin();
 
+		if (getEngineGlobal()->getEngineAllowingRelativeCursor() && getEngineGlobal()->doesAnyoneNeedForRelativeCursorThisFrame()) {
+			setMouseCursorRelative(true);
+		} else {
+			setMouseCursorRelative(false);
+		}
+		getEngineGlobal()->clearAnyoneNeedForRelativeCursorThisFrame();
+
 		float const bgColor[] = {0.f, 0.f, 0.f, 1.f};
 
-		SGEImGui::newFrame();
+		SGEImGui::newFrame(GetInputState());
 
 		SGEContext* const sgecon = getCore()->getDevice()->getContext();
 		sgecon->clearColor(getCore()->getDevice()->getWindowFrameTarget(), -1, bgColor);

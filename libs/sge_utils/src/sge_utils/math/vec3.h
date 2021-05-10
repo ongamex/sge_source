@@ -384,8 +384,8 @@ struct vec3 {
 
 	friend DATA_TYPE distance(const vec3& a, const vec3& b) { return a.distance(b); }
 
-	/// Rentusn a vector containing min/max components from each vector.
-	vec3 ComponentMin(const vec3& other) const {
+	/// Retrieves the minimum of each pairs of components by picking the smallest one.
+	vec3 pickMin(const vec3& other) const {
 		vec3 result;
 
 		result.data[0] = minOf(data[0], other.data[0]);
@@ -395,9 +395,8 @@ struct vec3 {
 		return result;
 	}
 
-	friend vec3 component_min(const vec3& a, const vec3& b) { return a.ComponentMin(b); }
-
-	vec3 ComponentMax(const vec3& other) const {
+	/// Retrieves the minimum of each pairs of components by picking the biggest one.
+	vec3 pickMax(const vec3& other) const {
 		vec3 result;
 		result.data[0] = maxOf(data[0], other.data[0]);
 		result.data[1] = maxOf(data[1], other.data[1]);
@@ -406,10 +405,7 @@ struct vec3 {
 		return result;
 	}
 
-	friend vec3 component_max(const vec3& a, const vec3& b) { return a.ComponentMax(b); }
-
-
-	/// Returns the min/max component in the vector.
+	/// Returns the min component in the vector.
 	DATA_TYPE componentMin() const {
 		DATA_TYPE retval = data[0];
 
@@ -424,8 +420,7 @@ struct vec3 {
 		return retval;
 	}
 
-	friend vec3 component_min(const vec3& v) { return v.componentMin(); }
-
+	/// @brief Computes the absolute values of each compoents in the vector and returns the smallest one.
 	DATA_TYPE componentMinAbs() const {
 		DATA_TYPE retval = std::abs(data[0]);
 
@@ -445,7 +440,8 @@ struct vec3 {
 
 		return retval;
 	}
-
+	
+	/// Returns the max component in the vector.
 	DATA_TYPE componentMax() const {
 		DATA_TYPE retval = data[0];
 
@@ -460,7 +456,7 @@ struct vec3 {
 		return retval;
 	}
 
-	friend vec3 component_max(const vec3& v) { return v.componentMax(); }
+	friend vec3 pick_max(const vec3& v) { return v.componentMax(); }
 
 	DATA_TYPE componentMaxAbs() const {
 		DATA_TYPE retval = std::abs(data[0]);
@@ -482,7 +478,16 @@ struct vec3 {
 		return retval;
 	}
 
-	vec3 comonents_sorted_inc() const {
+	vec3 getAbs() const {
+		vec3 retval = *this;
+		retval.x = std::abs(retval.x);
+		retval.y = std::abs(retval.y);
+		retval.z = std::abs(retval.z);
+
+		return retval;
+	}
+
+	vec3 getSorted() const {
 		vec3 retval = *this;
 
 		for (int t = 0; t < vec3::NUM_ELEMS; ++t)

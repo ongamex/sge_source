@@ -256,7 +256,7 @@ struct SGE_CORE_API ButtonWidget final : public IWidget {
 	void onRelease(bool wasReleaseInside) override {
 		m_isPressed = false;
 		if (wasReleaseInside) {
-			m_onReleaseListeners();
+			m_onReleaseListeners.invokeEvent();
 		}
 	}
 

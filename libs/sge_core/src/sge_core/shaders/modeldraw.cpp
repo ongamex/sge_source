@@ -172,7 +172,6 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 		uProjView,
 		uUVWTransform,
 		uGameTime,
-		uDarkSpotPositonWs,
 		uAmbientLightColor,
 		uRimLightColorWWidth,
 		uLightPosition,
@@ -225,7 +224,6 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 		    {uProjView, "projView"},
 		    {uUVWTransform, "uvwTransform"},
 		    {uGameTime, "gameTime"},
-		    {uDarkSpotPositonWs, "darkSpotPositonWs"},
 		    {uAmbientLightColor, "ambientLightColor"},
 		    {uRimLightColorWWidth, "uRimLightColorWWidth"},
 		    {uLightPosition, "lightPosition"},
@@ -392,8 +390,6 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 		shaderPerm.bind<64>(uniforms, uTexNormalMapSampler, (void*)material.texNormalMap->getSamplerState());
 #endif
 	}
-
-	shaderPerm.bind<64>(uniforms, uDarkSpotPositonWs, (void*)&generalMods.darkSpotPosition);
 
 	if (emptyCubeShadowMap.IsResourceValid() == false) {
 		TextureDesc texDesc;

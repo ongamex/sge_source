@@ -108,9 +108,7 @@ void SceneWindow::update(SGEContext* const sgecon, const InputState& isOriginal)
 				inspector->m_disableAutoStepping = !inspector->m_disableAutoStepping;
 			}
 
-			if (is.IsKeyPressed(Key::Key_F2)) {
-				world->m_useEditorCamera = !world->m_useEditorCamera;
-			}
+			world->m_useEditorCamera = !getEngineGlobal()->getEngineAllowingRelativeCursor();
 
 			if (is.IsKeyReleased(Key::Key_F1)) {
 				world->toggleEditMode();
@@ -381,7 +379,7 @@ void SceneWindow::drawOverlay(const GameDrawSets& drawSets) {
 		Actor* const actor = inspector->m_world->getActorById(inspector->m_selection[t].objectId);
 		if (actor != nullptr) {
 			drawSets.gameDrawer->drawActor(drawSets, inspector->editMode, actor, inspector->m_selection[t].index,
-			                               t == 0 ? drawReason_wireframePrimary : drawReason_wireframe);
+			                               t == 0 ? drawReason_visualizeSelectionPrimary : drawReason_visualizeSelection);
 		}
 	}
 

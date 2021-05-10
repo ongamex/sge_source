@@ -6,7 +6,6 @@
 
 namespace sge {
 
-
 vec2f getIntersectionDepth(const AABox2f& rectA, const AABox2f& rectB) {
 	vec2f centerA = rectA.center();
 	vec2f centerB = rectB.center();
@@ -47,7 +46,7 @@ struct Snowman : public Actor {
 	float timeSpentInAir = 0.f;
 	int jumpCounter = 0;
 
-	virtual AABox3f getBBoxOS() const { return AABox3f(); }
+	virtual AABox3f getBBoxOS() const { return ttModel.getBBoxOS(); }
 
 	void create() {
 		registerTrait(ttModel);
@@ -190,7 +189,7 @@ struct IceBlock : public Actor {
 	TraitModel ttModel;
 	TraitCollisionRect2d collider;
 
-	virtual AABox3f getBBoxOS() const { return AABox3f(); }
+	virtual AABox3f getBBoxOS() const { return ttModel.getBBoxOS(); }
 
 	void create() {
 		registerTrait(ttModel);
