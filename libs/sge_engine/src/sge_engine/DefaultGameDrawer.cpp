@@ -603,8 +603,8 @@ void DefaultGameDrawer::drawTraitStaticModel(TraitModel* modelTrait,
 		if (ppTexture && ppTexture->IsResourceValid()) {
 			Texture* const texture = ppTexture->GetPtr();
 			if (texture) {
-
-				mat4f obj2world = modelTrait->imageSettings.computeObjectToWorldTransform(*asset.get(), drawSets.drawCamera, actor->getTransform(), modelTrait->m_additionalTransform);
+				mat4f obj2world = modelTrait->imageSettings.computeObjectToWorldTransform(
+				    *asset.get(), drawSets.drawCamera, actor->getTransform(), modelTrait->m_additionalTransform);
 
 				Geometry texPlaneGeom = m_texturedPlaneDraw.getGeometry(drawSets.rdest.getDevice());
 				Material texPlaneMtl = m_texturedPlaneDraw.getMaterial(texture);
@@ -626,7 +626,8 @@ void DefaultGameDrawer::drawTraitStaticModel(TraitModel* modelTrait,
 			// Get the frame of the sprite to be rendered.
 			const SpriteAnimation::Frame* const frame = pSprite->spriteAnimation.getFrameForTime(modelTrait->imageSettings.spriteFrameTime);
 			if (frame) {
-				mat4f obj2world = modelTrait->imageSettings.computeObjectToWorldTransform(*asset.get(), drawSets.drawCamera, actor->getTransform(), modelTrait->m_additionalTransform);
+				mat4f obj2world = modelTrait->imageSettings.computeObjectToWorldTransform(
+				    *asset.get(), drawSets.drawCamera, actor->getTransform(), modelTrait->m_additionalTransform);
 
 				Geometry texPlaneGeom = m_texturedPlaneDraw.getGeometry(drawSets.rdest.getDevice());
 				Material texPlaneMtl = m_texturedPlaneDraw.getMaterial(pSprite->textureAsset->asTextureView()->GetPtr());

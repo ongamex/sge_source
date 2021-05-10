@@ -440,7 +440,7 @@ struct vec3 {
 
 		return retval;
 	}
-	
+
 	/// Returns the max component in the vector.
 	DATA_TYPE componentMax() const {
 		DATA_TYPE retval = data[0];

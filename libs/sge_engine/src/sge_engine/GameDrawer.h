@@ -14,10 +14,11 @@ struct ShadowMapBuildInfo;
 struct IGameDrawer;
 
 enum DrawReason : int {
-	drawReason_editing, ///< Specified when the editor is displaying the level being editied. 
-						///< For a lot of game objects the rendering is going to be the same as for @drawReason_gameplay.
+	drawReason_editing,       ///< Specified when the editor is displaying the level being editied.
+	                          ///< For a lot of game objects the rendering is going to be the same as for @drawReason_gameplay.
 	drawReason_selectionTool, ///< Specified when the selection tools performs rendering to find which actors needs to be affected by it.
-							  ///< For a lot of game objects the rendering is going to be the same as for @drawReason_gameplay or maybe a verion without the shading.
+	                          ///< For a lot of game objects the rendering is going to be the same as for @drawReason_gameplay or maybe a
+	                          ///< verion without the shading.
 	drawReason_visualizeSelectionPrimary, ///< Specified when we want to draw an overlay of the actor showing that it is selected as a
 	                                      ///< primary.
 	drawReason_visualizeSelection,        ///< Specified when we want to draw an overlay of the actor showing that it is selected.

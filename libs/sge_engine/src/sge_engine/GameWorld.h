@@ -270,7 +270,6 @@ struct SGE_ENGINE_API GameWorld {
 	ICamera* getRenderCamera();
 
   public:
-
 	/// The projection settings specified by the user. (Some of them are window dependad and we update them manully).
 	/// TODO: This is an old idea, and no longer has its place in the game world.
 	CameraProjectionSettings userProjectionSettings;
