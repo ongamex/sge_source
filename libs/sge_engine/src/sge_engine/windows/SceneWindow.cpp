@@ -38,8 +38,7 @@ void SceneWindow::update(SGEContext* const sgecon, const InputState& isOriginal)
 
 		is = computeInputStateInDomainSpace(isOriginal);
 
-		is.m_cursorDomain = is.m_cursorClient - m_canvasPos;
-		is.m_cursorDomainSize = m_canvasSize;
+		is.setDomainFromPosAndSize(m_canvasPos, m_canvasSize);
 
 		is.m_wasActiveWhilePolling =
 		    ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem |
@@ -394,8 +393,7 @@ void SceneWindow::drawOverlay(const GameDrawSets& drawSets) {
 InputState SceneWindow::computeInputStateInDomainSpace(const InputState& isOriginal) const {
 	// Compute the input state according ot the position of this window.
 	InputState is = isOriginal;
-	is.m_cursorDomain = is.m_cursorClient - m_canvasPos;
-	is.m_cursorDomainSize = m_canvasSize;
+	is.setDomainFromPosAndSize(m_canvasPos, m_canvasSize);
 
 	return is;
 }

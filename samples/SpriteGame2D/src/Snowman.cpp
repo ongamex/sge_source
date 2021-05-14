@@ -3,6 +3,7 @@
 #include "sge_engine/traits/TraitModel.h"
 #include "sge_engine/traits/TraitRigidBody.h"
 #include "sge_engine/typelibHelper.h"
+#include "sge_core/ICore.h"
 
 namespace sge {
 
@@ -126,14 +127,19 @@ struct Snowman : public Actor {
 			timeSpentInAir += u.dt;
 		}
 
+		if (Optional<vec2f> t = u.is.hasTouchPressedUV(vec2f(0.f), vec2f(1.f, 1.f))) {
+			SGE_DEBUG_LOG("T %f %f", t->x, t->y)
+		}
+
 		// Handle the input of hte player.
 		if (u.is.wasActiveWhilePolling()) {
 			vec2f input = u.is.GetArrowKeysDir(false, false, 0);
 
-			if (input.x == 0 && u.is.IsKeyDown(Key_MouseLeft)) {
-				if (u.is.getCursorPosUV().x < 0.25f) {
+			if (input.x == 0) {
+				if (u.is.hasTouchPressedUV(vec2f(0.f), vec2f(0.25f, 1.f))) {
 					input.x = -1.f;
-				} else if (u.is.getCursorPosUV().x < 0.5f) {
+				}
+				if (u.is.hasTouchPressedUV(vec2f(0.25f, 0.f), vec2f(0.5f, 1.f))) {
 					input.x = 1.f;
 				}
 			}
@@ -158,8 +164,10 @@ struct Snowman : public Actor {
 			}
 
 			// Handle jumping.
-			const bool jumpBtnPressed = u.is.IsKeyPressed(Key_Space) || u.is.getXInputDevice(0).isBtnPressed(GamepadState::btn_a);
-			const bool jumpBtnReleased = u.is.IsKeyReleased(Key_Space) || u.is.getXInputDevice(0).isBtnReleased(GamepadState::btn_a);
+			const bool jumpBtnPressed = u.is.IsKeyPressed(Key_Space) || u.is.getXInputDevice(0).isBtnPressed(GamepadState::btn_a) ||
+			                            u.is.hasTouchJustPresedUV(vec2f(0.5f, 0.f), vec2f(1.f, 1.f));
+			const bool jumpBtnReleased = u.is.IsKeyReleased(Key_Space) || u.is.getXInputDevice(0).isBtnReleased(GamepadState::btn_a) ||
+			                             u.is.hasTouchJustReleasedUV(vec2f(0.5f, 0.f), vec2f(1.f, 1.f));
 
 			// If the jump button is pressed apply the high jump velocity.
 			// Later if the player released the button, and the player is still going up

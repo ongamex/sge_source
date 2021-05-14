@@ -3,19 +3,76 @@
 namespace sge {
 
 InputState::InputState() {
-	m_cursorClient = vec2f(0.f);
-	m_cursorDomain = vec2f(0.f);
-	m_cursorMotion = vec2f(0.f);
-	m_wheelCount = 0;
-	for (auto& v : m_keyStates)
+	for (auto& v : m_keyStates) {
 		v = 0;
-
-	for (int t = 0; t < SGE_ARRSZ(winapiGamepads); ++t) {
-		// winapiGamepads[t].isUsingStatePolling = false;
 	}
 }
 
-// Moves the crrent input state into previous
+Optional<vec2f>  InputState::hasTouchJustPresedUV(const vec2f& minUV, const vec2f& maxUV) const {
+	for (const TouchInput& touch : m_touchInputs) {
+		const vec2f touchPosUV = clientToDomainUV(touch.touchPositionPixels);
+		bool isIn = touchPosUV.x >= minUV.x && touchPosUV.y >= minUV.y && touchPosUV.x <= maxUV.x && touchPosUV.y <= maxUV.y;
+		if (isIn && touch.isJustPressed) {
+			return touchPosUV;
+		}
+	}
+	return NullOptional();
+}
+
+Optional<vec2f>  InputState::hasTouchJustReleasedUV(const vec2f& minUV, const vec2f& maxUV) const {
+	for (const TouchInput& touch : m_touchInputs) {
+		const vec2f touchPosUV = clientToDomainUV(touch.touchPositionPixels);
+		bool isIn = touchPosUV.x >= minUV.x && touchPosUV.y >= minUV.y && touchPosUV.x <= maxUV.x && touchPosUV.y <= maxUV.y;
+		if (isIn && touch.isJustReleased) {
+			return touchPosUV;
+		}
+	}
+	return NullOptional();
+}
+
+Optional<vec2f>  InputState::hasTouchPressedUV(const vec2f& minUV, const vec2f& maxUV) const {
+	for (const TouchInput& touch : m_touchInputs) {
+		const vec2f touchPosUV = clientToDomainUV(touch.touchPositionPixels);
+		bool isIn = touchPosUV.x >= minUV.x && touchPosUV.y >= minUV.y && touchPosUV.x <= maxUV.x && touchPosUV.y <= maxUV.y;
+		if (isIn && !touch.isJustReleased) {
+			return touchPosUV;
+		}
+	}
+	return NullOptional();
+}
+
+void InputState::addTouch(const TouchInput& newTouch) {
+	for (TouchInput& touch : m_touchInputs) {
+		if (touch.touchId == newTouch.touchId) {
+			touch = newTouch;
+			return;
+		}
+	}
+}
+
+TouchInput& InputState::findOrCreateTouchById(const int64 touchId) {
+	for (TouchInput& t : m_touchInputs) {
+		if (t.touchId == touchId) {
+			return t;
+		}
+	}
+
+	TouchInput newTouch;
+	newTouch.touchId = touchId;
+	m_touchInputs.push_back(newTouch);
+
+	return m_touchInputs.back();
+}
+
+const TouchInput* InputState::getTouchById(const int64 touchId) const {
+	for (const TouchInput& t : m_touchInputs) {
+		if (t.touchId == touchId) {
+			return &t;
+		}
+	}
+
+	return nullptr;
+}
 
 void InputState::Advance() {
 	m_hadkeyboardOrMouseInputThisPoll = false;
@@ -39,7 +96,51 @@ void InputState::Advance() {
 
 	// Keep the cursor position unmodified.
 	m_isCursorRelative = false;
+
+	// We cannot clear the touch input here.
+	// For example, if the player is holding theirs finger on the screen without moving it,
+	// SDL will not generate an event for that.
+	// We clear events when on the previous frame were just released. Meaning that they
+	// no longer exist and the user had the chance to process them.
+	for (int t = 0; t < int(m_touchInputs.size()); ++t) {
+		// This would be the second frame the touch exists it cannot be just pressed anymore.
+		m_touchInputs[t].isJustPressed = false;
+
+		if (m_touchInputs[t].isJustReleased) {
+			m_touchInputs.erase(m_touchInputs.begin() + t);
+			--t;
+		}
+	}
 }
+
+void InputState::setCursorPos(const vec2f& c) {
+	if (m_cursorClient != c) {
+		m_hadkeyboardOrMouseInputThisPoll = true;
+		m_cursorClient = c;
+	}
+}
+
+void InputState::addInputText(const char c) {
+	m_hadkeyboardOrMouseInputThisPoll = true;
+	m_inputText.push_back(c);
+}
+
+void InputState::addKeyUpOrDown(Key key, bool isDown) {
+	m_hadkeyboardOrMouseInputThisPoll = true;
+	if (key >= 0 && key < Key_NumElements) {
+		if (isDown) {
+			m_keyStates[key] |= 1;
+		} else {
+			m_keyStates[key] &= ~1;
+		}
+	}
+}
+
+void InputState::addMouseWheel(int v) {
+	m_hadkeyboardOrMouseInputThisPoll = true;
+	m_wheelCount = v;
+}
+
 const GamepadState* InputState::getHookedGemepad(const int playerIndex) const {
 	int numFoundHooked = 0;
 	for (int t = 0; t < SGE_ARRSZ(xinputDevicesState); ++t) {
@@ -126,6 +227,15 @@ vec2f GamepadState::getInputDir(bool const includeDPad) const {
 	}
 
 	return r;
+}
+
+bool InputState::AnyArrowKeyDown(bool includeWASD) const {
+	bool res = IsKeyDown(Key_Left) || IsKeyDown(Key_Right) || IsKeyDown(Key_Up) || IsKeyDown(Key_Down);
+	if (includeWASD) {
+		res |= IsKeyDown(Key_A) || IsKeyDown(Key_D) || IsKeyDown(Key_W) || IsKeyDown(Key_S);
+	}
+
+	return res;
 }
 
 vec2f InputState::GetArrowKeysDir(const bool normalize, bool includeWASD, int useGamePadAtIndex) const {

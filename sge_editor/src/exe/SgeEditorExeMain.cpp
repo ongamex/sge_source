@@ -292,6 +292,7 @@ int main(int argc, char* argv[]) {
 	sgeRegisterMiniDumpHandler();
 
 
+	SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
 	SDL_SetHint(SDL_HINT_VIDEO_HIGHDPI_DISABLED, "1");
 #ifdef __EMSCRIPTEN__
 

@@ -51,8 +51,7 @@ void GamePlayWindow::update(SGEContext* const sgecon, const InputState& isOrigin
 		canvasSize.y = maxOf(canvasSize.y, 64.f);
 
 		// Compute the input state according ot the position of this window.
-		is.m_cursorDomain = is.m_cursorClient - canvasPos;
-		is.m_cursorDomainSize = canvasSize;
+		is.setDomainFromPosAndSize(canvasPos, canvasSize);
 
 		is.m_wasActiveWhilePolling =
 		    ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem |

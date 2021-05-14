@@ -151,10 +151,8 @@ struct SGEGameWindow : public WindowBase {
 	}
 
 	void loadPlugin() {
-		printf("1\n");
 		// Notify that we are about to unload the plugin.
 		getEngineGlobal()->notifyOnPluginPreUnload();
-		printf("2\n");
 #if !defined(__EMSCRIPTEN__)
 		// Unload the old plugin DLL and load the new one.
 		m_dllHandler.load(pluginName.c_str());
@@ -168,15 +166,10 @@ struct SGEGameWindow : public WindowBase {
 #else
 		m_pluginInst = getInterop();
 #endif
-		printf("3\n");
 		m_pluginInst->onLoaded(ImGui::GetCurrentContext(), getCore());
-		printf("4\n");
 		typeLib().performRegistration();
-		printf("5\n");
 		getEngineGlobal()->changeActivePlugin(m_pluginInst);
-		printf("6\n");
 		typeLib().performRegistration();
-		printf("7\n");
 	}
 
 	void run() {
@@ -276,7 +269,7 @@ int main(int argc, char* argv[]) {
 	// emscrpiten we add them to the path below. Make that path current as the game is expecting to be in that path.
 	std::filesystem::current_path("/home/game");
 
-	SDL_Init(SDL_INIT_VIDEO);
+	SDL_Init(SDL_INIT_EVERYTHING);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
