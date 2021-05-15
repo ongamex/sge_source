@@ -7,6 +7,7 @@
 
 namespace sge {
 struct Trait;
+struct GameInspector;
 struct InspectorCmd;
 struct SelectedItem;
 

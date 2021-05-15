@@ -72,7 +72,7 @@ void TraitModel::computeNodeToBoneIds() {
 		return;
 	}
 
-	GameWorld* world = getWorldFromObject();
+	GameWorld* world = getWorld();
 	vector_set<ObjectId> boneActorIds;
 	world->getAllChildren(boneActorIds, rootSkeletonId);
 	boneActorIds.insert(rootSkeletonId);
@@ -107,7 +107,7 @@ void TraitModel::computeSkeleton(vector_map<const Model::Node*, mat4f>& boneOver
 	}
 
 	computeNodeToBoneIds();
-	Actor* root = getWorldFromObject()->getActorById(rootSkeletonId);
+	Actor* root = getWorld()->getActorById(rootSkeletonId);
 	if (root == nullptr) {
 		return;
 	}
@@ -117,7 +117,7 @@ void TraitModel::computeSkeleton(vector_map<const Model::Node*, mat4f>& boneOver
 	for (auto pair : nodeToBoneId) {
 		mat4f& boneGobalTForm = boneOverrides[pair.first];
 
-		Actor* const boneActor = getWorldFromObject()->getActorById(pair.second);
+		Actor* const boneActor = getWorld()->getActorById(pair.second);
 		if (boneActor) {
 			boneGobalTForm = rootInv * boneActor->getTransformMtx();
 		} else {

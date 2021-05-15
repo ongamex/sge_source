@@ -36,7 +36,7 @@ ReflBlock()
 //
 //---------------------------------------------------------------
 void CameraTraitCamera::update(const GameUpdateSets& UNUSED(updateSets)) {
-	GameWorld* const world = getWorldFromObject();
+	GameWorld* const world = getWorld();
 
 	const CameraProjectionSettings& projSets = world->userProjectionSettings;
 	m_proj = m_cameraSettings.calcMatrix(projSets.aspectRatio);

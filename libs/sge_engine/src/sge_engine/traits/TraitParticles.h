@@ -166,7 +166,7 @@ struct SGE_ENGINE_API TraitParticles : public Trait {
 //--------------------------------------------------------------
 DefineTypeIdExists(TraitParticles2);
 struct SGE_ENGINE_API TraitParticles2 : public Trait {
-	SGE_TraitDecl_Base(TraitParticles2);
+	SGE_TraitDecl_BaseFamily(TraitParticles2);
 
 	struct ParticleGroup {
 		struct ParticleData {

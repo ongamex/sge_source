@@ -7,6 +7,7 @@
 #include "sge_core/ICore.h"
 #include "sge_utils/utils/strings.h"
 #include "traits/TraitCamera.h"
+#include "sge_utils/utils/timer.h"
 #include <functional>
 #include <thread>
 
@@ -36,21 +37,13 @@ bool GameWorld::isIdTaken(ObjectId const id) const {
 }
 
 GameObject* GameWorld::getObjectById(const ObjectId& id) {
-	debug.numCallsToGetObjectByIdThisFrame++;
+	const auto& itr = m_gameObjectByIdLUT.find(id);
+	if (itr == m_gameObjectByIdLUT.end()) {
+		return nullptr;
+	}
 
-	GameObject* result = nullptr;
-	iterateOverPlayingObjects(
-	    [&](GameObject* obj) -> bool {
-		    if (obj->getId() == id) {
-			    result = obj;
-			    return false;
-		    }
-
-		    return true;
-	    },
-	    true);
-
-	return result;
+	GameObject* const gameObject = itr->second;
+	return gameObject;
 }
 
 Actor* GameWorld::getActorById(const ObjectId& id) {
@@ -116,7 +109,7 @@ void GameWorld::iterateOverPlayingObjects(const std::function<bool(GameObject*)>
 
 void GameWorld::iterateOverPlayingObjects(const std::function<bool(const GameObject*)>& lambda, bool includeAwaitCreationObject) const {
 	// Caution:
-	// If you do any changes here to them in the non-const method equivalednt!
+	// If you do any changes here do them in the non-const method equivalent!
 
 	for (auto& itrActorByType : playingObjects) {
 		bool isDoneIterating = false;
@@ -159,19 +152,20 @@ GameObject* GameWorld::allocObject(TypeId const type, ObjectId const specificId,
 		}
 	}
 
+	// Obtain the reflection for the type of the game object that we are going to allocate.
 	const TypeDesc* const newActorTypeDesc = typeLib().find(type);
 
 	const bool hasDesc = newActorTypeDesc != nullptr;
 	const bool doesInheritsObject = hasDesc && newActorTypeDesc->doesInherits(sgeTypeId(GameObject));
 	const bool isAllocateable = hasDesc && newActorTypeDesc->newFn != nullptr;
 
-	if_checked(hasDesc && doesInheritsObject && isAllocateable) {
+	if (doesInheritsObject && isAllocateable) {
 		// Caution:
 		// Object must be the leftmost parent!
 		GameObject* const object = reinterpret_cast<GameObject*>(newActorTypeDesc->newFn());
 
 		if (!object) {
-			sgeAssert(false && "Failed to allocate GameObject");
+			sgeAssert(false && "Failed to allocate a game object.");
 			return nullptr;
 		}
 
@@ -179,12 +173,20 @@ GameObject* GameWorld::allocObject(TypeId const type, ObjectId const specificId,
 		std::string displayName =
 		    (name != nullptr) ? name : std::string(typeLib().find(type)->name) + string_format("_%d", getNextNameIndex());
 
-		object->worldInitializeMe(this, newObjectId, type, std::move(displayName));
+		object->private_GameWorld_performInitialization(this, newObjectId, type, std::move(displayName));
 		object->create();
 
 		objectsAwaitingCreation.push_back(object);
 
+		// Add the object to the id-to-object loop up table.
+		sgeAssert(m_gameObjectByIdLUT.count(object->getId()) == 0 && "it is expect that this element does not exists");
+		m_gameObjectByIdLUT[object->getId()] = object;
+
 		return object;
+	} else {
+		sgeAssertFalse(
+		    "It seems that you are trying to allocate an GameObject of incompte type or a type that is not registerered to the typelib(). "
+		    "Check if you've correctly overriden all virtual methods and that you have a reflection for this type,");
 	}
 
 	return nullptr;
@@ -237,6 +239,7 @@ void GameWorld::clear() {
 		delete object;
 	}
 	objectsAwaitingCreation.clear();
+	m_gameObjectByIdLUT.clear();
 
 	m_nextNameIndex = 0;
 	totalStepsTaken = 0;
@@ -274,8 +277,6 @@ void GameWorld::clear() {
 }
 
 void GameWorld::update(const GameUpdateSets& updateSets) {
-	debug.numCallsToGetObjectByIdThisFrame = 0;
-
 	if (debug.forceSleepMs != 0) {
 		std::this_thread::sleep_for(std::chrono::milliseconds(debug.forceSleepMs));
 	}
@@ -321,6 +322,14 @@ void GameWorld::update(const GameUpdateSets& updateSets) {
 							setParentOf(childrenList.getNth(iChild), ObjectId());
 						}
 					}
+
+					// Now remove it form the object id loop up table.
+					const auto& itrInIdLUT = m_gameObjectByIdLUT.find(object->getId());
+					sgeAssert(itrInIdLUT != m_gameObjectByIdLUT.end() && "It is expected that the object id is in this list.");
+					if (itrInIdLUT != m_gameObjectByIdLUT.end()) {
+						m_gameObjectByIdLUT.erase(itrInIdLUT);
+					}
+
 					gameObjectsOfType.erase(gameObjectsOfType.begin() + t);
 					delete objectToKill;
 					objectToKill = nullptr;

@@ -4,6 +4,8 @@
 #include <string>
 
 namespace sge {
+struct GameInspector;
+
 DefineTypeIdExists(TraitScriptSlot);
 struct SGE_ENGINE_API TraitScriptSlot : public Trait {
 	SGE_TraitDecl_Full(TraitScriptSlot);

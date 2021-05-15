@@ -273,7 +273,7 @@ SGE_ENGINE_API void edit_RigidBodyConfigurator(GameInspector& inspector, GameObj
 	doMemberUIFn(sgeFindMember(RigidBodyConfigurator, shapeSource));
 
 	if (rbec.shapeSource == RigidBodyConfigurator::shapeSource_fromTraitModel) {
-		if (gameObject->findTrait(sgeTypeId(TraitModel)) == nullptr) {
+		if (gameObject->findTraitByFamily(sgeTypeId(TraitModel)) == nullptr) {
 			ImGui::TextEx("The current objects needs to have TraitModel for this option to work");
 		}
 	} else if (rbec.shapeSource == RigidBodyConfigurator::shapeSource_manuallySpecify) {

@@ -84,7 +84,7 @@ namespace PathFollow {
 //-----------------------------------------------------------------------
 DefineTypeIdInline(TraitPath3D, 20'03'06'0000);
 struct SGE_ENGINE_API TraitPath3D : public Trait {
-	SGE_TraitDecl_Base(TraitPath3D);
+	SGE_TraitDecl_BaseFamily(TraitPath3D);
 
 	// Checks if the curve is empty.
 	virtual bool isEmpty() const = 0;

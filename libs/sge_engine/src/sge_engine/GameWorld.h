@@ -292,6 +292,7 @@ struct SGE_ENGINE_API GameWorld {
 	std::vector<GameObject*> objectsAwaitingCreation; // A set of object ready to start playing at the beginning of the next step.
 	std::unordered_map<TypeId, std::vector<GameObject*>> playingObjects; // All playing game object sorted by type.
 	vector_set<ObjectId> objectsWantingPermanentKill; // A set of actors that are going to be compleatley deleted for the game world.
+	std::unordered_map<ObjectId, GameObject*> m_gameObjectByIdLUT; // A look up table for fast searching for an object with a specific id.
 
 	/// Hierarchical relationship between actors.
 	/// These two are deeply connected to one another!
@@ -338,7 +339,6 @@ struct SGE_ENGINE_API GameWorld {
 
 	/// Debugging variables.
 	mutable struct {
-		int numCallsToGetObjectByIdThisFrame = 0;
 		/// Forces the update loop to sleep for the specified amount of miliseconds before upadating.
 		/// Useful for checking if game logic works for any timestep.
 		int forceSleepMs = 0;

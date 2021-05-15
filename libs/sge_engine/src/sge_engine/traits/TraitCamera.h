@@ -7,7 +7,7 @@ namespace sge {
 
 DefineTypeIdExists(TraitCamera);
 struct SGE_ENGINE_API TraitCamera : public Trait {
-	SGE_TraitDecl_Base(TraitCamera);
+	SGE_TraitDecl_BaseFamily(TraitCamera);
 	virtual ICamera* getCamera() = 0;
 	virtual const ICamera* getCamera() const = 0;
 };

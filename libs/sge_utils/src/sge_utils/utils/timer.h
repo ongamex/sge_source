@@ -1,57 +1,6 @@
 #pragma once
 
 #include "sge_utils/sge_utils.h"
-
-#if 0 && defined(_WIN32)
-
-#define WIN32_LEAN_AND_MEAN
-#define NOMINMAX
-#include <windows.h>
-
-namespace sge {
-
-struct Timer
-{
-	Timer() { initialize(); }
-
-	void initialize()
-	{
-		__int64 frequency;
-		QueryPerformanceFrequency((LARGE_INTEGER*)&frequency);
-		secondsPerTick = 1.f / (float)(frequency);
-
-		QueryPerformanceCounter((LARGE_INTEGER*)&lastUpdateCnt);
-		fps = 0;
-		dtSeconds = 0;
-	}
-
-	void tick()
-	{
-		__int64 cnt;
-
-		QueryPerformanceCounter((LARGE_INTEGER*)&cnt);
-
-		const __int64 cntDelta = (cnt - lastUpdateCnt);
-		dtSeconds = (float)(cntDelta) * secondsPerTick;
-		fps = 1.f / dtSeconds;
-		lastUpdateCnt = cnt;
-		return;
-	}
-
-	float diff_seconds() const { return dtSeconds; }
-	float framesPerSecond() const { return fps; }
-
-private :
-
-	float dtSeconds, fps;
-	__int64 lastUpdateCnt;
-	float secondsPerTick;
-};
-
-}
-
-#else
-
 #include <chrono>
 
 namespace sge {
@@ -67,6 +16,11 @@ struct Timer {
 	void reset() {
 		lastUpdate = clock::now();
 		dtSeconds = 0.f;
+	}
+
+	static uint64 now_nanoseconds_int() {
+		uint64 ns = std::chrono::duration_cast<std::chrono::nanoseconds>(clock::now() - application_start_time).count();
+		return ns;
 	}
 
 	// Returns the current time since the application start in seconds.
@@ -110,5 +64,3 @@ struct Timer {
 };
 
 } // namespace sge
-
-#endif

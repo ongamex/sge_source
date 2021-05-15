@@ -40,7 +40,6 @@ void ABlockingObstacle::onPlayStateChanged(bool const isStartingToPlay) {
 	}
 }
 
-
 void ABlockingObstacle::postUpdate(const GameUpdateSets& UNUSED(updateSets)) {
 	m_textureX.update();
 	m_textureY.update();
@@ -49,7 +48,7 @@ void ABlockingObstacle::postUpdate(const GameUpdateSets& UNUSED(updateSets)) {
 		boundingBox.setEmpty();
 
 		if (m_traitRB.getRigidBody()->isValid()) {
-			this->getWorld()->physicsWorld.removePhysicsObject(*m_traitRB.getRigidBody());
+			GameObject::getWorld()->physicsWorld.removePhysicsObject(*m_traitRB.getRigidBody());
 			m_traitRB.getRigidBody()->destroy();
 		}
 
@@ -93,7 +92,7 @@ void ABlockingObstacle::postUpdate(const GameUpdateSets& UNUSED(updateSets)) {
 
 			this->setTransform(getTransform(), true);
 
-			getWorld()->physicsWorld.addPhysicsObject(*m_traitRB.getRigidBody());
+			GameObject::getWorld()->physicsWorld.addPhysicsObject(*m_traitRB.getRigidBody());
 		} else if (currentDesc.type == SimpleObstacleType::Slope &&
 		           TerrainGenerator::generateSlope(vertices, indices, slopeCollisionMesh, currentDesc.slope, &numVerts, &numIndices)) {
 			// Create the rendering resources.
@@ -119,7 +118,7 @@ void ABlockingObstacle::postUpdate(const GameUpdateSets& UNUSED(updateSets)) {
 
 			this->setTransform(getTransform(), true);
 
-			getWorld()->physicsWorld.addPhysicsObject(*m_traitRB.getRigidBody());
+			GameObject::getWorld()->physicsWorld.addPhysicsObject(*m_traitRB.getRigidBody());
 		} else if (currentDesc.type == SimpleObstacleType::SlantedBlock &&
 		           TerrainGenerator::generateSlantedBlock(vertices, indices, slopeCollisionMesh, currentDesc.slantedBlock, &numVerts,
 		                                                  &numIndices)) {
@@ -146,7 +145,7 @@ void ABlockingObstacle::postUpdate(const GameUpdateSets& UNUSED(updateSets)) {
 
 			this->setTransform(getTransform(), true);
 
-			getWorld()->physicsWorld.addPhysicsObject(*m_traitRB.getRigidBody());
+			GameObject::getWorld()->physicsWorld.addPhysicsObject(*m_traitRB.getRigidBody());
 		}
 
 		VertexDecl vertexDecl[2] = {

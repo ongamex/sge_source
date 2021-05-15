@@ -181,7 +181,6 @@ void GameInspectorWindow::update(SGEContext* const UNUSED(sgecon), const InputSt
 			}
 		}
 
-		ImGui::Text("Num find object calls %d", m_inspector.getWorld()->debug.numCallsToGetObjectByIdThisFrame);
 		ImGui::InputInt("MS Delay", &m_inspector.getWorld()->debug.forceSleepMs, 1, 10);
 	}
 	ImGui::End();

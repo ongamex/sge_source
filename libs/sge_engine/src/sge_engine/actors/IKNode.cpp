@@ -112,7 +112,7 @@ void AIKNode::bind(ObjectId start, ObjectId end) {
 	startId = start;
 	endId = end;
 
-	GameWorld* world = getWorld();
+	GameWorld* world = GameObject::getWorld();
 
 	// Find the chain of bones that is going to be used to solve the IK.
 
@@ -158,7 +158,7 @@ void AIKNode::bind(ObjectId start, ObjectId end) {
 		chainLengthWs += linkLen;
 	}
 
-	Actor* targetActor = getWorld()->getActorById(targetId);
+	Actor* targetActor = GameObject::getWorld()->getActorById(targetId);
 	if (targetControlsOrientation && targetActor) {
 		targetMatchOrientationDiff = tempChainActors.back()->getOrientation() * targetActor->getOrientation().inverse();
 	}
@@ -169,7 +169,7 @@ bool AIKNode::getChainActors(std::vector<Actor*>& result) {
 
 	bool doesAllExist = true;
 	for (ObjectId oid : ikChainActorIds) {
-		Actor* a = getWorld()->getActorById(oid);
+		Actor* a = GameObject::getWorld()->getActorById(oid);
 		doesAllExist = doesAllExist && a != nullptr;
 		result.push_back(a);
 	}
@@ -182,12 +182,12 @@ void AIKNode::update(const GameUpdateSets& u) {
 		return;
 	}
 
-	Actor* aTarget = getWorld()->getActorById(targetId);
+	Actor* aTarget = GameObject::getWorld()->getActorById(targetId);
 	if (aTarget == nullptr) {
 		return;
 	}
 
-	Actor* aPole = getWorld()->getActorById(poleId);
+	Actor* aPole = GameObject::getWorld()->getActorById(poleId);
 
 	if (getChainActors(tempChainActors) == false) {
 		return;
@@ -214,7 +214,7 @@ void AIKNode::update(const GameUpdateSets& u) {
 	// Move the bones.
 	for (int iBone = 1; iBone < tempChainActors.size(); ++iBone) {
 		Actor* child = tempChainActors[iBone];
-		Actor* parent = getWorld()->getParentActor(child->getId());
+		Actor* parent = GameObject::getWorld()->getParentActor(child->getId());
 
 		vec3f currentDiff = (child->getPosition() - parent->getTransform().p).normalized0();
 		vec3f targetDiff = solverPositionWs[iBone] - solverPositionWs[iBone - 1];
@@ -239,6 +239,5 @@ void AIKNode::update(const GameUpdateSets& u) {
 		g.getWiered().sphere(mat4f::getTranslation(p), 0xFF00FFFF, 0.1f, 6);
 	}
 }
-
 
 } // namespace sge

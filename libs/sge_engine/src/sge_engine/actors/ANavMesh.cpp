@@ -52,7 +52,7 @@ void ANavMesh::create() {
 	m_typesToUse.push_back(sgeTypeId(AStaticObstacle));
 	m_typesToUse.push_back(sgeTypeId(ABlockingObstacle));
 
-	onWorldLoadedCBHandle = getWorld()->onWorldLoaded.subscribe([this]() {
+	onWorldLoadedCBHandle = GameObject::getWorld()->onWorldLoaded.subscribe([this]() {
 		build();
 		onWorldLoadedCBHandle.unsubscribe();
 	});
@@ -142,12 +142,12 @@ void ANavMesh::build() {
 	std::vector<int> trianglesIndices;
 
 	for (const TypeId actorType : m_typesToUse) {
-		const std::vector<GameObject*>* pAllObjsOfType = getWorld()->getObjects(actorType);
+		const std::vector<GameObject*>* pAllObjsOfType = GameObject::getWorld()->getObjects(actorType);
 		if (pAllObjsOfType == nullptr) {
 			continue;
 		}
 
-		for (const GameObject* const object : *getWorld()->getObjects(actorType)) {
+		for (const GameObject* const object : *GameObject::getWorld()->getObjects(actorType)) {
 			const TraitRigidBody* const traitRb = getTrait<TraitRigidBody>(object);
 			if (traitRb != nullptr) {
 				const btTransform bodyWorldTransform = traitRb->m_rigidBody.getBulletRigidBody()->getWorldTransform();

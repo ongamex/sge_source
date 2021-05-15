@@ -10,6 +10,7 @@ namespace sge {
 //--------------------------------------------------------------------
 
 // clang-format off
+DefineTypeId(ObjectId, 20'03'06'0005);
 DefineTypeId(GameObject, 20'03'01'0011);
 DefineTypeId(std::vector<ObjectId>, 20'03'07'0012);
 
@@ -30,6 +31,20 @@ ReflBlock()
 }
 // clang-format on
 
+
+/// @brief To be called only by @GameWorld. The function sets the common properties of the game object.
+/// Never call this manually.
+
+void GameObject::private_GameWorld_performInitialization(GameWorld* const world,
+                                                                const ObjectId id,
+                                                                const TypeId typeId,
+                                                                std::string displayName) {
+	m_id = id;
+	m_type = typeId;
+	m_world = world;
+	m_displayName = std::move(displayName);
+}
+
 bool GameObject::isActor() const {
 	return dynamic_cast<const Actor*>(this) != nullptr;
 }
@@ -47,8 +62,12 @@ void GameObject::composeDebugDisplayName(std::string& result) const {
 }
 
 void GameObject::onPlayStateChanged(bool const isStartingToPlay) {
-	for (auto itr : m_traits) {
-		if_checked(itr.value()) { itr.value()->onPlayStateChanged(isStartingToPlay); }
+	for (const TraitRegistration& trait : m_traits) {
+		if (trait.pointerToTrait) {
+			trait.pointerToTrait->onPlayStateChanged(isStartingToPlay);
+		} else {
+			sgeAssertFalse("Should never happen");
+		}
 	}
 }
 
@@ -57,10 +76,19 @@ void GameObject::registerTrait(Trait& trait) {
 	TypeId const family = pTrait->getFamily();
 
 	// There shouldn't be a trait with the same family registered.
-	if_checked(m_traits.find_element(family) == nullptr) {
-		m_traits[family] = pTrait;
-		pTrait->onRegister(this);
+	// Check if this is true.
+	for (int t = 0; t < int(m_traits.size()); ++t) {
+		if (m_traits[t].traitFamilyType == family) {
+			sgeAssertFalse(
+			    "It seems that the trait of that family is already registered. Having multiple traits of the same family is not suported. "
+			    "The current registration will get discarded.");
+			return;
+		}
 	}
+
+	TraitRegistration traitReg = {family, pTrait};
+	m_traits.push_back(traitReg);
+	pTrait->private_GameObject_register(this);
 }
 
 //--------------------------------------------------------------------

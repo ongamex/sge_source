@@ -81,7 +81,7 @@ struct TimelineWindow final : public IImGuiWindow {
 	    : m_windowName(std::move(windowName)) {
 		if (timeline) {
 			timelineActorId = timeline->getId();
-			m_inspector = timeline->getWorld()->getInspector();
+			m_inspector = timeline->GameObject::getWorld()->getInspector();
 		}
 	}
 
@@ -376,7 +376,7 @@ void ATimeline::postUpdate(const GameUpdateSets& u) {
 		}
 
 		for (ObjectId actorId : affectedActorsIds) {
-			Actor* actor = getWorld()->getActorById(actorId);
+			Actor* actor = GameObject::getWorld()->getActorById(actorId);
 			if (actor) {
 				int iKey0 = -1;
 				int iKey1 = -1;

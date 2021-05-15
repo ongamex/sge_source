@@ -287,8 +287,8 @@ bool EvaluatedModel::evaluateSkinning() {
 
 			if (mesh->bones.empty()) {
 				evalMesh.vertexBuffer = meshData->vertexBuffer;
-			} else // If the mesh has software skinning perform CPU skinning.
-			{
+			} else {
+				// If the mesh has software skinning perform CPU skinning.
 				const int posByteOffset = mesh->vbPositionOffsetBytes;
 				const int normalByteOffset = mesh->vbNormalOffsetBytes;
 

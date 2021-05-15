@@ -23,8 +23,8 @@ void TraitRigidBody::destroyRigidBody() {
 	}
 
 	// TODO; This needs to happen inside the rigid body, not here.
-	getWorldFromObject()->removeRigidBodyManifold(&m_rigidBody);
-	getWorldFromObject()->physicsWorld.removePhysicsObject(m_rigidBody);
+	getWorld()->removeRigidBodyManifold(&m_rigidBody);
+	getWorld()->physicsWorld.removePhysicsObject(m_rigidBody);
 
 	this->m_rigidBody.destroy();
 }
@@ -38,7 +38,7 @@ bool TraitRigidBody::createBasedOnModel(const EvaluatedModel& eval, float mass, 
 		getRigidBody()->setTransformAndScaling(getActor()->getTransform(), true);
 
 		if (addToWorldNow) {
-			GameWorld* const world = getWorldFromObject();
+			GameWorld* const world = getWorld();
 			world->physicsWorld.addPhysicsObject(*getRigidBody());
 		}
 
@@ -82,20 +82,20 @@ void TraitRigidBody::setTrasnform(const transf3d& transf, bool killVelocity) {
 	if (m_rigidBody.isValid()) {
 		m_rigidBody.setTransformAndScaling(transf, killVelocity);
 		if (m_rigidBody.getBulletRigidBody()->isInWorld() && m_rigidBody.getBulletRigidBody()->getActivationState() == ISLAND_SLEEPING) {
-			getWorldFromObject()->physicsWorld.dynamicsWorld->updateSingleAabb(m_rigidBody.getBulletRigidBody());
+			getWorld()->physicsWorld.dynamicsWorld->updateSingleAabb(m_rigidBody.getBulletRigidBody());
 		}
 	}
 }
 
 void TraitRigidBody::addToWorld() {
 	if (isInWorld() == false) {
-		getWorldFromObject()->physicsWorld.addPhysicsObject(this->m_rigidBody);
+		getWorld()->physicsWorld.addPhysicsObject(this->m_rigidBody);
 	}
 }
 
 void TraitRigidBody::removeFromWorld() {
 	if (isInWorld()) {
-		getWorldFromObject()->physicsWorld.removePhysicsObject(this->m_rigidBody);
+		getWorld()->physicsWorld.removePhysicsObject(this->m_rigidBody);
 	}
 }
 
