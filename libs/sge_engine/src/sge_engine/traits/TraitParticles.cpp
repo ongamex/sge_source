@@ -304,7 +304,7 @@ ParticleGroupState::SpriteRendData*
 	          [&](const SortingData& a, const SortingData& b) { return a.distanceAlongRay > b.distanceAlongRay; });
 
 	// Obtain the sprite texture and check if it is valid.
-	Texture* const sprite = pdesc.m_particlesSprite.getAssetTexture() ? pdesc.m_particlesSprite.getAssetTexture()->GetPtr() : nullptr;
+	Texture* const sprite = pdesc.m_particlesSprite.getAssetTexture() ? pdesc.m_particlesSprite.getAssetTexture()->tex.GetPtr() : nullptr;
 	if (sprite == nullptr) {
 		spriteRenderData = NullOptional();
 		return nullptr;
@@ -484,7 +484,7 @@ bool ParticleRenderDataGen::generate(const TraitParticles2::ParticleGroup& parti
 	          [&](const SortingData& a, const SortingData& b) { return a.distanceAlongRay > b.distanceAlongRay; });
 
 	// Obtain the sprite texture and check if it is valid.
-	Texture* const sprite = particles.spriteTexture->asTextureView()->GetPtr();
+	Texture* const sprite = particles.spriteTexture->asTextureView()->tex.GetPtr();
 
 
 	// Compute the sprite sub-images UV regions.

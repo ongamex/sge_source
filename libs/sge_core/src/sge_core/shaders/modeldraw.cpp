@@ -534,22 +534,22 @@ void BasicModelDraw::draw(const RenderDestination& rdest,
 
 					material.diffuseTexture =
 					    isAssetLoaded(meshAttachment.pMaterial->diffuseTexture) && meshAttachment.pMaterial->diffuseTexture->asTextureView()
-					        ? meshAttachment.pMaterial->diffuseTexture->asTextureView()->GetPtr()
+					        ? meshAttachment.pMaterial->diffuseTexture->asTextureView()->tex.GetPtr()
 					        : nullptr;
 
 					material.texNormalMap =
 					    isAssetLoaded(meshAttachment.pMaterial->texNormalMap) && meshAttachment.pMaterial->texNormalMap->asTextureView()
-					        ? meshAttachment.pMaterial->texNormalMap->asTextureView()->GetPtr()
+					        ? meshAttachment.pMaterial->texNormalMap->asTextureView()->tex.GetPtr()
 					        : nullptr;
 
 					material.texMetalness =
 					    isAssetLoaded(meshAttachment.pMaterial->texMetallic) && meshAttachment.pMaterial->texMetallic->asTextureView()
-					        ? meshAttachment.pMaterial->texMetallic->asTextureView()->GetPtr()
+					        ? meshAttachment.pMaterial->texMetallic->asTextureView()->tex.GetPtr()
 					        : nullptr;
 
 					material.texRoughness =
 					    isAssetLoaded(meshAttachment.pMaterial->texRoughness) && meshAttachment.pMaterial->texRoughness->asTextureView()
-					        ? meshAttachment.pMaterial->texRoughness->asTextureView()->GetPtr()
+					        ? meshAttachment.pMaterial->texRoughness->asTextureView()->tex.GetPtr()
 					        : nullptr;
 				} else {
 					material = itr->mtl;

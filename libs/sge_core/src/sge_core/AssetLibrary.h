@@ -15,6 +15,10 @@ struct AssetLibrary;
 struct AudioTrack;
 using AudioAsset = std::shared_ptr<AudioTrack>;
 
+struct AssetTexture {
+	GpuHandle<Texture> tex;
+};
+
 struct AssetModel {
 	Model::Model model;
 	EvaluatedModel staticEval;
@@ -25,7 +29,7 @@ struct AssetModel {
 enum class AssetType : int {
 	None,        ///< Just an invalid asset type, used as a default.
 	Model,       ///< A 3D model.
-	TextureView, ///< sge::GpuHandle<sge::Texture>
+	TextureView, ///< AssetTexture
 	Text,        ///< A file containing some text (including code).
 	Sprite,      ///< A 2D sprite sheet animation.
 	Audio,       ///< Vorbis encoded audio file. Usually used for background music or longer audio tracks.
@@ -84,16 +88,16 @@ struct SGE_CORE_API Asset {
 
 	const void* asVoid() const { return m_pAsset; }
 
-	GpuHandle<Texture>* asTextureView() {
+	AssetTexture* asTextureView() {
 		if (getType() == AssetType::TextureView) {
-			return (GpuHandle<Texture>*)m_pAsset;
+			return (AssetTexture*)m_pAsset;
 		}
 		return nullptr;
 	}
 
-	const GpuHandle<Texture>* asTextureView() const {
+	const AssetTexture* asTextureView() const {
 		if (getType() == AssetType::TextureView) {
-			return (const GpuHandle<Texture>*)m_pAsset;
+			return (const AssetTexture*)m_pAsset;
 		}
 		return nullptr;
 	}

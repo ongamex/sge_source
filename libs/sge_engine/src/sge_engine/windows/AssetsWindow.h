@@ -1,4 +1,5 @@
 #pragma once
+
 #include "IImGuiWindow.h"
 #include "ModelPreviewWindow.h"
 #include "imgui/imgui.h"
@@ -44,31 +45,36 @@ struct SGE_ENGINE_API AssetsWindow : public IImGuiWindow {
 
   private:
 	bool shouldOpenImportPopup = false;
-	bool m_importPopupIsOpen = false;
 	std::string openAssetImport_filename;
 
 	bool m_isOpened = true;
 	GameInspector& m_inspector;
 	std::string m_windowName;
 
-	ModelPreviewWidget m_modelPreviewWidget;
-
-	std::shared_ptr<Asset> m_selectedAsset;
-
+	/// The path to the currently right clicked object. If the path is empty there is no right clicked object and we should not display the
+	/// right click menu.
 	std::filesystem::path m_rightClickedPath;
+
+	// A pointer to the asset that currently has a preview.
 	PAsset explorePreviewAsset;
-	ModelPreviewWidget exploreModelPreviewWidget;
+
+	/// When in explorer the user has selected a 3d model this widget is used to draw the preview.
+	ModelPreviewWidget m_exploreModelPreviewWidget;
+	/// The path to the current directory that we show in the explore.
 	std::vector<std::string> directoryTree;
-	ImGuiTextFilter exploreFilter;
+	/// A filter for searching in the current directory in the explorer.
+	ImGuiTextFilter m_exploreFilter;
 
 	AssetImportData m_importAssetToImportInPopup;
-
 	std::vector<AssetImportData> m_assetsToImport;
 
+	/// A reference to the dll that holds the mdlconvlib that is used to convert 3d models.
+	/// it might be missing the the user hasn't specified the FBX SDK path.
 	DLLHandler mdlconvlibHandler;
-	sgeImportFBXFileFn sgeImportFBXFile =
-	    nullptr; ///< A pointer to the function from mdlconvlib (if available) for importing 3D models (fbx, obj, dae).
-	sgeImportFBXFileAsMultipleFn sgeImportFBXFileAsMultiple =
-	    nullptr; ///< A pointer to the function from mdlconvlib (if available) for importing 3D files as multiple models (fbx, dae).
+
+	/// A pointer to the function from mdlconvlib (if available) for importing 3D models (fbx, obj, dae).
+	sgeImportFBXFileFn m_sgeImportFBXFile = nullptr;
+	/// A pointer to the function from mdlconvlib (if available) for importing 3D files as multiple models (fbx, dae).
+	sgeImportFBXFileAsMultipleFn m_sgeImportFBXFileAsMultiple = nullptr;
 };
 } // namespace sge

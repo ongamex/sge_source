@@ -43,8 +43,9 @@ mat4f TraitViewportIcon::computeNodeToWorldMtx(const ICamera& camera) const {
 }
 
 Texture* TraitViewportIcon::getIconTexture() const {
-	const GpuHandle<Texture>* const assetTextureView = m_assetProperty.getAssetTexture();
-	Texture* const texture = (assetTextureView != nullptr && assetTextureView->IsResourceValid()) ? assetTextureView->GetPtr() : nullptr;
+	const AssetTexture* const assetTextureView = m_assetProperty.getAssetTexture();
+	Texture* const texture =
+	    (assetTextureView != nullptr && assetTextureView->tex.IsResourceValid()) ? assetTextureView->tex.GetPtr() : nullptr;
 	return texture;
 }
 

@@ -76,7 +76,7 @@ struct SGE_ENGINE_API TraitModel : public Trait {
 
 		// If the attached asset is a texture or a sprite compute the bounding box using them.
 		const SpriteAnimationAsset* const assetSprite = getAssetProperty().getAssetSprite();
-		const GpuHandle<Texture>* const assetTexture = getAssetProperty().getAssetTexture();
+		const AssetTexture* const assetTexture = getAssetProperty().getAssetTexture();
 
 		if ((assetSprite || assetTexture) && isAssetLoaded(getAssetProperty().getAsset())) {
 			return imageSettings.computeBBoxOS(*getAssetProperty().getAsset().get(), m_additionalTransform);

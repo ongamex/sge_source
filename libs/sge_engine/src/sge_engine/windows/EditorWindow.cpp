@@ -536,24 +536,24 @@ void EditorWindow::update(SGEContext* const sgecon, const InputState& is) {
 
 	if (ImGui::BeginChild("Toolbar", ImVec2(0, 48), true, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar)) {
 		if (m_assets.m_assetPlayIcon && m_sceneInstance.getInspector().m_disableAutoStepping) {
-			if (ImGui::ImageButton((*m_assets.m_assetPlayIcon->asTextureView()), ImVec2(24, 24)))
+			if (ImGui::ImageButton(m_assets.m_assetPlayIcon->asTextureView()->tex.GetPtr(), ImVec2(24, 24)))
 				m_sceneInstance.getInspector().m_disableAutoStepping = false;
 		} else if (m_assets.m_assetPauseIcon && !m_sceneInstance.getInspector().m_disableAutoStepping) {
-			if (ImGui::ImageButton((*m_assets.m_assetPauseIcon->asTextureView()), ImVec2(24, 24)))
+			if (ImGui::ImageButton(m_assets.m_assetPauseIcon->asTextureView()->tex.GetPtr(), ImVec2(24, 24)))
 				m_sceneInstance.getInspector().m_disableAutoStepping = true;
 		}
 
 
 		ImGui::SameLine();
 
-		if (m_assets.m_assetPickingIcon && ImGui::ImageButton((*m_assets.m_assetPickingIcon->asTextureView()), ImVec2(24, 24))) {
+		if (m_assets.m_assetPickingIcon && ImGui::ImageButton(m_assets.m_assetPickingIcon->asTextureView()->tex.GetPtr(), ImVec2(24, 24))) {
 			m_sceneInstance.getInspector().setTool(&m_sceneInstance.getInspector().m_selectionTool);
 		}
 		ImGuiEx::TextTooltip("Enables the scene selection tool.\nShortcut: Q");
 
 		ImGui::SameLine();
 
-		if (m_assets.m_assetTranslationIcon && ImGui::ImageButton((*m_assets.m_assetTranslationIcon->asTextureView()), ImVec2(24, 24))) {
+		if (m_assets.m_assetTranslationIcon && ImGui::ImageButton(m_assets.m_assetTranslationIcon->asTextureView()->tex.GetPtr(), ImVec2(24, 24))) {
 			m_sceneInstance.getInspector().m_transformTool.m_mode = Gizmo3D::Mode_Translation;
 			m_sceneInstance.getInspector().setTool(&m_sceneInstance.getInspector().m_transformTool);
 		}
@@ -561,7 +561,7 @@ void EditorWindow::update(SGEContext* const sgecon, const InputState& is) {
 
 		ImGui::SameLine();
 
-		if (m_assets.m_assetRotationIcon && ImGui::ImageButton((*m_assets.m_assetRotationIcon->asTextureView()), ImVec2(24, 24))) {
+		if (m_assets.m_assetRotationIcon && ImGui::ImageButton(m_assets.m_assetRotationIcon->asTextureView()->tex.GetPtr(), ImVec2(24, 24))) {
 			m_sceneInstance.getInspector().m_transformTool.m_mode = Gizmo3D::Mode_Rotation;
 			m_sceneInstance.getInspector().setTool(&m_sceneInstance.getInspector().m_transformTool);
 		}
@@ -569,7 +569,7 @@ void EditorWindow::update(SGEContext* const sgecon, const InputState& is) {
 
 		ImGui::SameLine();
 
-		if (m_assets.m_assetScalingIcon && ImGui::ImageButton((*m_assets.m_assetScalingIcon->asTextureView()), ImVec2(24, 24))) {
+		if (m_assets.m_assetScalingIcon && ImGui::ImageButton(m_assets.m_assetScalingIcon->asTextureView()->tex.GetPtr(), ImVec2(24, 24))) {
 			m_sceneInstance.getInspector().m_transformTool.m_mode = Gizmo3D::Mode_Scaling;
 			m_sceneInstance.getInspector().setTool(&m_sceneInstance.getInspector().m_transformTool);
 		}
@@ -577,7 +577,7 @@ void EditorWindow::update(SGEContext* const sgecon, const InputState& is) {
 
 		ImGui::SameLine();
 
-		if (m_assets.m_assetVolumeScaleIcon && ImGui::ImageButton((*m_assets.m_assetVolumeScaleIcon->asTextureView()), ImVec2(24, 24))) {
+		if (m_assets.m_assetVolumeScaleIcon && ImGui::ImageButton(m_assets.m_assetVolumeScaleIcon->asTextureView()->tex.GetPtr(), ImVec2(24, 24))) {
 			m_sceneInstance.getInspector().m_transformTool.m_mode = Gizmo3D::Mode_ScaleVolume;
 			m_sceneInstance.getInspector().setTool(&m_sceneInstance.getInspector().m_transformTool);
 		}
@@ -585,7 +585,7 @@ void EditorWindow::update(SGEContext* const sgecon, const InputState& is) {
 
 		ImGui::SameLine();
 
-		if (ImGui::ImageButton((*m_assets.m_assetForkPlayIcon->asTextureView()), ImVec2(24, 24))) {
+		if (ImGui::ImageButton(m_assets.m_assetForkPlayIcon->asTextureView()->tex.GetPtr(), ImVec2(24, 24))) {
 			GamePlayWindow* oldGameplayWindow = getEngineGlobal()->findFirstWindowOfType<GamePlayWindow>();
 			if (oldGameplayWindow != nullptr) {
 				getEngineGlobal()->removeWindow(oldGameplayWindow);
@@ -606,12 +606,12 @@ void EditorWindow::update(SGEContext* const sgecon, const InputState& is) {
 
 		if (m_sceneInstance.getInspector().m_transformTool.m_useSnapSettings) {
 			if (m_assets.m_assetSnapToGridOnIcon &&
-			    ImGui::ImageButton((*m_assets.m_assetSnapToGridOnIcon->asTextureView()), ImVec2(24, 24))) {
+			    ImGui::ImageButton(m_assets.m_assetSnapToGridOnIcon->asTextureView()->tex.GetPtr(), ImVec2(24, 24))) {
 				m_sceneInstance.getInspector().m_transformTool.m_useSnapSettings = false;
 			}
 		} else {
 			if (m_assets.m_assetSnapToGridOffIcon &&
-			    ImGui::ImageButton((*m_assets.m_assetSnapToGridOffIcon->asTextureView()), ImVec2(24, 24))) {
+			    ImGui::ImageButton(m_assets.m_assetSnapToGridOffIcon->asTextureView()->tex.GetPtr(), ImVec2(24, 24))) {
 				m_sceneInstance.getInspector().m_transformTool.m_useSnapSettings = true;
 			}
 		}
@@ -623,20 +623,20 @@ void EditorWindow::update(SGEContext* const sgecon, const InputState& is) {
 		ImGui::Separator();
 		ImGui::SameLine();
 
-		if (m_assets.m_assetRebuildIcon && ImGui::ImageButton((*m_assets.m_orthoIcon->asTextureView()), ImVec2(24, 24))) {
+		if (m_assets.m_assetRebuildIcon && ImGui::ImageButton(m_assets.m_orthoIcon->asTextureView()->tex.GetPtr(), ImVec2(24, 24))) {
 			getInspector().getWorld()->m_editorCamera.isOrthograhpic = !getInspector().getWorld()->m_editorCamera.isOrthograhpic;
 		}
 		ImGuiEx::TextTooltip("Toggle the orthographic/perspective mode of the preview camera.");
 
 		ImGui::SameLine();
-		if (m_assets.m_assetRebuildIcon && ImGui::ImageButton((*m_assets.m_xIcon->asTextureView()), ImVec2(24, 24))) {
+		if (m_assets.m_assetRebuildIcon && ImGui::ImageButton(m_assets.m_xIcon->asTextureView()->tex.GetPtr(), ImVec2(24, 24))) {
 			getInspector().getWorld()->m_editorCamera.m_orbitCamera.yaw = 0.f;
 			getInspector().getWorld()->m_editorCamera.m_orbitCamera.pitch = 0.f;
 		}
 		ImGuiEx::TextTooltip("Align the preview camera to +X axis.");
 
 		ImGui::SameLine();
-		if (m_assets.m_assetRebuildIcon && ImGui::ImageButton((*m_assets.m_yIcon->asTextureView()), ImVec2(24, 24))) {
+		if (m_assets.m_assetRebuildIcon && ImGui::ImageButton(m_assets.m_yIcon->asTextureView()->tex.GetPtr(), ImVec2(24, 24))) {
 			getInspector().getWorld()->m_editorCamera.m_orbitCamera.yaw =
 			    deg2rad(90.f) * float(int(getInspector().getWorld()->m_editorCamera.m_orbitCamera.yaw / deg2rad(90.f)));
 			getInspector().getWorld()->m_editorCamera.m_orbitCamera.pitch = deg2rad(90.f);
@@ -644,7 +644,7 @@ void EditorWindow::update(SGEContext* const sgecon, const InputState& is) {
 		ImGuiEx::TextTooltip("Align the preview camera to +Y axis.");
 
 		ImGui::SameLine();
-		if (m_assets.m_assetRebuildIcon && ImGui::ImageButton((*m_assets.m_zIcon->asTextureView()), ImVec2(24, 24))) {
+		if (m_assets.m_assetRebuildIcon && ImGui::ImageButton(m_assets.m_zIcon->asTextureView()->tex.GetPtr(), ImVec2(24, 24))) {
 			getInspector().getWorld()->m_editorCamera.m_orbitCamera.yaw = deg2rad(-90.f);
 			getInspector().getWorld()->m_editorCamera.m_orbitCamera.pitch = 0.f;
 		}

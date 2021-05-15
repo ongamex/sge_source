@@ -55,14 +55,14 @@ void ActorCreateWindow::update(SGEContext* const UNUSED(sgecon), const InputStat
 					continue;
 				}
 
-				GpuHandle<Texture>* const icon =
-				    getEngineGlobal()->getEngineAssets().getIconForObjectType(typeDesc->typeId)->asTextureView();
+				Texture* const icon =
+				    getEngineGlobal()->getEngineAssets().getIconForObjectType(typeDesc->typeId)->asTextureView()->tex.GetPtr();
 
 				ImGui::BeginChildFrame(ImHashStr(typeDesc->name), kWidgetSize, ImGuiWindowFlags_NoBackground);
 
 				float indent = (ImGui::GetContentRegionAvailWidth() - kItemWidth) * 0.5f;
 				ImGui::Indent(indent);
-				ImGui::ImageButton(*icon, ImVec2(32, 32), ImVec2(0.f, 0.f), ImVec2(1.f, 1.f), 0);
+				ImGui::ImageButton(icon, ImVec2(32, 32), ImVec2(0.f, 0.f), ImVec2(1.f, 1.f), 0);
 				bool isImageButtonPressed = ImGui::IsItemClicked(0);
 				ImGui::Unindent(indent);
 

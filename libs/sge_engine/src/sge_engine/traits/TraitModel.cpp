@@ -316,9 +316,9 @@ mat4f TraitModel::ImageSettings::computeObjectToWorldTransform(const Asset& asse
 		imageSize = vec2f(float(frame->wh.x), float(frame->wh.y));
 		hasValidImageToRender = true;
 	} else if (isAssetLoaded(asset, AssetType::TextureView)) {
-		const GpuHandle<Texture>* texture = asset.asTextureView();
-		if (texture && texture->IsResourceValid()) {
-			imageSize = vec2f(float((*texture)->getDesc().texture2D.width), float((*texture)->getDesc().texture2D.height));
+		const AssetTexture* assetTex = asset.asTextureView();
+		if (assetTex && assetTex->tex.IsResourceValid()) {
+			imageSize = vec2f(float(assetTex->tex->getDesc().texture2D.width), float(assetTex->tex->getDesc().texture2D.height));
 			hasValidImageToRender = true;
 		}
 	}

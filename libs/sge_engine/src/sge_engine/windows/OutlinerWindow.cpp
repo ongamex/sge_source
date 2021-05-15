@@ -79,10 +79,10 @@ void OutlinerWindow::update(SGEContext* const UNUSED(sgecon), const InputState& 
 				}
 
 				// Add the GUI elements itself.
-				GpuHandle<Texture>* const iconTexture =
-				    getEngineGlobal()->getEngineAssets().getIconForObjectType(currentEntity->getType())->asTextureView();
+				Texture* const iconTexture =
+				    getEngineGlobal()->getEngineAssets().getIconForObjectType(currentEntity->getType())->asTextureView()->tex.GetPtr();
 
-				ImGui::Image(*iconTexture, ImVec2(ImGui::GetFontSize(), ImGui::GetFontSize()));
+				ImGui::Image(iconTexture, ImVec2(ImGui::GetFontSize(), ImGui::GetFontSize()));
 				ImGui::SameLine();
 
 				void* const treeNodeId = (void*)size_t(currentEntity->getId().id + 1); // Avoid having id 0 in the outliner

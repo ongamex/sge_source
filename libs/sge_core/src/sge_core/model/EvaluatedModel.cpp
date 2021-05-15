@@ -418,9 +418,6 @@ float EvaluatedModel::Raycast(const Ray& ray, Model::Node** ppNode, const char* 
 	return mint;
 }
 
-//--------------------------------------------------------------------
-//
-//--------------------------------------------------------------------
 void Model_FindReferencedResources(std::vector<std::string>& referencedTextures, const Model::Model& model) {
 	for (const auto& mtl : model.m_materials) {
 		const Parameter* const prmTexDiffuse = mtl->paramBlock.FindParameter(s_DiffuseTextureParamName);

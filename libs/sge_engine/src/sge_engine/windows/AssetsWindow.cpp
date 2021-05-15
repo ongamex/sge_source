@@ -28,13 +28,14 @@ namespace sge {
 AssetsWindow::AssetsWindow(std::string windowName, GameInspector& inspector)
     : m_windowName(std::move(windowName))
     , m_inspector(inspector) {
+	// Try to load the functions that will be used for importing 3D models.
 	if (mdlconvlibHandler.loadNoExt("mdlconvlib")) {
-		sgeImportFBXFile = reinterpret_cast<sgeImportFBXFileFn>(mdlconvlibHandler.getProcAdress("sgeImportFBXFile"));
-		sgeImportFBXFileAsMultiple =
+		m_sgeImportFBXFile = reinterpret_cast<sgeImportFBXFileFn>(mdlconvlibHandler.getProcAdress("sgeImportFBXFile"));
+		m_sgeImportFBXFileAsMultiple =
 		    reinterpret_cast<sgeImportFBXFileAsMultipleFn>(mdlconvlibHandler.getProcAdress("sgeImportFBXFileAsMultiple"));
 	}
 
-	if (sgeImportFBXFile == nullptr || sgeImportFBXFileAsMultiple == nullptr) {
+	if (m_sgeImportFBXFile == nullptr || m_sgeImportFBXFileAsMultiple == nullptr) {
 		SGE_DEBUG_WAR("Failed to load dynamic library mdlconvlib. Importing FBX files would not be possible without it!");
 	}
 }
@@ -52,12 +53,12 @@ bool AssetsWindow::importAsset(AssetImportData& aid) {
 	if (aid.assetType == AssetType::Model && aid.importModelsAsMultipleFiles == false) {
 		Model::Model importedModel;
 
-		if (sgeImportFBXFile == nullptr) {
+		if (m_sgeImportFBXFile == nullptr) {
 			SGE_DEBUG_ERR("mdlconvlib dynamic library is not loaded. We cannot import FBX files without it!");
 		}
 
 		std::vector<std::string> referencedTextures;
-		if (sgeImportFBXFile && sgeImportFBXFile(importedModel, aid.filename.c_str(), &referencedTextures)) {
+		if (m_sgeImportFBXFile && m_sgeImportFBXFile(importedModel, aid.filename.c_str(), &referencedTextures)) {
 			createDirectory(extractFileDir(aid.outputDir.c_str(), false).c_str());
 
 			// Convert the 3d model to our internal type.
@@ -96,14 +97,14 @@ bool AssetsWindow::importAsset(AssetImportData& aid) {
 			return false;
 		}
 	} else if (aid.assetType == AssetType::Model && aid.importModelsAsMultipleFiles == true) {
-		if (sgeImportFBXFileAsMultiple == nullptr) {
+		if (m_sgeImportFBXFileAsMultiple == nullptr) {
 			SGE_DEBUG_ERR("mdlconvlib dynamic library is not loaded. We cannot import FBX files without it!");
 		}
 
 		std::vector<std::string> referencedTextures;
 		std::vector<MultiModelImportResult> importedModels;
 
-		if (sgeImportFBXFileAsMultiple && sgeImportFBXFileAsMultiple(importedModels, aid.filename.c_str(), &referencedTextures)) {
+		if (m_sgeImportFBXFileAsMultiple && m_sgeImportFBXFileAsMultiple(importedModels, aid.filename.c_str(), &referencedTextures)) {
 			createDirectory(extractFileDir(aid.outputDir.c_str(), false).c_str());
 
 			for (MultiModelImportResult& model : importedModels) {
@@ -301,10 +302,10 @@ void AssetsWindow::update(SGEContext* const sgecon, const InputState& is) {
 
 		ImGui::Text(ICON_FK_SEARCH " File Filter");
 		ImGui::SameLine();
-		exploreFilter.Draw("##File Filter");
+		m_exploreFilter.Draw("##File Filter");
 		if (ImGui::IsItemClicked(2)) {
 			ImGui::ClearActiveID(); // Hack: (if we do not make this call ImGui::InputText will set it's cached value.
-			exploreFilter.Clear();
+			m_exploreFilter.Clear();
 		}
 
 		// List all files in the currently selected directory in the interfance.
@@ -330,7 +331,7 @@ void AssetsWindow::update(SGEContext* const sgecon, const InputState& is) {
 
 				std::string dirToAdd;
 				for (const fs::directory_entry& entry : fs::directory_iterator(pathToAssets)) {
-					if (entry.is_directory() && exploreFilter.PassFilter(entry.path().filename().string().c_str())) {
+					if (entry.is_directory() && m_exploreFilter.PassFilter(entry.path().filename().string().c_str())) {
 						string_format(label, "%s %s", ICON_FK_FOLDER, entry.path().filename().string().c_str());
 						if (ImGui::Selectable(label.c_str())) {
 							dirToAdd = entry.path().filename().string();
@@ -344,7 +345,7 @@ void AssetsWindow::update(SGEContext* const sgecon, const InputState& is) {
 
 				// Show every file in the current directory with an icon next to it.
 				for (const fs::directory_entry& entry : fs::directory_iterator(pathToAssets)) {
-					if (entry.is_regular_file() && exploreFilter.PassFilter(entry.path().filename().string().c_str())) {
+					if (entry.is_regular_file() && m_exploreFilter.PassFilter(entry.path().filename().string().c_str())) {
 						AssetType assetType =
 						    assetType_guessFromExtension(extractFileExtension(entry.path().string().c_str()).c_str(), false);
 						if (assetType == AssetType::Model) {
@@ -537,7 +538,7 @@ void AssetsWindow::update(SGEContext* const sgecon, const InputState& is) {
 					}
 
 					// Show a warning that the import will fail if mdlconvlib is not loaded.
-					if (sgeImportFBXFile == nullptr && m_importAssetToImportInPopup.assetType == AssetType::Model) {
+					if (m_sgeImportFBXFile == nullptr && m_importAssetToImportInPopup.assetType == AssetType::Model) {
 						ImGui::TextColored(ImVec4(1.f, 1.f, 0.f, 1.f), "Importing 3D files cannot be done! mdlconvlib is missing!");
 					}
 
@@ -595,23 +596,23 @@ void AssetsWindow::update(SGEContext* const sgecon, const InputState& is) {
 				if (explorePreviewAssetChanged) {
 					AABox3f bboxModel = explorePreviewAsset->asModel()->staticEval.aabox;
 					if (bboxModel.IsEmpty() == false) {
-						exploreModelPreviewWidget.camera.orbitPoint = bboxModel.center();
-						exploreModelPreviewWidget.camera.radius = bboxModel.diagonal().length() * 1.25f;
-						exploreModelPreviewWidget.camera.yaw = deg2rad(45.f);
-						exploreModelPreviewWidget.camera.pitch = deg2rad(45.f);
+						m_exploreModelPreviewWidget.camera.orbitPoint = bboxModel.center();
+						m_exploreModelPreviewWidget.camera.radius = bboxModel.diagonal().length() * 1.25f;
+						m_exploreModelPreviewWidget.camera.yaw = deg2rad(45.f);
+						m_exploreModelPreviewWidget.camera.pitch = deg2rad(45.f);
 					}
 				}
 
-				exploreModelPreviewWidget.doWidget(sgecon, is, explorePreviewAsset->asModel()->staticEval);
+				m_exploreModelPreviewWidget.doWidget(sgecon, is, explorePreviewAsset->asModel()->staticEval);
 			} else if (explorePreviewAsset->getType() == AssetType::TextureView) {
-				auto desc = explorePreviewAsset->asTextureView()->GetPtr()->getDesc().texture2D;
+				auto desc = explorePreviewAsset->asTextureView()->tex->getDesc().texture2D;
 				ImVec2 sz = ImGui::GetContentRegionAvail();
-				ImGui::Image(explorePreviewAsset->asTextureView()->GetPtr(), sz);
+				ImGui::Image(explorePreviewAsset->asTextureView()->tex.GetPtr(), sz);
 			} else if (explorePreviewAsset->getType() == AssetType::Sprite) {
 				if (isAssetLoaded(explorePreviewAsset->asSprite()->textureAsset)) {
-					auto desc = explorePreviewAsset->asSprite()->textureAsset->asTextureView()->GetPtr()->getDesc().texture2D;
+					auto desc = explorePreviewAsset->asSprite()->textureAsset->asTextureView()->tex->getDesc().texture2D;
 					ImVec2 sz = ImGui::GetContentRegionAvail();
-					ImGui::Image(explorePreviewAsset->asSprite()->textureAsset->asTextureView()->GetPtr(), sz);
+					ImGui::Image(explorePreviewAsset->asSprite()->textureAsset->asTextureView()->tex.GetPtr(), sz);
 				}
 			} else if (explorePreviewAsset->getType() == AssetType::Audio) {
 				auto track = explorePreviewAsset->asAudio();

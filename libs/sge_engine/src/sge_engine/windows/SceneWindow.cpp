@@ -221,10 +221,10 @@ void SceneWindow::updateRightClickMenu(bool canOpen) {
 				}
 
 				if (createActorFilter.PassFilter(td->name)) {
-					GpuHandle<Texture>* const iconTexture =
-					    getEngineGlobal()->getEngineAssets().getIconForObjectType(td->typeId)->asTextureView();
+					Texture* const iconTexture =
+					    getEngineGlobal()->getEngineAssets().getIconForObjectType(td->typeId)->asTextureView()->tex.GetPtr();
 
-					ImGui::Image(*iconTexture, ImVec2(ImGui::GetFrameHeight(), ImGui::GetFrameHeight()));
+					ImGui::Image(iconTexture, ImVec2(ImGui::GetFrameHeight(), ImGui::GetFrameHeight()));
 					ImGui::SameLine();
 
 					if (ImGui::MenuItem(td->name)) {

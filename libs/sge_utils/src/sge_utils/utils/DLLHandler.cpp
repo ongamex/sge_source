@@ -17,7 +17,7 @@ bool DLLHandler::load(const char* const path) {
 	HMODULE hMod = LoadLibraryA(path);
 	static_assert(sizeof(m_nativeHandle) == sizeof(hMod), "DLL Handle size int correct.");
 	m_nativeHandle = hMod;
-	return hMod != NULL;
+	return m_nativeHandle != NULL;
 #else
 	m_nativeHandle = dlopen(path, RTLD_NOW);
 	return m_nativeHandle != nullptr;

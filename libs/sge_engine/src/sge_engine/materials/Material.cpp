@@ -36,20 +36,20 @@ Material MDiffuseMaterial::getMaterial() {
 	metalnessTexture.update();
 	roughnessTexture.update();
 
-	if (GpuHandle<Texture>* pTex = diffuseTexture.getAssetTexture(); pTex && pTex->IsResourceValid()) {
-		result.diffuseTexture = pTex->GetPtr();
+	if (AssetTexture* assetTex = diffuseTexture.getAssetTexture(); assetTex && assetTex->tex.IsResourceValid()) {
+		result.diffuseTexture = assetTex->tex.GetPtr();
 	}
 
-	if (GpuHandle<Texture>* pTex = normalTexture.getAssetTexture(); pTex && pTex->IsResourceValid()) {
-		result.texNormalMap = pTex->GetPtr();
+	if (AssetTexture* assetTex = normalTexture.getAssetTexture(); assetTex && assetTex->tex.IsResourceValid()) {
+		result.texNormalMap = assetTex->tex.GetPtr();
 	}
 
-	if (GpuHandle<Texture>* pTex = metalnessTexture.getAssetTexture(); pTex && pTex->IsResourceValid()) {
-		result.texMetalness = pTex->GetPtr();
+	if (AssetTexture* assetTex = metalnessTexture.getAssetTexture(); assetTex && assetTex->tex.IsResourceValid()) {
+		result.texMetalness = assetTex->tex.GetPtr();
 	}
 
-	if (GpuHandle<Texture>* pTex = roughnessTexture.getAssetTexture(); pTex && pTex->IsResourceValid()) {
-		result.texRoughness = pTex->GetPtr();
+	if (AssetTexture* assetTex = roughnessTexture.getAssetTexture(); assetTex && assetTex->tex.IsResourceValid()) {
+		result.texRoughness = assetTex->tex.GetPtr();
 	}
 
 	result.diffuseColor = vec4f(diffuseColor, 1.f);

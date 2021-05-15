@@ -7,7 +7,7 @@
 
 extern "C" {
 
-/// @brief Load the fuunction symbol named "sgeImportFBXFile" and cast it to sgeImportFBXFileFn to call the function.
+/// @brief Load the fuunction symbol named "m_sgeImportFBXFile" and cast it to sgeImportFBXFileFn to call the function.
 ///
 /// Because of the way FBX SDK is licensed we do not want the end user
 /// to be forced to distribute FBX SDK with their final product(game for example).

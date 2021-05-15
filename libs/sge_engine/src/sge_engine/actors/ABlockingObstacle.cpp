@@ -161,8 +161,8 @@ void ABlockingObstacle::postUpdate(const GameUpdateSets& UNUSED(updateSets)) {
 
 	material = Material();
 
-	material.diffuseTextureX = m_textureX.getAssetTexture() ? m_textureX.getAssetTexture()->GetPtr() : nullptr;
-	material.diffuseTextureY = m_textureY.getAssetTexture() ? m_textureY.getAssetTexture()->GetPtr() : nullptr;
+	material.diffuseTextureX = m_textureX.getAssetTexture() ? m_textureX.getAssetTexture()->tex.GetPtr() : nullptr;
+	material.diffuseTextureY = m_textureY.getAssetTexture() ? m_textureY.getAssetTexture()->tex.GetPtr() : nullptr;
 	material.diffuseTextureZ = material.diffuseTextureX;
 
 

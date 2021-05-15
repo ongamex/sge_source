@@ -161,7 +161,6 @@ struct TextureViewAssetFactory : public IAssetFactory {
 		ddsLoadCode_importOrCreationFailed,
 	};
 
-
 	SamplerDesc getTextureSamplerDesc(const char* const pAssetPath) const {
 		std::string const infoPath = std::string(pAssetPath) + ".info";
 		SamplerDesc result;
@@ -232,14 +231,14 @@ struct TextureViewAssetFactory : public IAssetFactory {
 		}
 
 		// Create the texture.
-		GpuHandle<Texture>& texture = *(GpuHandle<Texture>*)(pAsset);
-		texture = pMngr->getDevice()->requestResource<Texture>();
+		AssetTexture& texture = *(AssetTexture*)(pAsset);
+		texture.tex = pMngr->getDevice()->requestResource<Texture>();
 
 		const SamplerDesc samplerDesc = getTextureSamplerDesc(pPath);
-		bool const createSucceeded = texture->create(desc, &initalData[0], samplerDesc);
+		bool const createSucceeded = texture.tex->create(desc, &initalData[0], samplerDesc);
 
 		if (createSucceeded == false) {
-			texture.Release();
+			texture.tex.Release();
 			return ddsLoadCode_importOrCreationFailed;
 		}
 
@@ -264,7 +263,7 @@ struct TextureViewAssetFactory : public IAssetFactory {
 
 		// If we are here than the DDS file doesn't exist and
 		// we must try to load the exact file that we were asked for.
-		GpuHandle<Texture>& texture = *(GpuHandle<Texture>*)(pAsset);
+		AssetTexture& texture = *(AssetTexture*)(pAsset);
 
 		// Now check for the actual asset that is requested.
 		FileReadStream frs(pPath);
@@ -292,17 +291,17 @@ struct TextureViewAssetFactory : public IAssetFactory {
 		textureDataDesc.data = textureData;
 		textureDataDesc.rowByteSize = width * 4;
 
-		texture = pMngr->getDevice()->requestResource<Texture>();
+		texture.tex = pMngr->getDevice()->requestResource<Texture>();
 
 		const SamplerDesc samplerDesc = getTextureSamplerDesc(pPath);
-		texture->create(textureDesc, &textureDataDesc, samplerDesc);
+		texture.tex->create(textureDesc, &textureDataDesc, samplerDesc);
 
 		if (textureData != nullptr) {
 			stbi_image_free((void*)textureData);
 			textureData = nullptr;
 		}
 
-		const bool succeeded = texture.IsResourceValid();
+		const bool succeeded = texture.tex.IsResourceValid();
 
 		return succeeded;
 	}
@@ -384,7 +383,7 @@ AssetLibrary::AssetLibrary(SGEDevice* const sgedev) {
 
 	// Register all supported asset types.
 	this->registerAssetType(AssetType::Model, new TAssetAllocatorDefault<AssetModel>(), new ModelAssetFactory());
-	this->registerAssetType(AssetType::TextureView, new TAssetAllocatorDefault<GpuHandle<Texture>>(), new TextureViewAssetFactory());
+	this->registerAssetType(AssetType::TextureView, new TAssetAllocatorDefault<AssetTexture>(), new TextureViewAssetFactory());
 	this->registerAssetType(AssetType::Text, new TAssetAllocatorDefault<std::string>(), new TextAssetFactory());
 	this->registerAssetType(AssetType::Sprite, new TAssetAllocatorDefault<SpriteAnimationAsset>(), new SpriteAssetFactory());
 	this->registerAssetType(AssetType::Audio, new TAssetAllocatorDefault<sge::AudioAsset>(), new AudioAssetFactory());

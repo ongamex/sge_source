@@ -48,8 +48,8 @@ struct SGE_ENGINE_API AssetProperty {
 	AssetModel* getAssetModel();
 	const AssetModel* getAssetModel() const;
 
-	GpuHandle<Texture>* getAssetTexture();
-	const GpuHandle<Texture>* getAssetTexture() const;
+	AssetTexture* getAssetTexture();
+	const AssetTexture* getAssetTexture() const;
 
 	SpriteAnimationAsset* getAssetSprite();
 	const SpriteAnimationAsset* getAssetSprite() const;

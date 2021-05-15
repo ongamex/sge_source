@@ -65,7 +65,7 @@ bool assetPicker(
 									getCore()->getAssetLib()->getAsset(AssetType::TextureView, asset->getPath().c_str(), true);
 								}
 							} else if (isAssetLoaded(asset)) {
-								if (ImGui::ImageButton(asset->asTextureView()->GetPtr(), ImVec2(48, 48))) {
+								if (ImGui::ImageButton(asset->asTextureView()->tex.GetPtr(), ImVec2(48, 48))) {
 									assetPath = itr.first;
 									wasAssetPicked = true;
 								}
@@ -279,10 +279,10 @@ SGE_ENGINE_API bool gameObjectTypePicker(const char* label, TypeId& ioValue, con
 				continue;
 			}
 
-			GpuHandle<Texture>* const iconTexture =
-			    getEngineGlobal()->getEngineAssets().getIconForObjectType(potentialType->typeId)->asTextureView();
+			Texture* const iconTexture =
+			    getEngineGlobal()->getEngineAssets().getIconForObjectType(potentialType->typeId)->asTextureView()->tex.GetPtr();
 
-			ImGui::Image(*iconTexture, ImVec2(ImGui::GetFontSize(), ImGui::GetFontSize()));
+			ImGui::Image(iconTexture, ImVec2(ImGui::GetFontSize(), ImGui::GetFontSize()));
 			ImGui::SameLine();
 
 			if (ImGui::Selectable(potentialType->name)) {

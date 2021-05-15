@@ -34,7 +34,7 @@ const AssetModel* AssetProperty::getAssetModel() const {
 	return m_asset->asModel();
 }
 
-GpuHandle<Texture>* AssetProperty::getAssetTexture() {
+AssetTexture* AssetProperty::getAssetTexture() {
 	if (!isAssetLoaded(m_asset, AssetType::TextureView)) {
 		return nullptr;
 	}
@@ -42,7 +42,7 @@ GpuHandle<Texture>* AssetProperty::getAssetTexture() {
 	return m_asset->asTextureView();
 }
 
-const GpuHandle<Texture>* AssetProperty::getAssetTexture() const {
+const AssetTexture* AssetProperty::getAssetTexture() const {
 	if (!isAssetLoaded(m_asset, AssetType::TextureView)) {
 		return nullptr;
 	}

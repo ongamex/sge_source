@@ -474,9 +474,9 @@ void DefaultGameDrawer::drawTraitTexturedPlane(TraitTexturedPlane* traitTexPlane
 	const vec3f camLookDir = drawSets.drawCamera->getCameraLookDir();
 	Actor* actor = traitTexPlane->getActor();
 
-	GpuHandle<Texture>* ppTexture = traitTexPlane->getAssetProperty().getAssetTexture();
-	if (ppTexture && ppTexture->IsResourceValid()) {
-		Texture* const texture = ppTexture->GetPtr();
+	AssetTexture* assetTexture = traitTexPlane->getAssetProperty().getAssetTexture();
+	if (assetTexture && assetTexture->tex.IsResourceValid()) {
+		Texture* const texture = assetTexture->tex.GetPtr();
 		if (texture) {
 			const mat4f localOffsetmtx = mat4f::getTranslation(traitTexPlane->m_localXOffset, 0.f, 0.f);
 			const mat4f anchorAlignMtx = traitTexPlane->getAnchorAlignMtxOS();
@@ -599,9 +599,9 @@ void DefaultGameDrawer::drawTraitStaticModel(TraitModel* modelTrait,
 			}
 		}
 	} else if (isAssetLoaded(asset) && asset->getType() == AssetType::TextureView) {
-		GpuHandle<Texture>* ppTexture = asset->asTextureView();
-		if (ppTexture && ppTexture->IsResourceValid()) {
-			Texture* const texture = ppTexture->GetPtr();
+		AssetTexture* ppTexture = asset->asTextureView();
+		if (ppTexture && ppTexture->tex.IsResourceValid()) {
+			Texture* const texture = ppTexture->tex.GetPtr();
 			if (texture) {
 				mat4f obj2world = modelTrait->imageSettings.computeObjectToWorldTransform(
 				    *asset.get(), drawSets.drawCamera, actor->getTransform(), modelTrait->m_additionalTransform);
@@ -622,7 +622,7 @@ void DefaultGameDrawer::drawTraitStaticModel(TraitModel* modelTrait,
 	} else if (isAssetLoaded(asset) && asset->getType() == AssetType::Sprite) {
 		SpriteAnimationAsset* const pSprite = asset->asSprite();
 		if (pSprite && isAssetLoaded(pSprite->textureAsset) && pSprite->textureAsset->asTextureView() != nullptr &&
-		    pSprite->textureAsset->asTextureView()->GetPtr() != nullptr) {
+		    pSprite->textureAsset->asTextureView()->tex.GetPtr() != nullptr) {
 			// Get the frame of the sprite to be rendered.
 			const SpriteAnimation::Frame* const frame = pSprite->spriteAnimation.getFrameForTime(modelTrait->imageSettings.spriteFrameTime);
 			if (frame) {
@@ -630,7 +630,7 @@ void DefaultGameDrawer::drawTraitStaticModel(TraitModel* modelTrait,
 				    *asset.get(), drawSets.drawCamera, actor->getTransform(), modelTrait->m_additionalTransform);
 
 				Geometry texPlaneGeom = m_texturedPlaneDraw.getGeometry(drawSets.rdest.getDevice());
-				Material texPlaneMtl = m_texturedPlaneDraw.getMaterial(pSprite->textureAsset->asTextureView()->GetPtr());
+				Material texPlaneMtl = m_texturedPlaneDraw.getMaterial(pSprite->textureAsset->asTextureView()->tex.GetPtr());
 				texPlaneMtl.diffuseColor = vec4f(modelTrait->imageSettings.colorTint);
 
 				InstanceDrawMods mods;

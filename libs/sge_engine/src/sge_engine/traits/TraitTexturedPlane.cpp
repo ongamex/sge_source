@@ -22,9 +22,9 @@ ReflBlock() {
 // clang-format on
 
 mat4f TraitTexturedPlane::getAnchorAlignMtxOS() const {
-	const GpuHandle<Texture>* const assetTextureView = getAssetProperty().getAssetTexture();
-	if (assetTextureView && assetTextureView->IsResourceValid()) {
-		Texture* const texture = assetTextureView->GetPtr();
+	const AssetTexture* const assetTextureView = getAssetProperty().getAssetTexture();
+	if (assetTextureView && assetTextureView->tex.IsResourceValid()) {
+		Texture* const texture = assetTextureView->tex.GetPtr();
 		if (texture) {
 			const float sz = texture->getDesc().texture2D.width * m_pixelSizeInWorld;
 			const float sy = texture->getDesc().texture2D.height * m_pixelSizeInWorld;
@@ -42,12 +42,12 @@ mat4f TraitTexturedPlane::getAnchorAlignMtxOS() const {
 // max (0, 1, 1)
 
 AABox3f TraitTexturedPlane::getBBoxOS() const {
-	const GpuHandle<Texture>* const assetTextureView = getAssetProperty().getAssetTexture();
-	if (assetTextureView && assetTextureView->IsResourceValid()) {
+	const AssetTexture* const assetTextureView = getAssetProperty().getAssetTexture();
+	if (assetTextureView && assetTextureView->tex.IsResourceValid()) {
 		AABox3f bbox;
 
-		const float width = (float)assetTextureView->GetPtr()->getDesc().texture2D.width;
-		const float height = (float)assetTextureView->GetPtr()->getDesc().texture2D.height;
+		const float width = (float)assetTextureView->tex.GetPtr()->getDesc().texture2D.width;
+		const float height = (float)assetTextureView->tex.GetPtr()->getDesc().texture2D.height;
 
 		const vec3f halfDiagonal(1e-3f, height * m_pixelSizeInWorld * 0.5f, width * m_pixelSizeInWorld * 0.5f);
 
