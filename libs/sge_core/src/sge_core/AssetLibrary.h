@@ -15,8 +15,17 @@ struct AssetLibrary;
 struct AudioTrack;
 using AudioAsset = std::shared_ptr<AudioTrack>;
 
-struct AssetTexture {
+struct SGE_CORE_API AssetTexture {
 	GpuHandle<Texture> tex;
+	/// The sampler description defined by the asset file.
+	/// This is no necessery the actual descriptor assigned to @tex.
+	SamplerDesc assetSamplerDesc;
+
+	bool saveTextureSettingsToInfoFile(Asset& assetSelf);
+	/// @brief
+	/// @param [in] baseAssetPath is the path to the texture. It will get converted automatically to *.info file.
+	/// @return
+	static SamplerDesc loadTextureSettingInfoFile(const std::string& baseAssetPath);
 };
 
 struct AssetModel {

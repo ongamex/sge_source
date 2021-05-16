@@ -112,6 +112,9 @@ struct Optional {
 		return result;
 	}
 
+	T& operator*() { return get(); }
+	const T& operator*() const { return get(); }
+
   private:
 	// void defaultConstructStorage() {
 	//	new (m_storage.data) T();

@@ -9,12 +9,110 @@
 #include "sge_utils/utils/FileStream.h"
 #include "sge_utils/utils/Path.h"
 #include "sge_utils/utils/json.h"
+#include "sge_utils/utils/optional.h"
 #include "sge_utils/utils/strings.h"
 #include "sge_utils/utils/timer.h"
 #include <filesystem>
 #include <stb_image.h>
 
 namespace sge {
+
+JsonValue* samplerDesc_toJson(const SamplerDesc& desc, JsonValueBuffer& jvb) {
+	const auto addressModeToString = [](TextureAddressMode::Enum adressMode) -> const char* {
+		switch (adressMode) {
+			case TextureAddressMode::Repeat:
+				return "repeat";
+			case TextureAddressMode::ClampEdge:
+				return "edge";
+			case TextureAddressMode::ClampBorder:
+				return "border";
+			default:
+				sgeAssert(false);
+				return "";
+				break;
+		}
+	};
+
+	const auto filterToString = [](TextureFilter::Enum filter) -> const char* {
+		switch (filter) {
+			case sge::TextureFilter::Min_Mag_Mip_Point:
+				return "point";
+				break;
+			case sge::TextureFilter::Min_Mag_Mip_Linear:
+				return "linear";
+				break;
+			case sge::TextureFilter::Anisotropic:
+				return "anisotropic";
+				break;
+			default:
+				sgeAssert(false);
+				return "";
+				break;
+		}
+	};
+
+	auto jRoot = jvb(JID_MAP);
+
+	jRoot->setMember("addressModeX", jvb(addressModeToString(desc.addressModes[0])));
+	jRoot->setMember("addressModeY", jvb(addressModeToString(desc.addressModes[1])));
+	jRoot->setMember("addressModeZ", jvb(addressModeToString(desc.addressModes[2])));
+	jRoot->setMember("filter", jvb(filterToString(desc.filter)));
+
+	return jRoot;
+}
+
+Optional<SamplerDesc> samplerDesc_fromJson(const JsonValue& jRoot) {
+	auto addressModeFromStringOrThrow = [](const char* str) -> TextureAddressMode::Enum {
+		if (str == nullptr || str[0] == '\0') {
+			throw std::exception();
+		}
+
+		if (strcmp("repeat", str) == 0)
+			return TextureAddressMode::Repeat;
+		if (strcmp("edge", str) == 0)
+			return TextureAddressMode::ClampEdge;
+		if (strcmp("border", str) == 0)
+			return TextureAddressMode::ClampBorder;
+
+		throw std::exception();
+	};
+
+	auto filterFormStringOrThrow = [](const char* str) -> TextureFilter::Enum {
+		if (str == nullptr || str[0] == '\0') {
+			throw std::exception();
+		}
+
+		if (strcmp("point", str) == 0)
+			return TextureFilter::Min_Mag_Mip_Point;
+
+		if (strcmp("linear", str) == 0)
+			return TextureFilter::Min_Mag_Mip_Linear;
+
+		if (strcmp("anisotropic", str) == 0)
+			return TextureFilter::Anisotropic;
+
+		throw std::exception();
+	};
+
+	try {
+		const char* const addressModeXStr = jRoot.getMemberOrThrow("addressModeX").GetStringOrThrow();
+		const char* const addressModeYStr = jRoot.getMemberOrThrow("addressModeY").GetStringOrThrow();
+		const char* const addressModeZStr = jRoot.getMemberOrThrow("addressModeZ").GetStringOrThrow();
+		const char* const filterStr = jRoot.getMemberOrThrow("filter").GetStringOrThrow();
+
+		SamplerDesc result;
+
+		result.addressModes[0] = addressModeFromStringOrThrow(addressModeXStr);
+		result.addressModes[1] = addressModeFromStringOrThrow(addressModeYStr);
+		result.addressModes[2] = addressModeFromStringOrThrow(addressModeZStr);
+		result.filter = filterFormStringOrThrow(filterStr);
+
+		return result;
+	} catch (...) {
+		sgeAssert(false);
+		return NullOptional();
+	}
+}
 
 SGE_CORE_API const char* assetType_getName(const AssetType type) {
 	switch (type) {
@@ -34,6 +132,64 @@ SGE_CORE_API const char* assetType_getName(const AssetType type) {
 			sgeAssertFalse("Not implemented");
 			return "NotImplemented";
 	}
+}
+
+bool AssetTexture::saveTextureSettingsToInfoFile(Asset& assetSelf) {
+	// Ensure that the user passed the right asset.
+	if (assetSelf.asTextureView() != this) {
+		sgeAssert(false && "It seems that thiis AssetTexture is not owned by assetSelf");
+		return false;
+	}
+
+	// [TEXTURE_ASSET_INFO]
+	const std::string infoPath = assetSelf.getPath() + ".info";
+
+	JsonValueBuffer jvb;
+	auto jRoot = jvb(JID_MAP);
+	jRoot->setMember("version", jvb(1));
+	jRoot->setMember("sampler", samplerDesc_toJson(assetSamplerDesc, jvb));
+
+	JsonWriter jsonWriter;
+	bool success = jsonWriter.WriteInFile(infoPath.c_str(), jRoot, true);
+	return success;
+}
+
+SamplerDesc AssetTexture::loadTextureSettingInfoFile(const std::string& baseAssetPath) {
+	// [TEXTURE_ASSET_INFO]
+	const std::string infoPath = baseAssetPath + ".info";
+
+	FileReadStream frs;
+	if (!frs.open(infoPath.c_str())) {
+		// No info file, just use the defaults.
+		return SamplerDesc();
+	}
+
+	// Parse the json inside that file.
+	JsonParser jp;
+	if (!jp.parse(&frs)) {
+		// No info file, just use the defaults.
+		sgeAssert(false && "Parsing the texture info file, that contains additional settings for a texture asset cannot be parsed!");
+		return SamplerDesc();
+	}
+
+	try {
+		auto jRoot = jp.getRoot();
+
+		int version = jRoot->getMemberOrThrow("version").getNumberAsOrThrow<int>();
+
+		if (version == 1) {
+			// Default version, nothing special in it.
+			auto jSampler = jRoot->getMemberOrThrow("sampler", JID_MAP);
+			Optional<SamplerDesc> samplerDesc = samplerDesc_fromJson(jSampler);
+			if (samplerDesc) {
+				return *samplerDesc;
+			}
+		}
+	} catch (...) {
+	}
+
+	sgeAssert(false && "Parsing the texture info file, that contains additional settings for a texture asset cannot be parsed!");
+	return SamplerDesc();
 }
 
 AssetType assetType_guessFromExtension(const char* const ext, bool includeExternalExtensions) {
@@ -161,54 +317,7 @@ struct TextureViewAssetFactory : public IAssetFactory {
 		ddsLoadCode_importOrCreationFailed,
 	};
 
-	SamplerDesc getTextureSamplerDesc(const char* const pAssetPath) const {
-		std::string const infoPath = std::string(pAssetPath) + ".info";
-		SamplerDesc result;
-
-		FileReadStream frs;
-		if (frs.open(infoPath.c_str())) {
-			JsonValueBuffer jvb;
-			JsonParser jp;
-			if_checked(jp.parse(&frs)) {
-				const JsonValue* const jRoot = jp.getRoot();
-
-				// Read the filtering.
-				{
-					const JsonValue* const jFiltering = jRoot->getMember("filtering");
-					const char* const filtering = jFiltering->GetString();
-					if (strcmp(filtering, "linear") == 0) {
-						result.filter = TextureFilter::Min_Mag_Mip_Linear;
-					} else if (strcmp(filtering, "point") == 0) {
-						result.filter = TextureFilter::Min_Mag_Mip_Point;
-					} else {
-						sgeAssert(false && "Unknown filtering type, using the defaults!");
-					}
-				}
-
-				// Read the address mode.
-				{
-					TextureAddressMode::Enum addressMode = TextureAddressMode::Repeat;
-					const JsonValue* const jAddrMode = jRoot->getMember("addressMode");
-					const char* const addrMode = jAddrMode->GetString();
-					if (strcmp(addrMode, "repeat") == 0) {
-						addressMode = TextureAddressMode::Repeat;
-					} else if (strcmp(addrMode, "edge") == 0) {
-						addressMode = TextureAddressMode::ClampEdge;
-					} else if (strcmp(addrMode, "border") == 0) {
-						addressMode = TextureAddressMode::ClampBorder;
-					} else {
-						sgeAssert(false && "Unknown addres mode, using the defaults!");
-					}
-
-					result.addressModes[0] = addressMode;
-					result.addressModes[1] = addressMode;
-					result.addressModes[2] = addressMode;
-				}
-			}
-		}
-
-		return result;
-	}
+	SamplerDesc getTextureSamplerDesc(const char* const pAssetPath) const { return AssetTexture::loadTextureSettingInfoFile(pAssetPath); }
 
 	// Check if the file version in DDS already exists, if not or the import fails the function returns false;
 	DDSLoadCode loadDDS(void* const pAsset, const char* const pPath, AssetLibrary* const pMngr) {
@@ -234,8 +343,8 @@ struct TextureViewAssetFactory : public IAssetFactory {
 		AssetTexture& texture = *(AssetTexture*)(pAsset);
 		texture.tex = pMngr->getDevice()->requestResource<Texture>();
 
-		const SamplerDesc samplerDesc = getTextureSamplerDesc(pPath);
-		bool const createSucceeded = texture.tex->create(desc, &initalData[0], samplerDesc);
+		texture.assetSamplerDesc = getTextureSamplerDesc(pPath);
+		bool const createSucceeded = texture.tex->create(desc, &initalData[0], texture.assetSamplerDesc);
 
 		if (createSucceeded == false) {
 			texture.tex.Release();

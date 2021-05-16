@@ -605,9 +605,93 @@ void AssetsWindow::update(SGEContext* const sgecon, const InputState& is) {
 
 				m_exploreModelPreviewWidget.doWidget(sgecon, is, explorePreviewAsset->asModel()->staticEval);
 			} else if (explorePreviewAsset->getType() == AssetType::TextureView) {
-				auto desc = explorePreviewAsset->asTextureView()->tex->getDesc().texture2D;
-				ImVec2 sz = ImGui::GetContentRegionAvail();
-				ImGui::Image(explorePreviewAsset->asTextureView()->tex.GetPtr(), sz);
+				const Texture2DDesc desc = explorePreviewAsset->asTextureView()->tex->getDesc().texture2D;
+				const ImVec2 availableContentSize = ImGui::GetContentRegionAvail();
+
+				const float imageSizeX = availableContentSize.x;
+				const float imageSizeY = desc.height * availableContentSize.x / float(desc.width);
+
+				ImGui::Image(explorePreviewAsset->asTextureView()->tex.GetPtr(), ImVec2(imageSizeX, imageSizeY));
+				ImGui::EndTabItem();
+
+				AssetTexture* const texAsset = explorePreviewAsset->asTextureView();
+
+				const auto getAddressModeName = [](TextureAddressMode::Enum mode) -> const char* {
+					switch (mode) {
+						case TextureAddressMode::Repeat:
+							return "Repeat";
+						case TextureAddressMode::ClampEdge:
+							return "Edge";
+						case TextureAddressMode::ClampBorder:
+							return "Border";
+
+						default:
+							return "Unknown";
+					}
+				};
+
+				const auto getFilterModeName = [](TextureFilter::Enum mode) -> const char* {
+					switch (mode) {
+						case TextureFilter::Min_Mag_Mip_Linear:
+							return "Linear (with mip mapping)";
+						case TextureFilter::Min_Mag_Mip_Point:
+							return "Point (with mip mapping)";
+						default:
+							return "Unknown";
+					}
+				};
+
+				const auto doAddressModeUI = [&getAddressModeName](const char* comboLabel, TextureAddressMode::Enum& mode) -> bool {
+					bool hadChange = false;
+					if (ImGui::BeginCombo(comboLabel, getAddressModeName(mode))) {
+						if (ImGui::Selectable(getAddressModeName(TextureAddressMode::Repeat))) {
+							mode = TextureAddressMode::Repeat;
+							hadChange = true;
+						}
+
+						if (ImGui::Selectable(getAddressModeName(TextureAddressMode::ClampEdge))) {
+							mode = TextureAddressMode::ClampEdge;
+							hadChange = true;
+						}
+
+						if (ImGui::Selectable(getAddressModeName(TextureAddressMode::ClampBorder))) {
+							mode = TextureAddressMode::ClampBorder;
+							hadChange = true;
+						}
+
+						ImGui::EndCombo();
+					}
+
+					return hadChange;
+				};
+
+				bool hadChange = false;
+				hadChange |= doAddressModeUI("Tiling X", texAsset->assetSamplerDesc.addressModes[0]);
+				hadChange |= doAddressModeUI("Tiling Y", texAsset->assetSamplerDesc.addressModes[1]);
+				hadChange |= doAddressModeUI("Tiling Z", texAsset->assetSamplerDesc.addressModes[2]);
+
+				if (ImGui::BeginCombo("Filtering", getFilterModeName(texAsset->assetSamplerDesc.filter))) {
+					if (ImGui::Selectable(getFilterModeName(TextureFilter::Min_Mag_Mip_Linear))) {
+						texAsset->assetSamplerDesc.filter = TextureFilter::Min_Mag_Mip_Linear;
+						hadChange = true;
+					}
+
+					if (ImGui::Selectable(getFilterModeName(TextureFilter::Min_Mag_Mip_Point))) {
+						texAsset->assetSamplerDesc.filter = TextureFilter::Min_Mag_Mip_Point;
+						hadChange = true;
+					}
+
+					ImGui::EndCombo();
+				}
+
+				if (hadChange) {
+					GpuHandle<SamplerState> sampler = getCore()->getDevice()->requestResource<SamplerState>();
+					sampler->create(texAsset->assetSamplerDesc);
+					texAsset->tex->setSamplerState(sampler);
+
+					// Save the modified settings to the *.info file of the texture.
+					texAsset->saveTextureSettingsToInfoFile(*explorePreviewAsset.get());
+				}
 			} else if (explorePreviewAsset->getType() == AssetType::Sprite) {
 				if (isAssetLoaded(explorePreviewAsset->asSprite()->textureAsset)) {
 					auto desc = explorePreviewAsset->asSprite()->textureAsset->asTextureView()->tex->getDesc().texture2D;

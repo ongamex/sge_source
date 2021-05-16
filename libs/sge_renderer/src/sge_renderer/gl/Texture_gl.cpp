@@ -183,11 +183,11 @@ void TextureGL::applySamplerDesc(const SamplerDesc& samplerDesc, bool shouldBind
 	if (forceUsePointSampling == false) {
 		if (samplerDesc.filter == TextureFilter::Min_Mag_Mip_Linear) {
 			samplerFilterMin = m_desc.hasMipMaps() ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR;
-			samplerFilterMag = GL_NEAREST;
+			samplerFilterMag = m_desc.hasMipMaps() ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR;
 		}
 		if (samplerDesc.filter == TextureFilter::Min_Mag_Mip_Point) {
 			samplerFilterMin = m_desc.hasMipMaps() ? GL_NEAREST_MIPMAP_NEAREST : GL_NEAREST;
-			samplerFilterMag = GL_NEAREST;
+			samplerFilterMag = m_desc.hasMipMaps() ? GL_NEAREST_MIPMAP_NEAREST : GL_NEAREST;
 		}
 	} else {
 		samplerFilterMin = GL_NEAREST;

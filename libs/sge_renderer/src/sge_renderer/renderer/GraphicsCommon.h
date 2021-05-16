@@ -575,15 +575,16 @@ struct TextureFilter {
 };
 
 //-------------------------------------------------------------------
-// [NOTE]OpenGL Sampler State specs
+// [NOTE] OpenGL Sampler State specs.
 // https://www.opengl.org/wiki/GLAPI/glSamplerParameter
 // https://www.opengl.org/wiki/GLAPI/glTexParameter
 //-------------------------------------------------------------------
 struct SamplerDesc {
 	SamplerDesc() {
 		filter = TextureFilter::Min_Mag_Mip_Linear;
-		for (auto& v : addressModes)
+		for (auto& v : addressModes) {
 			v = TextureAddressMode::Repeat;
+		}
 		colorBorder[0] = 0.f;
 		colorBorder[1] = 0.f;
 		colorBorder[2] = 0.f;
@@ -600,12 +601,19 @@ struct SamplerDesc {
 	float maxLOD;
 	uint32 maxAnisotropy; // 1- 16
 
-	//[NOTE] float == comparison
 	bool operator==(const SamplerDesc& other) const {
-		return filter == other.filter && addressModes[0] == other.addressModes[0] && addressModes[1] == other.addressModes[1] &&
-		       addressModes[2] == other.addressModes[2] && colorBorder[0] == other.colorBorder[0] &&
-		       colorBorder[1] == other.colorBorder[1] && colorBorder[2] == other.colorBorder[2] && colorBorder[3] == other.colorBorder[3] &&
-		       minLOD == other.minLOD && maxLOD == other.maxLOD;
+		// clang-format off
+		return 
+			   filter == other.filter 
+			&& addressModes[0] == other.addressModes[0] 
+			&& addressModes[1] == other.addressModes[1] 
+			&& addressModes[2] == other.addressModes[2] 
+			&& colorBorder[0] == other.colorBorder[0] 
+			&& colorBorder[1] == other.colorBorder[1] 
+			&& colorBorder[2] == other.colorBorder[2] 
+			&& colorBorder[3] == other.colorBorder[3] 
+			&& minLOD == other.minLOD && maxLOD == other.maxLOD;
+		// clang-format on
 	}
 
 	bool operator!=(const SamplerDesc& other) const { return !(*this == other); }
