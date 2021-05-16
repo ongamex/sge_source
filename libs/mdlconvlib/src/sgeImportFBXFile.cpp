@@ -24,7 +24,8 @@ using namespace sge;
 
 extern "C" {
 
-SGE_MDLCONVLIB_API bool m_sgeImportFBXFile(Model::Model& result, const char* fbxFilename, std::vector<std::string>* pOutReferencedTextures) {
+SGE_MDLCONVLIB_API bool
+    m_sgeImportFBXFile(Model::Model& result, const char* fbxFilename, std::vector<std::string>* pOutReferencedTextures) {
 	// Ensure that the typedef we provide in the header matches the actual function type.
 	static_assert(std::is_same<decltype(&m_sgeImportFBXFile), sgeImportFBXFileFn>::value);
 
@@ -54,8 +55,8 @@ SGE_MDLCONVLIB_API bool m_sgeImportFBXFile(Model::Model& result, const char* fbx
 }
 
 SGE_MDLCONVLIB_API bool m_sgeImportFBXFileAsMultiple(std::vector<MultiModelImportResult>& result,
-                                                   const char* fbxFilename,
-                                                   std::vector<std::string>* pOutReferencedTextures) {
+                                                     const char* fbxFilename,
+                                                     std::vector<std::string>* pOutReferencedTextures) {
 	// Ensure that the typedef we provide in the header matches the actual function type.
 	static_assert(std::is_same<decltype(&m_sgeImportFBXFileAsMultiple), sgeImportFBXFileAsMultipleFn>::value);
 

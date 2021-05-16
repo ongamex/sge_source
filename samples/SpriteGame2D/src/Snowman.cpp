@@ -1,9 +1,9 @@
+#include "sge_core/ICore.h"
 #include "sge_engine/Actor.h"
 #include "sge_engine/GameWorld.h"
 #include "sge_engine/traits/TraitModel.h"
 #include "sge_engine/traits/TraitRigidBody.h"
 #include "sge_engine/typelibHelper.h"
-#include "sge_core/ICore.h"
 
 namespace sge {
 

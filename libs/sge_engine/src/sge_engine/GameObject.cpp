@@ -36,9 +36,9 @@ ReflBlock()
 /// Never call this manually.
 
 void GameObject::private_GameWorld_performInitialization(GameWorld* const world,
-                                                                const ObjectId id,
-                                                                const TypeId typeId,
-                                                                std::string displayName) {
+                                                         const ObjectId id,
+                                                         const TypeId typeId,
+                                                         std::string displayName) {
 	m_id = id;
 	m_type = typeId;
 	m_world = world;

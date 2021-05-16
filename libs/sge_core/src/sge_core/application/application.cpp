@@ -325,7 +325,7 @@ void ApplicationHandler::PollEvents() {
 
 				touch.touchPositionPixels = vec2f(event.tfinger.x, event.tfinger.y) * touchEventsToClientSpaceScaling;
 				touch.touchMotionPixels = vec2f(event.tfinger.dx, event.tfinger.dy) * touchEventsToClientSpaceScaling,
-				touch.touchPressure =  event.tfinger.pressure;
+				touch.touchPressure = event.tfinger.pressure;
 				touch.isJustPressed = true;
 			} break;
 			case SDL_FINGERUP: {
@@ -333,7 +333,7 @@ void ApplicationHandler::PollEvents() {
 
 				touch.touchPositionPixels = vec2f(event.tfinger.x, event.tfinger.y) * touchEventsToClientSpaceScaling;
 				touch.touchMotionPixels = vec2f(event.tfinger.dx, event.tfinger.dy) * touchEventsToClientSpaceScaling,
-				touch.touchPressure =  event.tfinger.pressure;
+				touch.touchPressure = event.tfinger.pressure;
 				touch.isJustReleased = true;
 
 			} break;
@@ -342,7 +342,7 @@ void ApplicationHandler::PollEvents() {
 
 				touch.touchPositionPixels = vec2f(event.tfinger.x, event.tfinger.y) * touchEventsToClientSpaceScaling;
 				touch.touchMotionPixels = vec2f(event.tfinger.dx, event.tfinger.dy) * touchEventsToClientSpaceScaling,
-				touch.touchPressure =  event.tfinger.pressure;
+				touch.touchPressure = event.tfinger.pressure;
 			} break;
 			case SDL_TEXTINPUT: {
 				for (char ch : event.text.text) {

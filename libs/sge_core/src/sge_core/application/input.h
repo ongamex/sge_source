@@ -238,9 +238,9 @@ struct SGE_CORE_API InputState {
 	vec2f GetArrowKeysDir(const bool normalize, bool includeWASD = false, int useGamePadAtIndex = -1) const;
 
 	const GamepadState* getHookedGemepad(const int playerIndex) const;
-	const GamepadState& getXInputDevice(int index) const { 
+	const GamepadState& getXInputDevice(int index) const {
 		sgeAssert(index >= 0 && index < SGE_ARRSZ(xinputDevicesState));
-		return xinputDevicesState[index]; 
+		return xinputDevicesState[index];
 	}
 
   public:

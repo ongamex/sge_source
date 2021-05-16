@@ -6,8 +6,8 @@
 #include "InspectorCmd.h"
 #include "sge_core/ICore.h"
 #include "sge_utils/utils/strings.h"
-#include "traits/TraitCamera.h"
 #include "sge_utils/utils/timer.h"
+#include "traits/TraitCamera.h"
 #include <functional>
 #include <thread>
 

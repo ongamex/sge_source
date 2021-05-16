@@ -553,7 +553,8 @@ void EditorWindow::update(SGEContext* const sgecon, const InputState& is) {
 
 		ImGui::SameLine();
 
-		if (m_assets.m_assetTranslationIcon && ImGui::ImageButton(m_assets.m_assetTranslationIcon->asTextureView()->tex.GetPtr(), ImVec2(24, 24))) {
+		if (m_assets.m_assetTranslationIcon &&
+		    ImGui::ImageButton(m_assets.m_assetTranslationIcon->asTextureView()->tex.GetPtr(), ImVec2(24, 24))) {
 			m_sceneInstance.getInspector().m_transformTool.m_mode = Gizmo3D::Mode_Translation;
 			m_sceneInstance.getInspector().setTool(&m_sceneInstance.getInspector().m_transformTool);
 		}
@@ -561,7 +562,8 @@ void EditorWindow::update(SGEContext* const sgecon, const InputState& is) {
 
 		ImGui::SameLine();
 
-		if (m_assets.m_assetRotationIcon && ImGui::ImageButton(m_assets.m_assetRotationIcon->asTextureView()->tex.GetPtr(), ImVec2(24, 24))) {
+		if (m_assets.m_assetRotationIcon &&
+		    ImGui::ImageButton(m_assets.m_assetRotationIcon->asTextureView()->tex.GetPtr(), ImVec2(24, 24))) {
 			m_sceneInstance.getInspector().m_transformTool.m_mode = Gizmo3D::Mode_Rotation;
 			m_sceneInstance.getInspector().setTool(&m_sceneInstance.getInspector().m_transformTool);
 		}
@@ -577,7 +579,8 @@ void EditorWindow::update(SGEContext* const sgecon, const InputState& is) {
 
 		ImGui::SameLine();
 
-		if (m_assets.m_assetVolumeScaleIcon && ImGui::ImageButton(m_assets.m_assetVolumeScaleIcon->asTextureView()->tex.GetPtr(), ImVec2(24, 24))) {
+		if (m_assets.m_assetVolumeScaleIcon &&
+		    ImGui::ImageButton(m_assets.m_assetVolumeScaleIcon->asTextureView()->tex.GetPtr(), ImVec2(24, 24))) {
 			m_sceneInstance.getInspector().m_transformTool.m_mode = Gizmo3D::Mode_ScaleVolume;
 			m_sceneInstance.getInspector().setTool(&m_sceneInstance.getInspector().m_transformTool);
 		}
