@@ -409,13 +409,13 @@ void DefaultGameDrawer::drawActor(
 	const vec4f wireframeColor = (drawReason == drawReason_visualizeSelectionPrimary) ? kPrimarySelectionColor : kSecondarySelectionColor;
 	const int wireframeColorInt = colorToIntRgba(wireframeColor);
 
-	vec4f highlightColor = useWireframe ? wireframeColor : vec4f(0.f);
-	highlightColor.w = useWireframe ? 1.f : 0.f;
+	vec4f selectionTint = useWireframe ? wireframeColor : vec4f(0.f);
+	selectionTint.w = useWireframe ? 1.f : 0.f;
 
 	// Build the general modifications for the actor drawing.
 	GeneralDrawMod generalMods;
 
-	generalMods.highlightColor = highlightColor;
+	generalMods.selectionTint = selectionTint;
 	generalMods.isRenderingShadowMap = (drawReason == drawReason_gameplayShadow);
 	generalMods.ambientLightColor = getWorld()->m_ambientLight;
 	generalMods.uRimLightColorWWidth = vec4f(getWorld()->m_rimLight, getWorld()->m_rimCosineWidth);
@@ -581,20 +581,20 @@ void DefaultGameDrawer::drawTraitStaticModel(TraitModel* modelTrait,
 					const mat4f n2w = actor->getTransformMtx() * modelTrait->m_additionalTransform;
 					model->sharedEval.evaluate(boneOverrides);
 					m_constantColorShader.draw(drawSets.rdest, drawSets.drawCamera->getProjView(), n2w, model->sharedEval,
-					                           generalMods.highlightColor);
+					                           generalMods.selectionTint);
 				}
 			} else if (modelTrait->animationName.empty()) {
 				if (model && model->staticEval.isInitialized()) {
 					const mat4f n2w = actor->getTransformMtx() * modelTrait->m_additionalTransform;
 					m_constantColorShader.draw(drawSets.rdest, drawSets.drawCamera->getProjView(), n2w, model->staticEval,
-					                           generalMods.highlightColor);
+					                           generalMods.selectionTint);
 				}
 			} else {
 				if (model && model->sharedEval.isInitialized()) {
 					const mat4f n2w = actor->getTransformMtx() * modelTrait->m_additionalTransform;
 					model->sharedEval.evaluate(modelTrait->animationName.c_str(), modelTrait->animationTime);
 					m_constantColorShader.draw(drawSets.rdest, drawSets.drawCamera->getProjView(), n2w, model->sharedEval,
-					                           generalMods.highlightColor);
+					                           generalMods.selectionTint);
 				}
 			}
 		}
@@ -609,6 +609,10 @@ void DefaultGameDrawer::drawTraitStaticModel(TraitModel* modelTrait,
 				Geometry texPlaneGeom = m_texturedPlaneDraw.getGeometry(drawSets.rdest.getDevice());
 				Material texPlaneMtl = m_texturedPlaneDraw.getMaterial(texture);
 				texPlaneMtl.diffuseColor = vec4f(modelTrait->imageSettings.colorTint);
+
+				if (drawReason_IsVisualizeSelection(drawReason)) {
+					texPlaneMtl.diffuseColor *= generalMods.selectionTint;
+				}
 
 				InstanceDrawMods mods;
 				mods.gameTime = getWorld()->timeSpendPlaying;
@@ -633,6 +637,10 @@ void DefaultGameDrawer::drawTraitStaticModel(TraitModel* modelTrait,
 				Material texPlaneMtl = m_texturedPlaneDraw.getMaterial(pSprite->textureAsset->asTextureView()->tex.GetPtr());
 				texPlaneMtl.diffuseColor = vec4f(modelTrait->imageSettings.colorTint);
 
+				if (drawReason_IsVisualizeSelection(drawReason)) {
+					texPlaneMtl.diffuseColor *= generalMods.selectionTint;
+				}
+
 				InstanceDrawMods mods;
 				mods.gameTime = getWorld()->timeSpendPlaying;
 				mods.forceNoLighting = modelTrait->imageSettings.forceNoLighting;
@@ -654,7 +662,7 @@ void DefaultGameDrawer::drawTraitParticles(TraitParticles* particlesTrait, const
 	const vec3f camPos = drawSets.drawCamera->getCameraPosition();
 	const vec3f camLookDir = drawSets.drawCamera->getCameraLookDir();
 
-	generalMods.highlightColor = vec4f(0.f);
+	generalMods.selectionTint = vec4f(0.f);
 
 	for (ParticleGroupDesc& pdesc : particlesTrait->m_pgroups) {
 		if (pdesc.m_visMethod == ParticleGroupDesc::vis_model3D) {
@@ -700,7 +708,7 @@ void DefaultGameDrawer::drawTraitParticles2(TraitParticles2* particlesTrait, con
 	const vec3f camPos = drawSets.drawCamera->getCameraPosition();
 	const vec3f camLookDir = drawSets.drawCamera->getCameraLookDir();
 
-	generalMods.highlightColor = vec4f(0.f);
+	generalMods.selectionTint = vec4f(0.f);
 
 	const int numPGroups = particlesTrait->getNumPGroups();
 	for (int iGroup = 0; iGroup < numPGroups; ++iGroup) {
@@ -827,8 +835,8 @@ void DefaultGameDrawer::drawActorLegacy(Actor* actor,
 	}
 	const uint32 wireframeColorInt = colorToIntRgba(wireframeColor);
 
-	vec4f highlightColor = useWireframe ? wireframeColor : vec4f(0.f);
-	highlightColor.w = useWireframe ? 1.f : 0.f;
+	vec4f selectionTint = useWireframe ? wireframeColor : vec4f(0.f);
+	selectionTint.w = useWireframe ? 1.f : 0.f;
 
 	// If we are rendering the actor to visualize a selection, show a wireframe representation specifying how the light is oriented, or its
 	// area of effect.
@@ -864,7 +872,7 @@ void DefaultGameDrawer::drawActorLegacy(Actor* actor,
 		if (simpleObstacle->geometry.hasData()) {
 			if (drawReason_IsVisualizeSelection(drawReason)) {
 				m_constantColorShader.drawGeometry(drawSets.rdest, drawSets.drawCamera->getProjView(), simpleObstacle->getTransformMtx(),
-				                                   simpleObstacle->geometry, generalMods.highlightColor);
+				                                   simpleObstacle->geometry, generalMods.selectionTint);
 			} else {
 				m_modeldraw.drawGeometry(drawSets.rdest, camPos, camLookDir, drawSets.drawCamera->getProjView(),
 				                         simpleObstacle->getTransformMtx(), generalMods, &simpleObstacle->geometry,

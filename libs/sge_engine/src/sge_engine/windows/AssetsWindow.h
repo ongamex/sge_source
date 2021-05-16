@@ -17,12 +17,16 @@ struct SGE_ENGINE_API AssetsWindow : public IImGuiWindow {
   private:
 	struct AssetImportData {
 		bool importFailed = false;
-		std::string filename;
+		/// The full path to the file we are about to import.
+		std::string fileToImportPath;
 		AssetType assetType;
-		bool importModelsAsMultipleFiles = false;
+		
+		/// The directory where the imported file(s) will be.
 		std::string outputDir;
+		/// The filename with extension, of the output file.
 		std::string outputFilename;
 
+		bool importModelsAsMultipleFiles = false;
 		bool preview = true;
 		ModelPreviewWidget modelPreviewWidget;
 

@@ -328,7 +328,7 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 	shaderPerm.bind<64>(uniforms, uCameraLookDirWs, (void*)camLookDir.data);
 	shaderPerm.bind<64>(uniforms, uProjView, (void*)&projView);
 
-	shaderPerm.bind<64>(uniforms, uiHighLightColor, (void*)&generalMods.highlightColor);
+	shaderPerm.bind<64>(uniforms, uiHighLightColor, (void*)&generalMods.selectionTint);
 
 	shaderPerm.bind<64>(uniforms, uColor, (void*)&material.diffuseColor);
 

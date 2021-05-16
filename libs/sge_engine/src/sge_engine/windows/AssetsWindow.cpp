@@ -58,7 +58,7 @@ bool AssetsWindow::importAsset(AssetImportData& aid) {
 		}
 
 		std::vector<std::string> referencedTextures;
-		if (m_sgeImportFBXFile && m_sgeImportFBXFile(importedModel, aid.filename.c_str(), &referencedTextures)) {
+		if (m_sgeImportFBXFile && m_sgeImportFBXFile(importedModel, aid.fileToImportPath.c_str(), &referencedTextures)) {
 			createDirectory(extractFileDir(aid.outputDir.c_str(), false).c_str());
 
 			// Convert the 3d model to our internal type.
@@ -73,7 +73,7 @@ bool AssetsWindow::importAsset(AssetImportData& aid) {
 			getEngineGlobal()->showNotification(notificationMsg);
 
 			// Copy the referenced textures.
-			const std::string modelInputDir = extractFileDir(aid.filename.c_str(), true);
+			const std::string modelInputDir = extractFileDir(aid.fileToImportPath.c_str(), true);
 			for (const std::string& texturePathLocal : referencedTextures) {
 				const std::string textureDestDir = aid.outputDir + "/" + extractFileDir(texturePathLocal.c_str(), true);
 				const std::string textureFilename = extractFileNameWithExt(texturePathLocal.c_str());
@@ -104,7 +104,7 @@ bool AssetsWindow::importAsset(AssetImportData& aid) {
 		std::vector<std::string> referencedTextures;
 		std::vector<MultiModelImportResult> importedModels;
 
-		if (m_sgeImportFBXFileAsMultiple && m_sgeImportFBXFileAsMultiple(importedModels, aid.filename.c_str(), &referencedTextures)) {
+		if (m_sgeImportFBXFileAsMultiple && m_sgeImportFBXFileAsMultiple(importedModels, aid.fileToImportPath.c_str(), &referencedTextures)) {
 			createDirectory(extractFileDir(aid.outputDir.c_str(), false).c_str());
 
 			for (MultiModelImportResult& model : importedModels) {
@@ -126,7 +126,7 @@ bool AssetsWindow::importAsset(AssetImportData& aid) {
 			}
 
 			// Copy the referenced textures.
-			const std::string modelInputDir = extractFileDir(aid.filename.c_str(), true);
+			const std::string modelInputDir = extractFileDir(aid.fileToImportPath.c_str(), true);
 			for (const std::string& texturePathLocal : referencedTextures) {
 				const std::string textureDestDir = aid.outputDir + "/" + extractFileDir(texturePathLocal.c_str(), true);
 				const std::string textureFilename = extractFileNameWithExt(texturePathLocal.c_str());
@@ -152,7 +152,7 @@ bool AssetsWindow::importAsset(AssetImportData& aid) {
 	} else if (aid.assetType == AssetType::TextureView) {
 		// TODO: DDS conversion.
 		createDirectory(extractFileDir(aid.outputDir.c_str(), false).c_str());
-		copyFile(aid.filename.c_str(), fullAssetPath.c_str());
+		copyFile(aid.fileToImportPath.c_str(), fullAssetPath.c_str());
 
 		PAsset assetTexture = assetLib->getAsset(AssetType::TextureView, fullAssetPath.c_str(), true);
 		assetLib->reloadAssetModified(assetTexture.get());
@@ -160,9 +160,9 @@ bool AssetsWindow::importAsset(AssetImportData& aid) {
 		return true;
 	} else if (aid.assetType == AssetType::Sprite) {
 		SpriteAnimation tempSpriteAnimation;
-		if (SpriteAnimation::importFromAsepriteSpriteSheetJsonFile(tempSpriteAnimation, aid.filename.c_str())) {
+		if (SpriteAnimation::importFromAsepriteSpriteSheetJsonFile(tempSpriteAnimation, aid.fileToImportPath.c_str())) {
 			// There is a texture associated with this sprite, import it as well.
-			std::string importTextureSource = extractFileDir(aid.filename.c_str(), true) + tempSpriteAnimation.texturePath;
+			std::string importTextureSource = extractFileDir(aid.fileToImportPath.c_str(), true) + tempSpriteAnimation.texturePath;
 			std::string importTextureDest = aid.outputDir + "/" + tempSpriteAnimation.texturePath;
 			createDirectory(extractFileDir(importTextureDest.c_str(), false).c_str());
 			copyFile(importTextureSource.c_str(), importTextureDest.c_str());
@@ -172,11 +172,11 @@ bool AssetsWindow::importAsset(AssetImportData& aid) {
 
 			return tempSpriteAnimation.saveSpriteToFile(fullAssetPath.c_str());
 		} else {
-			SGE_DEBUG_ERR("Failed to import %s as a Sprite!", aid.filename.c_str());
+			SGE_DEBUG_ERR("Failed to import %s as a Sprite!", aid.fileToImportPath.c_str());
 		}
 	} else if (aid.assetType == AssetType::Text) {
 		createDirectory(extractFileDir(aid.outputDir.c_str(), false).c_str());
-		copyFile(aid.filename.c_str(), fullAssetPath.c_str());
+		copyFile(aid.fileToImportPath.c_str(), fullAssetPath.c_str());
 
 		PAsset asset = assetLib->getAsset(AssetType::Text, fullAssetPath.c_str(), true);
 		assetLib->reloadAssetModified(asset.get());
@@ -184,7 +184,7 @@ bool AssetsWindow::importAsset(AssetImportData& aid) {
 		return true;
 	} else {
 		createDirectory(extractFileDir(aid.outputDir.c_str(), false).c_str());
-		copyFile(aid.filename.c_str(), fullAssetPath.c_str());
+		copyFile(aid.fileToImportPath.c_str(), fullAssetPath.c_str());
 		SGE_DEBUG_WAR("Imported a files by just copying it as it is not recognized asset type!")
 		return true;
 	}
@@ -210,7 +210,7 @@ void AssetsWindow::update_assetImport(SGEContext* const sgecon, const InputState
 				ImGui::TextColored(ImVec4(1.f, 0.f, 0.f, 1.f), "Failed to Import");
 			}
 
-			string_format(groupPanelName, "3D Model %s", aid.filename.c_str());
+			string_format(groupPanelName, "3D Model %s", aid.fileToImportPath.c_str());
 			ImGuiEx::BeginGroupPanel(groupPanelName.c_str());
 			{
 				if (ImGui::Button("Import As")) {
@@ -433,9 +433,9 @@ void AssetsWindow::update(SGEContext* const sgecon, const InputState& is) {
 						// If openAssetImport_filename is specified then we must use it, it means that the popup was somehow forced
 						// externally like a drag-and-drop.
 						if (openAssetImport_filename.empty()) {
-							m_importAssetToImportInPopup.filename = FileOpenDialog("Pick a file to import", true, "*.*\0*.*\0", nullptr);
+							m_importAssetToImportInPopup.fileToImportPath = FileOpenDialog("Pick a file to import", true, "*.*\0*.*\0", nullptr);
 						} else {
-							m_importAssetToImportInPopup.filename = openAssetImport_filename;
+							m_importAssetToImportInPopup.fileToImportPath = openAssetImport_filename;
 							openAssetImport_filename.clear();
 						}
 
@@ -444,14 +444,14 @@ void AssetsWindow::update(SGEContext* const sgecon, const InputState& is) {
 						m_importAssetToImportInPopup.outputDir = pathToAssets.string();
 						if (importOverAsset.empty()) {
 							m_importAssetToImportInPopup.outputFilename =
-							    extractFileNameWithExt(m_importAssetToImportInPopup.filename.c_str());
+							    extractFileNameWithExt(m_importAssetToImportInPopup.fileToImportPath.c_str());
 						} else {
 							m_importAssetToImportInPopup.outputFilename = importOverAsset.filename().string();
 							importOverAsset.clear();
 						}
 
 						// Guess the type of the inpute asset.
-						const std::string inputExtension = extractFileExtension(m_importAssetToImportInPopup.filename.c_str());
+						const std::string inputExtension = extractFileExtension(m_importAssetToImportInPopup.fileToImportPath.c_str());
 						m_importAssetToImportInPopup.assetType = assetType_guessFromExtension(inputExtension.c_str(), true);
 
 						// If the asset type is None, maybe the asset has a commonly used extension
@@ -462,7 +462,7 @@ void AssetsWindow::update(SGEContext* const sgecon, const InputState& is) {
 							if (inputExtension == "json") {
 								SpriteAnimation tempSpriteAnimation;
 								if (SpriteAnimation::importFromAsepriteSpriteSheetJsonFile(tempSpriteAnimation,
-								                                                           m_importAssetToImportInPopup.filename.c_str())) {
+								                                                           m_importAssetToImportInPopup.fileToImportPath.c_str())) {
 									m_importAssetToImportInPopup.assetType = AssetType::Sprite;
 								}
 							}
@@ -479,7 +479,7 @@ void AssetsWindow::update(SGEContext* const sgecon, const InputState& is) {
 							    replaceExtension(m_importAssetToImportInPopup.outputFilename.c_str(), "sprite");
 						}
 
-						if (m_importAssetToImportInPopup.filename.empty()) {
+						if (m_importAssetToImportInPopup.fileToImportPath.empty()) {
 							ImGui::CloseCurrentPopup();
 						}
 					}
@@ -531,10 +531,10 @@ void AssetsWindow::update(SGEContext* const sgecon, const InputState& is) {
 						}
 					}
 
-					ImGuiEx::InputText("Read From", m_importAssetToImportInPopup.filename, ImGuiInputTextFlags_ReadOnly);
+					ImGuiEx::InputText("Read From", m_importAssetToImportInPopup.fileToImportPath, ImGuiInputTextFlags_ReadOnly);
 
 					if (m_importAssetToImportInPopup.importModelsAsMultipleFiles == false) {
-						ImGuiEx::InputText("Import As", m_importAssetToImportInPopup.filename);
+						ImGuiEx::InputText("Import As", m_importAssetToImportInPopup.outputFilename);
 					}
 
 					// Show a warning that the import will fail if mdlconvlib is not loaded.

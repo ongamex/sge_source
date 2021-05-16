@@ -25,7 +25,8 @@ struct MaterialOverride {
 // passing it toe shader
 //------------------------------------------------------------
 struct ShadingLightData {
-	// (x,y,z) - position. w holds type of the light as a float.
+	/// (x,y,z) - position or direction in case of directional light.
+	/// w holds type of the light (a member of LightType) as a float.
 	vec4f lightPositionAndType = vec4f(0.f);
 	vec4f lightSpotDirAndCosAngle = vec4f(1.f, 0.f, 0.f, 0.f);
 	// (x,y,z) the color of the light multiplied by the intensity). w - flags as float.
@@ -43,15 +44,26 @@ struct ShadingLightData {
 // GeneralDrawMod
 //------------------------------------------------------------
 struct GeneralDrawMod {
+	/// True if the drawing is reandering a shadow map.
 	bool isRenderingShadowMap = false;
+	/// True if the current render is targeting a shadow map for a point light.
 	bool isShadowMapForPointLight = false;
 	float shadowMapPointLightDepthRange = 0.f;
 
-	vec4f highlightColor = vec4f(0.f);
+	/// If editor wants to visualize a selection, the user should use this color to somehow
+	/// modify the rendering of the object so it is visible that it is selected.
+	vec4f selectionTint = vec4f(0.f);
+
+	/// The ambient light in the scene.
 	vec3f ambientLightColor = vec3f(1.f);
+
+	/// The rim light in the scene.
 	vec4f uRimLightColorWWidth = vec4f(vec3f(0.1f), 0.7f);
 
+	/// lightsCount is the size of the aaray pointed by @ppLightData.
 	int lightsCount = 0;
+
+	/// An array of all lights that affect the object. The size of the array is @lightsCount.
 	const ShadingLightData** ppLightData = nullptr;
 };
 
