@@ -302,22 +302,26 @@ bool EvaluatedModel::evaluateSkinning() {
 
 
 				{
-					TextureDesc td;
-					td.textureType = UniformType::Texture2D;
-					td.usage = TextureUsage::DynamicResource;
-					td.format = TextureFormat::R32G32B32A32_FLOAT;
-					td.texture2D.arraySize = 1;
-					td.texture2D = Texture2DDesc(4, int(mesh->bones.size()));
-
-					SamplerDesc sd;
-					sd.filter = TextureFilter::Min_Mag_Mip_Point;
-
 					TextureData data = TextureData(bonesTransformTexData.data(), sizeof(vec4f) * 4);
+
 					if (evalMesh.skinningBoneTransfsTex.HasResource() == false) {
+						TextureDesc td;
+						td.textureType = UniformType::Texture2D;
+						td.usage = TextureUsage::DynamicResource;
+						td.format = TextureFormat::R32G32B32A32_FLOAT;
+						td.texture2D.arraySize = 1;
+						td.texture2D = Texture2DDesc(4, int(mesh->bones.size()));
+
+						SamplerDesc sd;
+						sd.filter = TextureFilter::Min_Mag_Mip_Point;
+
 						evalMesh.skinningBoneTransfsTex = context->getDevice()->requestResource<Texture>();
+						evalMesh.skinningBoneTransfsTex->create(td, &data, sd);
+					} else {
+						context->updateTextureData(evalMesh.skinningBoneTransfsTex.GetPtr(), data);
 					}
 
-					evalMesh.skinningBoneTransfsTex->create(td, &data, sd);
+					
 				}
 
 #if 0
@@ -386,11 +390,11 @@ bool EvaluatedModel::evaluateSkinning() {
 			}
 
 			// Finally fill the geometry structure.
-			evalMesh.geom =
-			    Geometry(evalMesh.vertexBuffer.GetPtr(), evalMesh.indexBuffer.GetPtr(), evalMesh.skinningBoneTransfsTex.GetPtr(), evalMesh.vertexDeclIndex, vertexDeclHasVertexColor,
-			             vertexDeclHasUv, vertexDeclHasNormals, vertexDeclHasTangentSpace, evalMesh.pReferenceMesh->primTopo,
-			             evalMesh.pReferenceMesh->vbByteOffset, evalMesh.pReferenceMesh->ibByteOffset, evalMesh.pReferenceMesh->stride,
-			             evalMesh.pReferenceMesh->ibFmt, evalMesh.pReferenceMesh->numElements);
+			evalMesh.geom = Geometry(evalMesh.vertexBuffer.GetPtr(), evalMesh.indexBuffer.GetPtr(),
+			                         evalMesh.skinningBoneTransfsTex.GetPtr(), evalMesh.vertexDeclIndex, vertexDeclHasVertexColor,
+			                         vertexDeclHasUv, vertexDeclHasNormals, vertexDeclHasTangentSpace, evalMesh.pReferenceMesh->primTopo,
+			                         evalMesh.pReferenceMesh->vbByteOffset, evalMesh.pReferenceMesh->ibByteOffset,
+			                         evalMesh.pReferenceMesh->stride, evalMesh.pReferenceMesh->ibFmt, evalMesh.pReferenceMesh->numElements);
 		}
 
 	// Attach the meshes to the evaluated nodes.

@@ -124,6 +124,8 @@ struct SGEContextImmediateD3D11 : public SGEContext {
 	void* map(Buffer* buffer, const Map::Enum map) final;
 	void unMap(Buffer* buffer) final;
 
+	void updateTextureData(Texture* texture,  const TextureData& td) override;
+
 	void clearColor(FrameTarget* target, int index, const float rgba[4]) final;
 	void clearDepth(FrameTarget* target, float depth) final;
 

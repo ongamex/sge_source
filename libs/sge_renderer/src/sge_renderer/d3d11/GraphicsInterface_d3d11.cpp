@@ -397,6 +397,27 @@ void SGEContextImmediateD3D11::unMap(Buffer* buffer) {
 	((BufferD3D11*)buffer)->unMap(this);
 }
 
+void SGEContextImmediateD3D11::updateTextureData(Texture* texture, const TextureData& texData) {
+	if (texture && texture->getDesc().textureType == UniformType::Texture2D && texData.data) {
+		TextureD3D11* texD3D = ((TextureD3D11*)texture);
+
+		D3D11_MAPPED_SUBRESOURCE mapped;
+		HRESULT hr = D3D11_GetImmContext()->Map(texD3D->D3D11_GetTextureResource(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+
+		if (SUCCEEDED(hr)) {
+			char* rowWriteLocation = (char*)mapped.pData;
+			for (int t = 0; t < texture->getDesc().texture2D.height; ++t) {
+				memcpy(rowWriteLocation, (char*)texData.data + t * texData.rowByteSize, texData.rowByteSize);
+				rowWriteLocation += mapped.RowPitch;
+			}
+
+
+
+			D3D11_GetImmContext()->Unmap(texD3D->D3D11_GetTextureResource(), 0);
+		}
+	}
+}
+
 //--------------------------------------------------------------------------
 void SGEContextImmediateD3D11::beginQuery(Query* const query) {
 	QueryD3D11* const queryImpl = (QueryD3D11*)query;
