@@ -149,6 +149,7 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 		OPT_UseNormalMap,
 		OPT_DiffuseColorSrc,
 		OPT_Lighting,
+		OPT_HasVertexSkinning,
 		kNumOptions,
 	};
 
@@ -190,6 +191,7 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 		uMetalness,
 		uRoughness,
 		uPBRMtlFlags,
+		uSkinningBones,
 	};
 
 	if (shadingPermutFWDShading.isValid() == false) {
@@ -199,6 +201,7 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 		    {OPT_UseNormalMap, "OPT_UseNormalMap", {"0", "1"}},
 		    {OPT_DiffuseColorSrc, "OPT_DiffuseColorSrc", {"0", "1", "2", "3", "4"}},
 		    {OPT_Lighting, "OPT_Lighting", {SGE_MACRO_STR(kLightingShaded), SGE_MACRO_STR(kLightingForceNoLighting)}},
+		    {OPT_HasVertexSkinning, "OPT_HasVertexSkinning", {SGE_MACRO_STR(kHasVertexSkinning_No), SGE_MACRO_STR(kHasVertexSkinning_Yes)}},
 		};
 
 		// clang-format off
@@ -242,6 +245,7 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 		    {uMetalness, "uMetalness"},
 		    {uRoughness, "uRoughness"},
 		    {uPBRMtlFlags, "uPBRMtlFlags"},
+			{uSkinningBones, "uSkinningBones"},
 		};
 		// clang-format on
 
@@ -279,12 +283,12 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 	const int optLighting = (mods.forceNoLighting ? kLightingForceNoLighting : kLightingShaded);
 
 	const int optUseNormalMap = !!(geometry->vertexDeclHasTangentSpace && material.texNormalMap);
+	const int optHasVertexSkinning = (geometry->skinningBoneTransforms != nullptr) ? kHasVertexSkinning_Yes : kHasVertexSkinning_No;
 
-	const OptionPermuataor::OptionChoice optionChoice[kNumOptions] = {
-	    {OPT_UseNormalMap, optUseNormalMap},
-	    {OPT_DiffuseColorSrc, optDiffuseColorSrc},
-	    {OPT_Lighting, optLighting},
-	};
+	const OptionPermuataor::OptionChoice optionChoice[kNumOptions] = {{OPT_UseNormalMap, optUseNormalMap},
+	                                                                  {OPT_DiffuseColorSrc, optDiffuseColorSrc},
+	                                                                  {OPT_Lighting, optLighting},
+	                                                                  {OPT_HasVertexSkinning, optHasVertexSkinning}};
 
 	const int iShaderPerm =
 	    shadingPermutFWDShading->getCompileTimeOptionsPerm().computePermutationIndex(optionChoice, SGE_ARRSZ(optionChoice));
@@ -409,6 +413,11 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 
 	if (shaderPerm.uniformLUT[uPointLightShadowMap].isNull() == false) {
 		uniforms.push_back(BoundUniform(shaderPerm.uniformLUT[uPointLightShadowMap], (emptyCubeShadowMap.GetPtr())));
+		sgeAssert(uniforms.back().bindLocation.isNull() == false && uniforms.back().bindLocation.uniformType != 0);
+	}
+
+	if (shaderPerm.uniformLUT[uSkinningBones].isNull() == false) {
+		uniforms.push_back(BoundUniform(shaderPerm.uniformLUT[uSkinningBones], (geometry->skinningBoneTransforms)));
 		sgeAssert(uniforms.back().bindLocation.isNull() == false && uniforms.back().bindLocation.uniformType != 0);
 	}
 

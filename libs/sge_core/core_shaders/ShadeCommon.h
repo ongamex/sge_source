@@ -4,6 +4,10 @@
 #ifndef SHADECOMMON_H
 #define SHADECOMMON_H
 
+// Settings for skinned meshes OPT_HasVertexSkinning
+#define kHasVertexSkinning_No 0
+#define kHasVertexSkinning_Yes 1
+
 // Setting for OPT_HasVertexColor, vertex color can be used as diffuse source or for tinting.
 #define kHasVertexColor_No 0
 #define kHasVertexColor_YesFloat3 1

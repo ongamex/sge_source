@@ -93,8 +93,6 @@ namespace Model {
 	// Skinning bone.
 	struct Bone {
 		mat4f offsetMatrix = mat4f::getIdentity();
-		std::vector<int> vertexIds;
-		std::vector<float> weights;
 		struct Node* node = nullptr;
 	};
 

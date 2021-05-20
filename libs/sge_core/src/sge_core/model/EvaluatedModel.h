@@ -47,6 +47,7 @@ struct EvaluatedNode {
 struct EvaluatedMesh {
 	GpuHandle<Buffer> vertexBuffer;
 	GpuHandle<Buffer> indexBuffer;
+	GpuHandle<Texture> skinningBoneTransfsTex;
 	VertexDeclIndex vertexDeclIndex = VertexDeclIndex_Null;
 	Model::Mesh* pReferenceMesh = nullptr;
 	Geometry geom;

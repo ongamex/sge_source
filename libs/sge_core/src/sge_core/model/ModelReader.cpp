@@ -359,9 +359,6 @@ namespace Model {
 
 								// Becase nodes are loded before meshes, we must do that gymnastic.
 								bone2nodeResolve[&bone] = jBone->getMember("node_id")->getNumberAs<int>();
-
-								LoadDataChunk(bone.vertexIds, jBone->getMember("vertIdsChunkId")->getNumberAs<int>());
-								LoadDataChunk(bone.weights, jBone->getMember("weightsChunkId")->getNumberAs<int>());
 								LoadDataChunkRaw(&bone.offsetMatrix, sizeof(bone.offsetMatrix),
 								                 jBone->getMember("offsetMatrixChunkId")->getNumberAs<int>());
 							}

@@ -8,6 +8,7 @@ struct Geometry {
 	Geometry() = default;
 	Geometry(Buffer* vertexBuffer,
 	         Buffer* indexBuffer,
+	         Texture* skinningBoneTransforms,
 	         VertexDeclIndex vertexDeclIndex,
 	         bool vertexDeclHasVertexColor,
 	         bool vertexDeclHasUv,
@@ -21,6 +22,7 @@ struct Geometry {
 	         int numElements)
 	    : vertexBuffer(vertexBuffer)
 	    , indexBuffer(indexBuffer)
+	    , skinningBoneTransforms(skinningBoneTransforms)
 	    , vertexDeclIndex(vertexDeclIndex)
 	    , vertexDeclHasVertexColor(vertexDeclHasVertexColor)
 	    , vertexDeclHasUv(vertexDeclHasUv)
@@ -37,6 +39,7 @@ struct Geometry {
 
 	Buffer* vertexBuffer = nullptr;
 	Buffer* indexBuffer = nullptr;
+	Texture* skinningBoneTransforms = nullptr;
 	VertexDeclIndex vertexDeclIndex = VertexDeclIndex_Null;
 	bool vertexDeclHasVertexColor = false;
 	bool vertexDeclHasUv = false;

@@ -155,8 +155,8 @@ void ABlockingObstacle::postUpdate(const GameUpdateSets& UNUSED(updateSets)) {
 
 		VertexDeclIndex vertexDeclIdx = getCore()->getDevice()->getVertexDeclIndex(vertexDecl, SGE_ARRSZ(vertexDecl));
 
-		geometry = Geometry(vertexBuffer, indexBuffer, vertexDeclIdx, false, false, true, false, PrimitiveTopology::TriangleList, 0, 0,
-		                    sizeof(vec3f) * 2, UniformType::Uint, numIndices);
+		geometry = Geometry(vertexBuffer, indexBuffer, nullptr, vertexDeclIdx, false, false, true, false, PrimitiveTopology::TriangleList,
+		                    0, 0, sizeof(vec3f) * 2, UniformType::Uint, numIndices);
 	}
 
 	material = Material();

@@ -264,7 +264,7 @@ bool EvaluatedModel::evaluateSkinning() {
 
 				if (decl.semantic == "a_uv") {
 					vertexDeclHasUv = true;
-					tangetSpaceCounter++;
+					tangetSpaceCounter++; // Tangents space is kind of useless for shading without UVs.
 				}
 
 				if (decl.semantic == "a_normal") {
@@ -284,17 +284,43 @@ bool EvaluatedModel::evaluateSkinning() {
 			vertexDeclHasTangentSpace = (tangetSpaceCounter == 4);
 
 			evalMesh.indexBuffer = meshData->indexBuffer;
-
-			if (mesh->bones.empty()) {
-				evalMesh.vertexBuffer = meshData->vertexBuffer;
-			} else {
+			evalMesh.vertexBuffer = meshData->vertexBuffer;
+			if (mesh->bones.empty() == false) {
 				// If the mesh has software skinning perform CPU skinning.
 				const int posByteOffset = mesh->vbPositionOffsetBytes;
 				const int normalByteOffset = mesh->vbNormalOffsetBytes;
 
 				// Duplicate the raw vertex buffer data and zero the vertex position.
 				std::vector<char> vbdata(meshData->vertexBufferRaw.size());
+				std::vector<mat4f> bonesTransformTexData(mesh->bones.size());
+				for (int iBone = 0; iBone < mesh->bones.size(); ++iBone) {
+					const Model::Bone& bone = mesh->bones[iBone];
+					const mat4f boneTransformWithOffsetModelObjectSpace =
+					    m_nodes.find_element(bone.node)->evalGlobalTransform * bone.offsetMatrix;
+					bonesTransformTexData[iBone] = boneTransformWithOffsetModelObjectSpace;
+				}
 
+
+				{
+					TextureDesc td;
+					td.textureType = UniformType::Texture2D;
+					td.usage = TextureUsage::DynamicResource;
+					td.format = TextureFormat::R32G32B32A32_FLOAT;
+					td.texture2D.arraySize = 1;
+					td.texture2D = Texture2DDesc(4, int(mesh->bones.size()));
+
+					SamplerDesc sd;
+					sd.filter = TextureFilter::Min_Mag_Mip_Point;
+
+					TextureData data = TextureData(bonesTransformTexData.data(), sizeof(vec4f) * 4);
+					if (evalMesh.skinningBoneTransfsTex.HasResource() == false) {
+						evalMesh.skinningBoneTransfsTex = context->getDevice()->requestResource<Texture>();
+					}
+
+					evalMesh.skinningBoneTransfsTex->create(td, &data, sd);
+				}
+
+#if 0
 				sgeAssert((vbdata.size() % mesh->stride) == 0);
 				const int numVerts = int(vbdata.size() / mesh->stride);
 				for (size_t t = 0; t < numVerts; ++t) {
@@ -356,11 +382,12 @@ bool EvaluatedModel::evaluateSkinning() {
 				void* const pMappedData = context->map(evalMesh.vertexBuffer, Map::WriteDiscard);
 				memcpy(pMappedData, vbdata.data(), vbdata.size());
 				context->unMap(evalMesh.vertexBuffer);
+#endif
 			}
 
 			// Finally fill the geometry structure.
 			evalMesh.geom =
-			    Geometry(evalMesh.vertexBuffer.GetPtr(), evalMesh.indexBuffer.GetPtr(), evalMesh.vertexDeclIndex, vertexDeclHasVertexColor,
+			    Geometry(evalMesh.vertexBuffer.GetPtr(), evalMesh.indexBuffer.GetPtr(), evalMesh.skinningBoneTransfsTex.GetPtr(), evalMesh.vertexDeclIndex, vertexDeclHasVertexColor,
 			             vertexDeclHasUv, vertexDeclHasNormals, vertexDeclHasTangentSpace, evalMesh.pReferenceMesh->primTopo,
 			             evalMesh.pReferenceMesh->vbByteOffset, evalMesh.pReferenceMesh->ibByteOffset, evalMesh.pReferenceMesh->stride,
 			             evalMesh.pReferenceMesh->ibFmt, evalMesh.pReferenceMesh->numElements);

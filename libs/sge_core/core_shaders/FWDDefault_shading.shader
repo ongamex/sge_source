@@ -62,6 +62,7 @@ uniform float4 lightShadowRange;
 
 uniform samplerCUBE uPointLightShadowMap;
 
+uniform sampler2D uSkinningBones;
 
 //--------------------------------------------------------------------
 // Vertex Shader
@@ -81,6 +82,11 @@ struct VS_INPUT {
 
 #if OPT_DiffuseColorSrc == kDiffuseColorSrcVertex
 	float4 a_color : a_color;
+#endif
+
+#if OPT_HasVertexSkinning == kHasVertexSkinning_Yes
+	int4 a_bonesIds : a_bonesIds;
+	float4 a_boneWeights : a_boneWeights;
 #endif
 };
 
@@ -126,15 +132,70 @@ float lavafn(float x, float y) {
 }
 #endif
 
+float4x4 getBoneTransform(int iBone, int2 texSize) {
+#define ROW0_U ((0.5 + 0.0) / 4.0)
+#define ROW1_U ((0.5 + 1.0) / 4.0)
+#define ROW2_U ((0.5 + 2.0) / 4.0)
+#define ROW3_U ((0.5 + 3.0) / 4.0)	
+
+	float v = ((float)iBone + 0.5f) / (float)texSize.y;
+
+	float4 c0 = tex2Dlod(uSkinningBones, float4(ROW0_U, v, 0.f, 0.f));
+	float4 c1 = tex2Dlod(uSkinningBones, float4(ROW1_U, v, 0.f, 0.f));
+	float4 c2 = tex2Dlod(uSkinningBones, float4(ROW2_U, v, 0.f, 0.f));
+	float4 c3 = tex2Dlod(uSkinningBones, float4(ROW3_U, v, 0.f, 0.f));
+
+
+	//float4x4 mtx = float4x4(
+	//	c0.x, c0.y, c0.z, c0.w,
+	//	c1.x, c1.y, c1.z, c1.w,
+	//	c2.x, c2.y, c2.z, c2.w,
+	//	c3.x, c3.y, c3.z, c3.w
+	//);
+	
+	float4x4 mtx = float4x4(
+		c0.x, c1.x, c2.x, c3.x,
+		c0.y, c1.y, c2.y, c3.y,
+		c0.z, c1.z, c2.z, c3.z,
+		c0.w, c1.w, c2.w, c3.w
+	);
+		
+	return mtx;
+}
+
 VS_OUTPUT vsMain(VS_INPUT vsin) {
 	VS_OUTPUT res;
+	
+	float3 vertexPosOs = vsin.a_position;
+	float3 normalOs = vsin.a_normal;
+#if OPT_HasVertexSkinning == kHasVertexSkinning_Yes
+	int2 boneTexSize = tex2Dsize(uSkinningBones);
+	
+	// these offsets assume the texture is 4 pixels across
+	#define ROW0_U ((0.5 + 0.0) / 4.)
+	#define ROW1_U ((0.5 + 1.0) / 4.)
+	#define ROW2_U ((0.5 + 2.0) / 4.)
+	#define ROW3_U ((0.5 + 3.0) / 4.)
+	
+	float4x4 skinMtx = 
+		  getBoneTransform(vsin.a_bonesIds.x, boneTexSize) * vsin.a_boneWeights.x
+		+ getBoneTransform(vsin.a_bonesIds.y, boneTexSize) * vsin.a_boneWeights.y
+		+ getBoneTransform(vsin.a_bonesIds.z, boneTexSize) * vsin.a_boneWeights.z
+		+ getBoneTransform(vsin.a_bonesIds.w, boneTexSize) * vsin.a_boneWeights.w
+	;
 
-	float4 worldPos = mul(world, float4(vsin.a_position, 1.0));
+	vertexPosOs = mul(skinMtx, float4(vertexPosOs, 1.0)).xyz;
+	normalOs = mul(skinMtx, float4(normalOs, 0.0)).xyz;
+	
+#endif
+	
+
+	float4 worldPos = mul(world, float4(vertexPosOs, 1.0));
 #if OPT_DiffuseColorSrc == kDiffuseColorSrcFluid
 	worldPos.y += lavafn(worldPos.x, worldPos.z);
 #endif
 
-	const float4 worldNormal = mul(world, float4(vsin.a_normal, 0.0));
+	const float4 worldNormal = mul(world, float4(normalOs, 0.0));
 	const float4 posProjSpace = mul(projView, worldPos);
 
 #if OPT_UseNormalMap == 1

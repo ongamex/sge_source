@@ -4,7 +4,6 @@
 #include "Model.h"
 #include "ModelWriter.h"
 
-
 namespace sge {
 
 int ModelWriter::NewChunkFromPtr(const void* const ptr, const size_t sizeBytes) {
@@ -202,6 +201,8 @@ void ModelWriter::GenerateMeshesData() {
 				return "float3";
 			case UniformType::Float4:
 				return "float4";
+			case UniformType::Int4:
+				return "int4";
 		}
 
 		sgeAssert(false);
@@ -273,15 +274,11 @@ void ModelWriter::GenerateMeshesData() {
 			if (mesh->bones.size() != 0) {
 				auto jBones = jMesh->setMember("bones", jvb(JID_ARRAY_BEGIN));
 				for (const auto& bone : mesh->bones) {
-					const int weightsDataChunkId = NewChunkFromStdVector(bone.weights);
-					const int vertexIdsChunkId = NewChunkFromStdVector(bone.vertexIds);
 					const int boneOffsetChunkId = NewChunkFromPtr(&bone.offsetMatrix, sizeof(bone.offsetMatrix));
 
 					auto jBone = jBones->arrPush(jvb(JID_MAP_BEGIN));
 					jBone->setMember("node_id", jvb(bone.node->id));
 					jBone->setMember("debug_node_name", jvb(bone.node->name));
-					jBone->setMember("weightsChunkId", jvb(weightsDataChunkId));
-					jBone->setMember("vertIdsChunkId", jvb(vertexIdsChunkId));
 					jBone->setMember("offsetMatrixChunkId", jvb(boneOffsetChunkId));
 				}
 			}
