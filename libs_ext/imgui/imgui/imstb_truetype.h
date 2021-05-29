@@ -4817,7 +4817,7 @@ STBTT_DEF int stbtt_CompareUTF8toUTF16_bigendian(const char *s1, int len1, const
 //   1.10 (2016-04-02) allow user-defined fabs() replacement
 //                     fix memory leak if fontsize=0.0
 //                     fix warning from duplicate typedef
-//   1.09 (2016-01-16) warning fix; avoid crash on outofmem; use alloc userdata for PackFontRanges
+//   1.09 (2016-01-16) warning fix; avoid crash on outofmem; use m_allocator userdata for PackFontRanges
 //   1.08 (2015-09-13) document stbtt_Rasterize(); fixes for vertical & horizontal edges
 //   1.07 (2015-08-01) allow PackFontRanges to accept arrays of sparse codepoints;
 //                     allow PackFontRanges to pack and render in separate phases;

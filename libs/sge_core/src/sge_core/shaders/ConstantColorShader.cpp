@@ -83,16 +83,17 @@ void ConstantColorShader::drawGeometry(
 }
 
 void ConstantColorShader::draw(
-    const RenderDestination& rdest, const mat4f& projView, const mat4f& preRoot, const EvaluatedModel& model, const vec4f& shadingColor) {
-	for (int iNode = 0; iNode < model.m_nodes.size(); ++iNode) {
-		const EvaluatedNode& evalNode = model.m_nodes.valueAtIdx(iNode);
+    const RenderDestination& rdest, const mat4f& projView, const mat4f& preRoot, const EvaluatedModel& evalModel, const vec4f& shadingColor) {
+	for (int iNode = 0; iNode < evalModel.getNumEvalNodes(); ++iNode) {
+		const EvaluatedNode& evalNode = evalModel.getEvalNode(iNode);
+		const Model::Node* rawNode = evalModel.m_model->nodeAt(iNode);
 
-		for (int iMesh = 0; iMesh < evalNode.attachedMeshes.size(); ++iMesh) {
-			const EvaluatedMeshAttachment& meshAttachment = evalNode.attachedMeshes[iMesh];
-			Model::Mesh* const mesh = evalNode.attachedMeshes[iMesh].pMesh->pReferenceMesh;
-			mat4f const finalTrasform = (mesh->bones.size() == 0) ? preRoot * evalNode.evalGlobalTransform : preRoot;
+		for (int iMesh = 0; iMesh < rawNode->meshAttachments.size(); ++iMesh) {
+			const Model::MeshAttachment& meshAttachment = rawNode->meshAttachments[iMesh];
+			const EvaluatedMesh& mesh = evalModel.getEvalMesh(meshAttachment.attachedMeshIndex);
+			mat4f const finalTrasform = (mesh.boneTransformMatrices.size() == 0) ? preRoot * evalNode.evalGlobalTransform : preRoot;
 
-			drawGeometry(rdest, projView, finalTrasform, meshAttachment.pMesh->geom, shadingColor);
+			drawGeometry(rdest, projView, finalTrasform, mesh.geom, shadingColor);
 		}
 	}
 }

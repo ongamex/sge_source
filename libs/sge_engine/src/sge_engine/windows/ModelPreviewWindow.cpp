@@ -94,59 +94,6 @@ void ModelPreviewWidget::doWidget(SGEContext* const sgecon, const InputState& is
 	}
 }
 
-void ModelPreviewWindow::doMomentUI(MomentDataUI& moment) {
-	ImGui::Separator();
-
-	ImGui::Checkbox("Enabled", &moment.isEnabled);
-
-	if (ImGui::Button("Pick##Moment UI")) {
-		promptForModel(moment.modelAsset);
-		if (isAssetLoaded(moment.modelAsset)) {
-			moment.moment.model = &moment.modelAsset->asModel()->model;
-		}
-	}
-
-	ImGui::SameLine();
-	if (isAssetLoaded(moment.modelAsset))
-		ImGui::Text("%s", moment.modelAsset->getPath().c_str());
-	else
-		ImGui::Text("Pick a Model");
-
-	if (isAssetLoaded(moment.modelAsset)) {
-		const auto fnListAnimations = [](void* vptrModel, int idx, const char** out) -> bool {
-			if (idx == 0) {
-				*out = "<Static Moment>";
-				return true;
-			}
-
-			Model::Model* const model = (Model::Model*)vptrModel;
-			*out = model->m_animations[idx - 1].curveName.c_str();
-			return true;
-		};
-
-		if (ImGui::Combo("Animation", &moment.animationMagicIndex, fnListAnimations, (void*)&moment.modelAsset->asModel()->model,
-		                 int(moment.modelAsset->asModel()->model.m_animations.size()) + 1)) {
-			if (moment.animationMagicIndex == 0) {
-				moment.moment.animationName = "";
-			} else {
-				int idx = moment.animationMagicIndex - 1;
-				moment.moment.animationName = moment.modelAsset->asModel()->model.m_animations[idx].curveName;
-			}
-		}
-
-		if (moment.animationMagicIndex != 0) {
-			int const idx = moment.animationMagicIndex - 1;
-			const Model::AnimationInfo& animInfo = moment.modelAsset->asModel()->model.m_animations[idx];
-
-			ImGui::SliderFloat("time", &moment.moment.time, 0.f, animInfo.duration);
-		}
-
-		ImGui::SliderFloat("weight", &moment.moment.weight, 0.f, 1.f);
-	}
-}
-
-
-
 void ModelPreviewWindow::update(SGEContext* const sgecon, const InputState& is) {
 	if (isClosed()) {
 		return;
@@ -166,7 +113,6 @@ void ModelPreviewWindow::update(SGEContext* const sgecon, const InputState& is) 
 		if (ImGui::Button("Pick##ModeToPreview")) {
 			promptForModel(m_model);
 			m_eval = EvaluatedModel();
-			m_momentsUI.clear();
 			if (m_model) {
 				m_eval.initialize(assetLib, &m_model->asModel()->model);
 			}
@@ -178,64 +124,10 @@ void ModelPreviewWindow::update(SGEContext* const sgecon, const InputState& is) 
 		else
 			ImGui::Text("Pick a Model");
 
-		if (ImGui::CollapsingHeader("Animation")) {
-			ImGui::Checkbox("Autoplay", &m_autoPlay);
-			for (auto& momentUI : m_momentsUI) {
-				ImGui::PushID(&momentUI);
-				doMomentUI(momentUI);
-				ImGui::PopID();
-			}
-
-			if (ImGui::Button("+")) {
-				m_momentsUI.push_back(MomentDataUI());
-			}
-		}
-
 		ImGui::EndChild();
 		ImGui::NextColumn();
 		if (m_model.get() != NULL) {
-			// Update the evaluation moments.
-			if (m_autoPlay) {
-				float maxAnimationDuration = 0.f;
-				int longestMomentIndex = -1;
-				for (int t = 0; t < m_momentsUI.size(); ++t) {
-					auto& momentUI = m_momentsUI[t];
-					if (momentUI.animationMagicIndex != 0) {
-						float const duration = momentUI.moment.model->m_animations[momentUI.animationMagicIndex - 1].duration;
-						if (duration > maxAnimationDuration) {
-							maxAnimationDuration = duration;
-							longestMomentIndex = t;
-						}
-
-						momentUI.moment.time += ImGui::GetIO().DeltaTime;
-					}
-				}
-
-				// Check if the animation should start over.
-				if (longestMomentIndex >= 0)
-					if (maxAnimationDuration < m_momentsUI[longestMomentIndex].moment.time) {
-						for (auto& momentUI : m_momentsUI) {
-							if (momentUI.animationMagicIndex != 0) {
-								momentUI.moment.time = 0.f;
-							}
-						}
-					}
-			}
-
-			m_moments.clear();
-			for (auto& momentUI : m_momentsUI) {
-				if (momentUI.isEnabled == false)
-					continue;
-				if (momentUI.moment.model == nullptr)
-					continue;
-				m_moments.push_back(momentUI.moment);
-			}
-
-			if (m_moments.empty())
-				m_eval.evaluate("", 0.f);
-			else
-				m_eval.evaluate(m_moments);
-
+			m_eval.evaluateStatic();
 
 			const ImVec2 canvas_pos = ImGui::GetCursorScreenPos();
 			ImVec2 canvas_size = ImGui::GetContentRegionAvail();

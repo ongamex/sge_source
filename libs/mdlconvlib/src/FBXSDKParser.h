@@ -26,45 +26,28 @@ struct FBXSDKParser {
 	           const ModelParseSettings& parseSettings);
 
   private:
-	// Step 1: parse the materials.
-	void parseMaterials();
+	// Step 0 (new)
+	int discoverNodesRecursive(fbxsdk::FbxNode* const fbxNode);
+	void importMaterials();
+	void importMeshes(const bool importSkinningData);
+	void importMeshes_singleMesh(FbxMesh* fbxMesh, int importedMeshIndex, const bool importSkinningData);
+	void importNodes();
+	void importNodes_singleNode(FbxNode* fbxNode, int importNodeIndex);
+	void importAnimations();
+	void importCollisionGeometry();
 
-	// Step 2: parse the meshes.
-	void parseMeshes();
-
-	// Step 3: parse the node hierarchy.
-	Model::Node* parseNodesRecursive(fbxsdk::FbxNode* const fbxNode, const fbxsdk::FbxAMatrix* const pOverrideTransform = nullptr);
-
-	// Step 4: resolve bones to nodes pointer.
-	void resolveBonesNodePointer();
-
-	// Step 5: parse the animation.
-	void parseAnimations();
-
-	// Step 6: parse collision geometry.
-	void parseCollisionGeometry();
-
-	// Mesh parsing helpers.
-	void parseMesh(fbxsdk::FbxMesh* const fbxMesh);
-	Model::MeshData* findBestSuitableMeshData(fbxsdk::FbxMesh* const fbxMesh);
-
-	int getNextId() { return m_nextFreeId++; }
-
-	int m_nextFreeId = 0;
-
-	Model::Model* m_model = nullptr;
+  private:
+	/// The fbx scene being imported.
 	fbxsdk::FbxScene* m_fbxScene = nullptr;
 	ModelParseSettings m_parseSettings;
 	std::vector<std::string>* m_pReferencedTextures = nullptr;
 
-	vector_map<fbxsdk::FbxSurfaceMaterial*, Model::Material*> fbxSurfMtlToMtl;
-	vector_map<fbxsdk::FbxTexture*, Model::Material*> fbxTexDuffuseToMtl; // Diffuse texture used in material.
-	vector_map<fbxsdk::FbxNode*, Model::Node*> fbxNodeToNode;
-	std::map<Model::Bone*, fbxsdk::FbxNode*> bonesToResolve;
+	std::map<FbxSurfaceMaterial*, int> m_fbxMtl2MtlIndex;
+	std::map<FbxMesh*, int> m_fbxMesh2MeshIndex;
+	std::map<FbxNode*, int> m_fbxNode2NodeIndex;
 
-	// Geometry to be parsed as collision geometry.
-	transf3d m_collision_transfromCorrection =
-	    transf3d::getIdentity(); // When enforcing a root node we need to remove it's transfrom from the collsion objects.
+	/// Meshes to be used for collision geometry (if any). These do not participate in the m_fbxMesh2MeshIndex
+	/// as they aren't going to be used for rendering.
 	std::map<FbxMesh*, std::vector<transf3d>> m_collision_ConvexHullMeshes;
 	std::map<FbxMesh*, std::vector<transf3d>> m_collision_BvhTriMeshes;
 	std::map<FbxMesh*, std::vector<transf3d>> m_collision_BoxMeshes;
@@ -72,13 +55,11 @@ struct FBXSDKParser {
 	std::map<FbxMesh*, std::vector<transf3d>> m_collision_CylinderMeshes;
 	std::map<FbxMesh*, std::vector<transf3d>> m_collision_SphereMeshes;
 
-	// Converts an FBX SDK imported mesh to a mesh.
-	// Note that we are counting on having each FBXMesh split per material, otherwise this would not be possible.
-	// FBXMesh != Model::Mesh otherwise.
-	std::map<fbxsdk::FbxMesh*, Model::Mesh*> fbxMeshToMesh;
+	// When enforcing a root node we need to remove it's transfrom from the collsion objects.
+	transf3d m_collision_transfromCorrection = transf3d::getIdentity();
 
-	// Unlike assimp in FBX a single mesh could have multiple materials attached to a single mesh.
-	std::map<fbxsdk::FbxMesh*, std::vector<Model::Mesh>> fbxMeshToMeshes;
+	/// The model that is going to store the imported result.
+	Model::Model* m_model = nullptr;
 };
 
 } // namespace sge

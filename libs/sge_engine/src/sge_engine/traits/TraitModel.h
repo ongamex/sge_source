@@ -36,7 +36,7 @@ struct SGE_ENGINE_API TraitModel : public Trait {
 	SGE_TraitDecl_Full(TraitModel);
 
 	TraitModel()
-	    : m_assetProperty(AssetType::Model, AssetType::TextureView, AssetType::Sprite) {}
+	    : m_assetProperty(AssetType::Model, AssetType::Texture2D, AssetType::Sprite) {}
 
 	void setModel(const char* assetPath, bool updateNow) {
 		m_assetProperty.setTargetAsset(assetPath);
@@ -92,7 +92,7 @@ struct SGE_ENGINE_API TraitModel : public Trait {
 	bool getNoLighting() const { return instanceDrawMods.forceNoLighting; }
 
 	void computeNodeToBoneIds();
-	void computeSkeleton(vector_map<const Model::Node*, mat4f>& boneOverrides);
+	void computeSkeleton(std::vector<mat4f>& boneOverrides);
 
   private:
 	bool updateAssetProperty() { return m_assetProperty.update(); }
@@ -115,15 +115,13 @@ struct SGE_ENGINE_API TraitModel : public Trait {
 	// 3D model specific properties.
 	// TODO: move them in a strcuture.
 	InstanceDrawMods instanceDrawMods;
-	std::string animationName;
-	float animationTime = 0.f;
 	bool isRenderable = true;
 	std::vector<MaterialOverride> m_materialOverrides;
 
 	// External skeleton, useful for IK. Not sure for regular skinned meshes.
 	bool useSkeleton = false;
 	ObjectId rootSkeletonId;
-	std::unordered_map<const Model::Node*, ObjectId> nodeToBoneId;
+	std::unordered_map<int, ObjectId> nodeToBoneId;
 
 	/// @brief A struct holding the rendering options of a sprite or a texture in 3D.
 	struct ImageSettings {

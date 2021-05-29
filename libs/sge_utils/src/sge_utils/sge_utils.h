@@ -32,6 +32,7 @@ typedef signed short sint16;
 typedef signed int sint32;
 typedef signed long long sint64;
 typedef signed long long int64;
+typedef signed long long i64;
 
 template <typename T, size_t N>
 char (&SGE_TArrSize_Safe(T (&)[N]))[N];

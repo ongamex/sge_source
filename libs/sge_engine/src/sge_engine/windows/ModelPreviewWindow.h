@@ -49,17 +49,12 @@ struct ModelPreviewWindow : public IImGuiWindow {
 	std::shared_ptr<Asset>& getModel() { return m_model; }
 
   private:
-	void doMomentUI(MomentDataUI& moment);
-
-  private:
 	std::string m_windowName;
 	bool m_createAsChild = false;
 	bool m_isOpened;
 
 	bool m_autoPlay = true;
 	std::shared_ptr<Asset> m_model;
-	std::vector<MomentDataUI> m_momentsUI;
-	std::vector<EvalMomentSets> m_moments; // A structure used to avoid unnecesarry allocations.
 	GpuHandle<FrameTarget> m_frameTarget;
 
 	orbit_camera camera;

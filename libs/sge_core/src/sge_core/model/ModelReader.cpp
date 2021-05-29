@@ -31,7 +31,7 @@ namespace Model {
 
 		if (chunkDesc->sizeBytes % sizeof(T)) {
 			sgeAssert(false);
-			throw ModelParseExcept("ChunkSize / sizeof(T) != 0!");
+			throw ModelParseExcept("ChunkSize % sizeof(T) != 0!");
 		}
 
 		const size_t numElems = chunkDesc->sizeBytes / sizeof(T);
@@ -82,72 +82,6 @@ namespace Model {
 		throw ModelParseExcept("Chunk desc not found!");
 	}
 
-	bool ModelReader::LoadParamBlock(const JsonValue* jParamBlock, ParameterBlock& paramBlock) {
-		const size_t numParameters = jParamBlock->arrSize();
-		for (size_t t = 0; t < numParameters; ++t) {
-			auto jParam = jParamBlock->arrAt(t);
-
-			const char* const name = jParam->getMember("name")->GetString();
-			const ParameterType::Enum paramType = ParameterType::FromString(jParam->getMember("type")->GetString());
-
-			// Some validation.
-			if (paramType == ParameterType::FromStringError) {
-				sgeAssert(false && "Failed to convert string to ParameterType!");
-				throw ModelParseExcept("Unknown parameter type!"); // [TODO} Concider just skipping that parameter.
-			}
-
-			// Resolve the static value
-			auto jStaticValue = jParam->getMember("staticValue");
-			float fStaticValue[4];
-			const void* pStaticValue = nullptr;
-			if (paramType == ParameterType::Float) {
-				fStaticValue[0] = jStaticValue->getNumberAs<float>();
-				pStaticValue = fStaticValue;
-			} else if (paramType == ParameterType::Float2 || paramType == ParameterType::Float3 || paramType == ParameterType::Float4 ||
-			           paramType == ParameterType::Quaternion) {
-				for (size_t i = 0; i < jStaticValue->arrSize(); ++i) {
-					fStaticValue[i] = jStaticValue->arrAt(i)->getNumberAs<float>();
-				}
-				pStaticValue = fStaticValue;
-			} else if (paramType == ParameterType::String) {
-				pStaticValue = jStaticValue->GetString();
-			} else {
-				sgeAssert(false && "Failed to load parameter static value!\n");
-				throw ModelParseExcept("Unsupported parameter type!"); // [TODO] Concider just skipping that parameter.
-			}
-
-			// Create the parameter in the param block and initialize it.
-			Parameter* const param = paramBlock.FindParameter(name, paramType, pStaticValue);
-
-			// Load curves if any.
-			auto jCurves = jParam->getMember("curves");
-			if (jCurves != nullptr) {
-				for (size_t i = 0; i < jCurves->arrSize(); ++i) {
-					auto jCurve = jCurves->arrAt(i);
-
-					const char* const curveName = jCurve->getMember("name")->GetString();
-					const int keysChunkId = jCurve->getMember("keyframesChunkId")->getNumberAs<int>();
-					const int valuesChunkId = jCurve->getMember("valuesChunkId")->getNumberAs<int>();
-
-					// Create the curve and load the keyframes and the values.
-					if (param->CreateCurve(curveName)) {
-						ParameterCurve& curve = *param->GetCurve(curveName);
-
-						curve.type = param->GetType();
-						LoadDataChunk(curve.keys, keysChunkId);
-						LoadDataChunk(curve.data, valuesChunkId);
-
-						sgeAssert(curve.debug_VerifyData());
-					} else {
-						sgeAssert(false);
-					}
-				}
-			}
-		}
-
-		return true;
-	}
-
 	PrimitiveTopology::Enum ModelReader::PrimitiveTolologyFromString(const char* str) {
 		if (strcmp(str, "TriangleList") == 0)
 			return PrimitiveTopology::TriangleList;
@@ -190,7 +124,7 @@ namespace Model {
 		throw ModelParseExcept("Unknown uniform type!");
 	}
 
-	bool ModelReader::Load(const LoadSettings loadSets, SGEDevice* sgedev, IReadStream* const iReadStream, Model& model) {
+	bool ModelReader::Load(const LoadSettings loadSets, IReadStream* const iReadStream, Model& model) {
 		try {
 			dataChunksDesc.clear();
 			irs = iReadStream;
@@ -230,243 +164,262 @@ namespace Model {
 			}
 
 			// Load the animations.
-			auto jAnimations = jRoot->getMember("animations");
-			if (jAnimations) {
+
+			if (auto jAnimations = jRoot->getMember("animations")) {
 				for (size_t t = 0; t < jAnimations->arrSize(); ++t) {
 					auto jAnimation = jAnimations->arrAt(t);
 
-					AnimationInfo animationInfo;
+					int animantionIndex = model.makeNewAnim();
+					Animation& animation = *model.getAnimation(animantionIndex);
 
-					animationInfo.curveName = std::string(jAnimation->getMember("curve")->GetString());
-					animationInfo.startTime = jAnimation->getMember("timeOffset")->getNumberAs<float>();
-					animationInfo.duration = jAnimation->getMember("duration")->getNumberAs<float>();
+					animation.animationName = std::string(jAnimation->getMember("animationName")->GetString());
+					animation.durationSec = jAnimation->getMember("durationSec")->getNumberAs<float>();
 
-					model.m_animations.push_back(animationInfo);
+					const JsonValue* jAllNodesKeyFrames = jAnimation->getMember("perNodeKeyFrames");
+
+					const int numAnimatedNodes = int(jAllNodesKeyFrames->arrSize());
+
+					// Load the position keyframes.
+					for (int iAnimatedNode = 0; iAnimatedNode < numAnimatedNodes; ++iAnimatedNode) {
+						const JsonValue* jNodeKeyFrames = jAllNodesKeyFrames->arrAt(iAnimatedNode);
+
+						int nodeIndex = jNodeKeyFrames->getMember("nodeIndex")->getNumberAs<int>();
+						const JsonValue* jKeyFrames = jNodeKeyFrames->getMember("keyFrames");
+
+						if (const JsonValue* jKeyFramesPos = jKeyFrames->getMember("positionKeyFrames_chunkId")) {
+							const int chunkId = jKeyFramesPos->getNumberAs<int>();
+							const DataChunkDesc& chunkDesc = FindDataChunkDesc(chunkId);
+
+							std::vector<char> chunkMemory(chunkDesc.sizeBytes);
+							LoadDataChunkRaw(chunkMemory.data(), chunkMemory.size() * sizeof(chunkMemory[0]), chunkId);
+
+							const int valueTypeSizeBytes = sizeof(animation.perNodeKeyFrames[0].positionKeyFrames[0.f]);
+
+							const int numPairsInChunk = int(chunkDesc.sizeBytes / (sizeof(float) + valueTypeSizeBytes));
+							const char* readPtr = chunkMemory.data();
+							for (int iPair = 0; iPair < numPairsInChunk; ++iPair) {
+								const float keyTime = *(float*)(readPtr);
+								readPtr += sizeof(float);
+								const vec3f keyData = *(vec3f*)(readPtr);
+								readPtr += valueTypeSizeBytes;
+
+								animation.perNodeKeyFrames[nodeIndex].positionKeyFrames[keyTime] = keyData;
+							}
+						}
+
+						// Load the rotation keyframes.
+						if (const JsonValue* jKeyFramesRot = jKeyFrames->getMember("rotationKeyFrames_chunkId")) {
+							const int chunkId = jKeyFramesRot->getNumberAs<int>();
+							const DataChunkDesc& chunkDesc = FindDataChunkDesc(chunkId);
+
+							std::vector<char> chunkMemory(chunkDesc.sizeBytes);
+							LoadDataChunkRaw(chunkMemory.data(), chunkMemory.size() * sizeof(chunkMemory[0]), chunkId);
+
+							const int valueTypeSizeBytes = sizeof(animation.perNodeKeyFrames[0].rotationKeyFrames[0.f]);
+
+							const int numPairsInChunk = int(chunkDesc.sizeBytes / (sizeof(float) + valueTypeSizeBytes));
+							const char* readPtr = chunkMemory.data();
+							for (int iPair = 0; iPair < numPairsInChunk; ++iPair) {
+								const float keyTime = *(float*)(readPtr);
+								readPtr += sizeof(float);
+								const quatf keyData = *(quatf*)(readPtr);
+								readPtr += valueTypeSizeBytes;
+
+								animation.perNodeKeyFrames[nodeIndex].rotationKeyFrames[keyTime] = keyData;
+							}
+						}
+
+
+						// Load the scaling keyframes.
+
+						if (const JsonValue* jKeyFramesScale = jKeyFrames->getMember("scalingKeyFrames_chunkId")) {
+							const int chunkId = jKeyFramesScale->getNumberAs<int>();
+							const DataChunkDesc& chunkDesc = FindDataChunkDesc(chunkId);
+
+							std::vector<char> chunkMemory(chunkDesc.sizeBytes);
+							LoadDataChunkRaw(chunkMemory.data(), chunkMemory.size() * sizeof(chunkMemory[0]), chunkId);
+
+							const int valueTypeSizeBytes = sizeof(animation.perNodeKeyFrames[0].scalingKeyFrames[0.f]);
+
+							const int numPairsInChunk = int(chunkDesc.sizeBytes / (sizeof(float) + valueTypeSizeBytes));
+							const char* readPtr = chunkMemory.data();
+							for (int iPair = 0; iPair < numPairsInChunk; ++iPair) {
+								const float keyTime = *(float*)(readPtr);
+								readPtr += sizeof(float);
+								const vec3f keyData = *(vec3f*)(readPtr);
+								readPtr += valueTypeSizeBytes;
+
+								animation.perNodeKeyFrames[nodeIndex].scalingKeyFrames[keyTime] = keyData;
+							}
+						}
+					}
 				}
 			}
 
 			// Load the materials.
 			auto jMaterials = jRoot->getMember("materials");
 			if (jMaterials) {
-				model.m_materials.reserve(jMaterials->arrSize());
 				for (size_t t = 0; t < jMaterials->arrSize(); ++t) {
 					const JsonValue* const jMaterial = jMaterials->arrAt(t);
 
-					model.m_materials.push_back(model.m_containerMaterial.new_element());
-					Material* const mtl = model.m_materials.back();
+					int newMaterialIndex = model.makeNewMaterial();
+					Material* material = model.materialAt(newMaterialIndex);
 
-					mtl->id = jMaterial->getMember("id")->getNumberAs<int>();
-					mtl->name = jMaterial->getMember("name")->GetString();
-					LoadParamBlock(jMaterial->getMember("paramBlock"), mtl->paramBlock);
+					material->name = jMaterial->getMember("name")->GetString();
+					jMaterial->getMember("diffuseColor")->getNumberArrayAs<float>(material->diffuseColor.data, 4);
+					jMaterial->getMember("emissionColor")->getNumberArrayAs<float>(material->emissionColor.data, 4);
+					material->metallic = jMaterial->getMember("metallic")->getNumberAs<float>();
+					material->roughness = jMaterial->getMember("roughness")->getNumberAs<float>();
+
+					if (const JsonValue* jTex = jMaterial->getMember("diffuseTextureName")) {
+						material->diffuseTextureName = jTex->GetString();
+					}
+
+					if (const JsonValue* jTex = jMaterial->getMember("emissionTextureName")) {
+						material->emissionTextureName = jTex->GetString();
+					}
+
+					if (const JsonValue* jTex = jMaterial->getMember("metallicTextureName")) {
+						material->metallicTextureName = jTex->GetString();
+					}
+
+					if (const JsonValue* jTex = jMaterial->getMember("roughnessTextureName")) {
+						material->roughnessTextureName = jTex->GetString();
+					}
 				}
 			}
 
 			// Load the MeshData.
-			vector_map<Bone*, int> bone2nodeResolve;
+			if (auto jMeshes = jRoot->getMember("meshes")) {
+				for (size_t t = 0; t < jMeshes->arrSize(); ++t) {
+					auto jMesh = jMeshes->arrAt(t);
 
-			auto jMeshesData = jRoot->getMember("meshesData");
-			if (jMeshesData) {
-				model.m_meshesData.reserve(jMeshesData->arrSize());
-				for (size_t t = 0; t < jMeshesData->arrSize(); ++t) {
-					model.m_meshesData.push_back(model.m_containerMeshData.new_element());
-					MeshData& meshData = *model.m_meshesData.back();
+					const int newMeshIndex = model.makeNewMesh();
+					Mesh* mesh = model.getMeshByIndex(newMeshIndex);
 
-					auto jMeshData = jMeshesData->arrAt(t);
+					const int vertexDataChunkID = jMesh->getMember("vertexDataChunkId")->getNumberAs<int>();
+					const JsonValue* jIndexBufferChunkID = jMesh->getMember("indexDataChunkId");
 
-					const int vertexDataChunkID = jMeshData->getMember("vertexDataChunkId")->getNumberAs<int>();
-					const JsonValue* jIndexBufferChunkID = jMeshData->getMember("indexDataChunkId");
-
-					LoadDataChunk(meshData.vertexBufferRaw, vertexDataChunkID);
+					LoadDataChunk(mesh->vertexBufferRaw, vertexDataChunkID);
 					const int indexDataChunkID = jIndexBufferChunkID ? jIndexBufferChunkID->getNumberAs<int>() : -1;
-					if (indexDataChunkID > 0)
-						LoadDataChunk(meshData.indexBufferRaw, indexDataChunkID);
+					if (indexDataChunkID > 0) {
+						LoadDataChunk(mesh->indexBufferRaw, indexDataChunkID);
+					}
 
-					// Load the described meshes.
+					mesh->name = jMesh->getMember("name")->GetString();
+					mesh->primTopo = PrimitiveTolologyFromString(jMesh->getMember("primitiveTopology")->GetString());
+					mesh->vbByteOffset = jMesh->getMember("vbByteOffset")->getNumberAs<uint32>();
+					mesh->numElements = jMesh->getMember("numElements")->getNumberAs<uint32>();
+					mesh->numVertices = jMesh->getMember("numVertices")->getNumberAs<uint32>();
 
-					// True if at least one mesh have bones. BTW currently only all Skinned meshes are stored into separate meshDatas.
-					bool hasBones = false;
+					// Load the index buffer. Note that there may be no index buffer.
+					if (jMesh->getMember("ibByteOffset") && jMesh->getMember("ibFormat")) {
+						mesh->ibByteOffset = jMesh->getMember("ibByteOffset")->getNumberAs<uint32>();
+						mesh->ibFmt = UniformTypeFromString(jMesh->getMember("ibFormat")->GetString());
+					}
 
-					auto jMeshes = jMeshData->getMember("meshes");
+					// The AABB of the mesh.
+					jMesh->getMember("AABoxMin")->getNumberArrayAs<float>(mesh->aabox.min.data, 3);
+					jMesh->getMember("AABoxMax")->getNumberArrayAs<float>(mesh->aabox.max.data, 3);
 
-					meshData.meshes.reserve(jMeshes->arrSize());
+					// The vertex declaration.
+					auto jVertexDecl = jMesh->getMember("vertexDecl");
+					for (size_t iDecl = 0; iDecl < jVertexDecl->arrSize(); ++iDecl) {
+						auto jDecl = jVertexDecl->arrAt(iDecl);
 
-					for (size_t s = 0; s < jMeshes->arrSize(); ++s) {
-						meshData.meshes.push_back(model.m_containerMesh.new_element());
-						Mesh& mesh = *meshData.meshes.back();
+						VertexDecl decl;
+						decl.bufferSlot = 0;
+						decl.semantic = jDecl->getMember("semantic")->GetString();
+						decl.byteOffset = jDecl->getMember("byteOffset")->getNumberAs<int>();
+						decl.format = UniformTypeFromString(jDecl->getMember("format")->GetString());
 
-						auto jMesh = jMeshes->arrAt(s);
+						mesh->vertexDecl.push_back(decl);
 
-						mesh.pMeshData = &meshData;
-						mesh.id = jMesh->getMember("id")->getNumberAs<int>();
-						mesh.name = jMesh->getMember("name")->GetString();
-						mesh.primTopo = PrimitiveTolologyFromString(jMesh->getMember("primitiveTopology")->GetString());
-						mesh.vbByteOffset = jMesh->getMember("vbByteOffset")->getNumberAs<uint32>();
-						mesh.numElements = jMesh->getMember("numElements")->getNumberAs<uint32>();
-						mesh.numVertices = jMesh->getMember("numVertices")->getNumberAs<uint32>();
-
-						// Load the index buffer. Note that there may be no index buffer.
-						if (jMesh->getMember("ibByteOffset") && jMesh->getMember("ibFormat")) {
-							mesh.ibByteOffset = jMesh->getMember("ibByteOffset")->getNumberAs<uint32>();
-							mesh.ibFmt = UniformTypeFromString(jMesh->getMember("ibFormat")->GetString());
-						}
-
-						// The AABB of the mesh.
-						jMesh->getMember("AABoxMin")->getNumberArrayAs<float>(mesh.aabox.min.data, 3);
-						jMesh->getMember("AABoxMax")->getNumberArrayAs<float>(mesh.aabox.max.data, 3);
-
-						// The vertex declaration.
-						auto jVertexDecl = jMesh->getMember("vertexDecl");
-						for (size_t iDecl = 0; iDecl < jVertexDecl->arrSize(); ++iDecl) {
-							auto jDecl = jVertexDecl->arrAt(iDecl);
-
-							VertexDecl decl;
-							decl.bufferSlot = 0;
-							decl.semantic = jDecl->getMember("semantic")->GetString();
-							decl.byteOffset = jDecl->getMember("byteOffset")->getNumberAs<int>();
-							decl.format = UniformTypeFromString(jDecl->getMember("format")->GetString());
-
-							mesh.vertexDecl.push_back(decl);
-
-							// Cache some commonly used semantics offsets.
-							if (decl.semantic == "a_position") {
-								mesh.vbPositionOffsetBytes = (int)decl.byteOffset;
-							} else if (decl.semantic == "a_normal") {
-								mesh.vbNormalOffsetBytes = (int)decl.byteOffset;
-							} else if (decl.semantic == "a_uv") {
-								mesh.vbUVOffsetBytes = (int)decl.byteOffset;
-							}
-						}
-
-						// Bake the vertex stride.
-						mesh.stride = int(mesh.vertexDecl.back().byteOffset) + UniformType::GetSizeBytes(mesh.vertexDecl.back().format);
-
-						// The attached material (if any).
-						if (jMesh->getMember("material_id")) {
-							const int material_id = jMesh->getMember("material_id")->getNumberAs<int>();
-							mesh.pMaterial = model.FindMaterial(material_id);
-							sgeAssert(mesh.pMaterial);
-						}
-
-						// The bones.
-						auto jBones = jMesh->getMember("bones");
-						if (jBones) {
-							hasBones = true;
-
-							mesh.bones.resize(jBones->arrSize());
-							for (size_t iBone = 0; iBone < jBones->arrSize(); ++iBone) {
-								auto jBone = jBones->arrAt(iBone);
-								Bone& bone = mesh.bones[iBone];
-
-								// Becase nodes are loded before meshes, we must do that gymnastic.
-								bone2nodeResolve[&bone] = jBone->getMember("node_id")->getNumberAs<int>();
-								LoadDataChunkRaw(&bone.offsetMatrix, sizeof(bone.offsetMatrix),
-								                 jBone->getMember("offsetMatrixChunkId")->getNumberAs<int>());
-							}
+						// Cache some commonly used semantics offsets.
+						if (decl.semantic == "a_position") {
+							mesh->vbPositionOffsetBytes = (int)decl.byteOffset;
+						} else if (decl.semantic == "a_normal") {
+							mesh->vbNormalOffsetBytes = (int)decl.byteOffset;
+						} else if (decl.semantic == "a_uv") {
+							mesh->vbUVOffsetBytes = (int)decl.byteOffset;
 						}
 					}
 
-					// Skinned meshes must be stored into separate meshData buffers
-					if (hasBones && meshData.meshes.size() != 1) {
-						sgeAssert(false);
-						throw ModelParseExcept("Mesh data isn't stored into a separate mesh data!");
+					// Bake the vertex stride.
+					mesh->stride = int(mesh->vertexDecl.back().byteOffset) + UniformType::GetSizeBytes(mesh->vertexDecl.back().format);
+
+					// The bones.
+					if (const JsonValue* const jBones = jMesh->getMember("bones")) {
+						mesh->bones.resize(jBones->arrSize());
+						for (size_t iBone = 0; iBone < jBones->arrSize(); ++iBone) {
+							auto jBone = jBones->arrAt(iBone);
+							Bone& bone = mesh->bones[iBone];
+
+							// Becase nodes are loded before meshes, we must do that gymnastic.
+							bone.nodeIdx = jBone->getMember("boneIndex")->getNumberAs<int>();
+							LoadDataChunkRaw(&bone.offsetMatrix, sizeof(bone.offsetMatrix),
+							                 jBone->getMember("offsetMatrixChunkId")->getNumberAs<int>());
+						}
 					}
 
 					// Finally Create the GPU resources.
-					const ResourceUsage::Enum usage = (hasBones) ? ResourceUsage::Dynamic : ResourceUsage::Immutable;
+					// const ResourceUsage::Enum usage = (hasBones) ? ResourceUsage::Dynamic : ResourceUsage::Immutable;
 
-					meshData.vertexBuffer = sgedev->requestResource<Buffer>();
-					const BufferDesc vbd = BufferDesc::GetDefaultVertexBuffer((uint32)meshData.vertexBufferRaw.size(), usage);
-					meshData.vertexBuffer->create(vbd, meshData.vertexBufferRaw.data());
+					// meshData.vertexBuffer = sgedev->requestResource<Buffer>();
+					// const BufferDesc vbd = BufferDesc::GetDefaultVertexBuffer((uint32)meshData.vertexBufferRaw.size(), usage);
+					// meshData.vertexBuffer->create(vbd, meshData.vertexBufferRaw.data());
 
-					// The index buffer is any.
-					if (meshData.indexBufferRaw.size() != 0) {
-						meshData.indexBuffer = sgedev->requestResource<Buffer>();
-						const BufferDesc ibd = BufferDesc::GetDefaultIndexBuffer((uint32)meshData.indexBufferRaw.size(), usage);
-						meshData.indexBuffer->create(ibd, meshData.indexBufferRaw.data());
-					}
+					//// The index buffer is any.
+					// if (meshData.indexBufferRaw.size() != 0) {
+					//	meshData.indexBuffer = sgedev->requestResource<Buffer>();
+					//	const BufferDesc ibd = BufferDesc::GetDefaultIndexBuffer((uint32)meshData.indexBufferRaw.size(), usage);
+					//	meshData.indexBuffer->create(ibd, meshData.indexBufferRaw.data());
+					//}
 
-					const bool shouldKeepCPUBuffers = (loadSets.cpuMeshData == LoadSettings::KeepMeshData_Skin && hasBones) ||
-					                                  (loadSets.cpuMeshData == LoadSettings::KeepMeshData_All);
+					// const bool shouldKeepCPUBuffers = (loadSets.cpuMeshData == LoadSettings::KeepMeshData_Skin && hasBones) ||
+					//                                  (loadSets.cpuMeshData == LoadSettings::KeepMeshData_All);
 
-					if (shouldKeepCPUBuffers == false) {
-						meshData.vertexBufferRaw = std::vector<char>();
-						meshData.indexBufferRaw = std::vector<char>();
-					}
+					// if (shouldKeepCPUBuffers == false) {
+					//	meshData.vertexBufferRaw = std::vector<char>();
+					//	meshData.indexBufferRaw = std::vector<char>();
+					//}
 				}
 			}
 
 			// Load the nodes.
 			auto jNodes = jRoot->getMember("nodes");
 			if (jNodes) {
-				model.m_nodes.reserve(jNodes->arrSize());
 				for (size_t t = 0; t < jNodes->arrSize(); ++t) {
 					auto jNode = jNodes->arrAt(t);
-					auto jParamBlock = jNode->getMember("paramBlock");
 
-					Node* node = model.m_containerNode.new_element();
+					const int newNodeIndex = model.makeNewNode();
+					Node* node = model.nodeAt(newNodeIndex);
 
-					node->id = jNode->getMember("id")->getNumberAs<int>();
 					node->name = jNode->getMember("name")->GetString();
-					LoadParamBlock(jParamBlock, node->paramBlock);
+
+					jNode->getMember("translation")->getNumberArrayAs<float>(node->staticLocalTransform.p.data, 3);
+					jNode->getMember("rotation")->getNumberArrayAs<float>(node->staticLocalTransform.r.data, 4);
+					jNode->getMember("scaling")->getNumberArrayAs<float>(node->staticLocalTransform.s.data, 3);
 
 					// Read the mesh attachments.
-					auto jMeshes = jNode->getMember("meshes");
-					if (jMeshes) {
-						for (size_t iMesh = 0; iMesh < jMeshes->arrSize(); ++iMesh) {
-							const JsonValue* const jAttachmentMesh = jMeshes->arrAt(iMesh);
+					if (auto jMeshes = jNode->getMember("meshes")) {
+						for (size_t iAttachment = 0; iAttachment < jMeshes->arrSize(); ++iAttachment) {
+							const JsonValue* const jAttachmentMesh = jMeshes->arrAt(iAttachment);
 
-							const JsonValue* const jMeshId = jAttachmentMesh->getMember("mesh_id");
-							const JsonValue* const jMaterialId = jAttachmentMesh->getMember("material_id");
-
-							const int meshId = jMeshId->getNumberAs<int>();
 							MeshAttachment attachmentMesh;
+							attachmentMesh.attachedMeshIndex = jAttachmentMesh->getMember("meshIndex")->getNumberAs<int>();
+							attachmentMesh.attachedMaterialIndex = jAttachmentMesh->getMember("materialIndex")->getNumberAs<int>();
 
-							attachmentMesh.mesh = model.FindMesh(meshId);
-							if (jMaterialId) {
-								const int materialId = jMaterialId->getNumberAs<int>();
-								attachmentMesh.material = model.FindMaterial(materialId);
-							}
-
-							if (attachmentMesh.mesh != nullptr) {
-								node->meshAttachments.push_back(attachmentMesh);
-							} else {
-								sgeAssert(false); // Should never happen.
-							}
+							node->meshAttachments.push_back(attachmentMesh);
 						}
 					}
 
-					//
-					model.m_nodes.push_back(node);
-				}
-			}
-
-			// Resolve Bone Node pointers.
-			{
-				for (const auto& pair : bone2nodeResolve) {
-					Bone* const bone = pair.key();
-					Node* const node = model.FindNode(pair.value());
-					sgeAssert(bone != nullptr && node != nullptr);
-
-					bone->node = node;
-				}
-			}
-
-			// Resolve Node hierarchy
-			auto jHierarchy = jRoot->getMember("nodeHierarchy");
-			if (jHierarchy) {
-				// the 1st element of that arrays is the name of the root node.
-				const int rootNodeId = jHierarchy->arrAt(0)->getNumberAs<int>();
-				model.m_rootNode = model.FindNode(rootNodeId);
-
-				for (size_t iNode = 1; iNode < jHierarchy->arrSize(); iNode += 2) {
-					const int nodeId = jHierarchy->arrAt(iNode)->getNumberAs<int>();
-					Node* const node = model.FindNode(nodeId);
-
-					// Add the child nodes.
-					const JsonValue* const jChilds = jHierarchy->arrAt(iNode + 1);
-					for (size_t iChild = 0; iChild < jChilds->arrSize(); ++iChild) {
-						const int childNodeId = jChilds->arrAt(iChild)->getNumberAs<int>();
-						node->childNodes.push_back(model.FindNode(childNodeId));
+					// Nodes.
+					if (const JsonValue* const jChildNodes = jNode->getMember("childNodes")) {
+						node->childNodes.reserve(jChildNodes->arrSize());
+						for (int iChild = 0; iChild < jChildNodes->arrSize(); ++iChild) {
+							node->childNodes.push_back(jChildNodes->arrAt(iChild)->getNumberAs<int>());
+						}
 					}
 				}
 			}
@@ -586,8 +539,7 @@ namespace Model {
 					}
 				}
 			}
-		} catch (const ModelParseExcept& except) {
-			((void)except);
+		} catch (const ModelParseExcept& UNUSED(except)) {
 			// SGE_DEBUG_ERR("%s: Failed with exception:\n", __func__);
 			// SGE_DEBUG_ERR(except.what());
 

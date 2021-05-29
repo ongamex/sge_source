@@ -516,56 +516,54 @@ void BasicModelDraw::draw(const RenderDestination& rdest,
                           const mat4f& projView,
                           const mat4f& preRoot,
                           const GeneralDrawMod& generalMods,
-                          const EvaluatedModel& model,
+                          const EvaluatedModel& evalModel,
                           const InstanceDrawMods& mods,
                           const std::vector<MaterialOverride>* mtlOverrides) {
-	for (int iNode = 0; iNode < model.m_nodes.size(); ++iNode) {
-		const EvaluatedNode& evalNode = model.m_nodes.valueAtIdx(iNode);
+	for (int iNode = 0; iNode < evalModel.getNumEvalNodes(); ++iNode) {
+		const EvaluatedNode& evalNode = evalModel.getEvalNode(iNode);
+		const Model::Node* rawNode = evalModel.m_model->nodeAt(iNode);
 
-		for (int iMesh = 0; iMesh < evalNode.attachedMeshes.size(); ++iMesh) {
-			const EvaluatedMeshAttachment& meshAttachment = evalNode.attachedMeshes[iMesh];
-			Model::Mesh* const mesh = evalNode.attachedMeshes[iMesh].pMesh->pReferenceMesh;
-			mat4f const finalTrasform = (mesh->bones.size() == 0) ? preRoot * evalNode.evalGlobalTransform : preRoot;
+		for (int iMesh = 0; iMesh < rawNode->meshAttachments.size(); ++iMesh) {
+			const Model::MeshAttachment& meshAttachment = rawNode->meshAttachments[iMesh];
+			const EvaluatedMesh& mesh = evalModel.getEvalMesh(meshAttachment.attachedMeshIndex);
+			mat4f const finalTrasform = (mesh.boneTransformMatrices.size() == 0) ? preRoot * evalNode.evalGlobalTransform : preRoot;
 
 			Material material;
 
-			if (meshAttachment.pMaterial) {
+			if (meshAttachment.attachedMaterialIndex >= 0) {
+				const EvaluatedMaterial& mtl = evalModel.getEvalMaterial(meshAttachment.attachedMaterialIndex);
+				const std::string mtlName = evalModel.m_model->materialAt(meshAttachment.attachedMaterialIndex)->name;
+
 				auto itr = mtlOverrides ? std::find_if(mtlOverrides->begin(), mtlOverrides->end(),
-				                                       [&meshAttachment](const MaterialOverride& v) -> bool {
-					                                       return v.name == meshAttachment.pMaterial->name;
-				                                       })
+				                                       [&mtlName](const MaterialOverride& v) -> bool { return v.name == mtlName; })
 				                        : std::vector<MaterialOverride>::iterator();
 
 				if (!mtlOverrides || itr == mtlOverrides->end()) {
-					material.diffuseColor = meshAttachment.pMaterial->diffuseColor;
-					material.metalness = meshAttachment.pMaterial->metallic;
-					material.roughness = meshAttachment.pMaterial->roughness;
+					material.diffuseColor = mtl.diffuseColor;
+					material.metalness = mtl.metallic;
+					material.roughness = mtl.roughness;
 
-					material.diffuseTexture =
-					    isAssetLoaded(meshAttachment.pMaterial->diffuseTexture) && meshAttachment.pMaterial->diffuseTexture->asTextureView()
-					        ? meshAttachment.pMaterial->diffuseTexture->asTextureView()->tex.GetPtr()
-					        : nullptr;
+					material.diffuseTexture = isAssetLoaded(mtl.diffuseTexture) && mtl.diffuseTexture->asTextureView()
+					                              ? mtl.diffuseTexture->asTextureView()->tex.GetPtr()
+					                              : nullptr;
 
-					material.texNormalMap =
-					    isAssetLoaded(meshAttachment.pMaterial->texNormalMap) && meshAttachment.pMaterial->texNormalMap->asTextureView()
-					        ? meshAttachment.pMaterial->texNormalMap->asTextureView()->tex.GetPtr()
-					        : nullptr;
+					material.texNormalMap = isAssetLoaded(mtl.texNormalMap) && mtl.texNormalMap->asTextureView()
+					                            ? mtl.texNormalMap->asTextureView()->tex.GetPtr()
+					                            : nullptr;
 
-					material.texMetalness =
-					    isAssetLoaded(meshAttachment.pMaterial->texMetallic) && meshAttachment.pMaterial->texMetallic->asTextureView()
-					        ? meshAttachment.pMaterial->texMetallic->asTextureView()->tex.GetPtr()
-					        : nullptr;
+					material.texMetalness = isAssetLoaded(mtl.texMetallic) && mtl.texMetallic->asTextureView()
+					                            ? mtl.texMetallic->asTextureView()->tex.GetPtr()
+					                            : nullptr;
 
-					material.texRoughness =
-					    isAssetLoaded(meshAttachment.pMaterial->texRoughness) && meshAttachment.pMaterial->texRoughness->asTextureView()
-					        ? meshAttachment.pMaterial->texRoughness->asTextureView()->tex.GetPtr()
-					        : nullptr;
+					material.texRoughness = isAssetLoaded(mtl.texRoughness) && mtl.texRoughness->asTextureView()
+					                            ? mtl.texRoughness->asTextureView()->tex.GetPtr()
+					                            : nullptr;
 				} else {
 					material = itr->mtl;
 				}
 			}
 
-			drawGeometry(rdest, camPos, camLookDir, projView, finalTrasform, generalMods, &meshAttachment.pMesh->geom, material, mods);
+			drawGeometry(rdest, camPos, camLookDir, projView, finalTrasform, generalMods, &mesh.geom, material, mods);
 		}
 	}
 }

@@ -84,7 +84,7 @@ bool AssetsWindow::importAsset(AssetImportData& aid) {
 				createDirectory(textureDestDir.c_str());
 				copyFile(textureSrcPath.c_str(), textureDstPath.c_str());
 
-				PAsset assetTexture = assetLib->getAsset(AssetType::TextureView, textureDstPath.c_str(), true);
+				PAsset assetTexture = assetLib->getAsset(AssetType::Texture2D, textureDstPath.c_str(), true);
 				assetLib->reloadAssetModified(assetTexture.get());
 			}
 
@@ -137,7 +137,7 @@ bool AssetsWindow::importAsset(AssetImportData& aid) {
 				createDirectory(textureDestDir.c_str());
 				copyFile(textureSrcPath.c_str(), textureDstPath.c_str());
 
-				PAsset assetTexture = assetLib->getAsset(AssetType::TextureView, textureDstPath.c_str(), true);
+				PAsset assetTexture = assetLib->getAsset(AssetType::Texture2D, textureDstPath.c_str(), true);
 				assetLib->reloadAssetModified(assetTexture.get());
 			}
 
@@ -149,12 +149,12 @@ bool AssetsWindow::importAsset(AssetImportData& aid) {
 
 			return false;
 		}
-	} else if (aid.assetType == AssetType::TextureView) {
+	} else if (aid.assetType == AssetType::Texture2D) {
 		// TODO: DDS conversion.
 		createDirectory(extractFileDir(aid.outputDir.c_str(), false).c_str());
 		copyFile(aid.fileToImportPath.c_str(), fullAssetPath.c_str());
 
-		PAsset assetTexture = assetLib->getAsset(AssetType::TextureView, fullAssetPath.c_str(), true);
+		PAsset assetTexture = assetLib->getAsset(AssetType::Texture2D, fullAssetPath.c_str(), true);
 		assetLib->reloadAssetModified(assetTexture.get());
 
 		return true;
@@ -350,7 +350,7 @@ void AssetsWindow::update(SGEContext* const sgecon, const InputState& is) {
 						    assetType_guessFromExtension(extractFileExtension(entry.path().string().c_str()).c_str(), false);
 						if (assetType == AssetType::Model) {
 							string_format(label, "%s %s", ICON_FK_CUBE, entry.path().filename().string().c_str());
-						} else if (assetType == AssetType::TextureView) {
+						} else if (assetType == AssetType::Texture2D) {
 							string_format(label, "%s %s", ICON_FK_PICTURE_O, entry.path().filename().string().c_str());
 						} else if (assetType == AssetType::Text) {
 							string_format(label, "%s %s", ICON_FK_FILE, entry.path().filename().string().c_str());
@@ -492,7 +492,7 @@ void AssetsWindow::update(SGEContext* const sgecon, const InputState& is) {
 						ImGuiEx::TextTooltip(
 						    "When multiple game objects are defined in one 3D model file. You can import them as a separate 3D "
 						    "models using this option!");
-					} else if (m_importAssetToImportInPopup.assetType == AssetType::TextureView) {
+					} else if (m_importAssetToImportInPopup.assetType == AssetType::Texture2D) {
 						ImGui::Text(ICON_FK_PICTURE_O " Texture");
 					} else if (m_importAssetToImportInPopup.assetType == AssetType::Text) {
 						ImGui::Text(ICON_FK_FILE " Text");
@@ -505,7 +505,7 @@ void AssetsWindow::update(SGEContext* const sgecon, const InputState& is) {
 						const char* assetTypeNames[int(AssetType::Count)] = {nullptr};
 						assetTypeNames[int(AssetType::None)] = ICON_FK_FILE_TEXT_O " Unknown";
 						assetTypeNames[int(AssetType::Model)] = ICON_FK_CUBE " 3D Model";
-						assetTypeNames[int(AssetType::TextureView)] = ICON_FK_PICTURE_O " Texture";
+						assetTypeNames[int(AssetType::Texture2D)] = ICON_FK_PICTURE_O " Texture";
 						assetTypeNames[int(AssetType::Text)] = ICON_FK_FILE " Text";
 						assetTypeNames[int(AssetType::Sprite)] = ICON_FK_FILM " Sprite";
 
@@ -604,7 +604,7 @@ void AssetsWindow::update(SGEContext* const sgecon, const InputState& is) {
 				}
 
 				m_exploreModelPreviewWidget.doWidget(sgecon, is, explorePreviewAsset->asModel()->staticEval);
-			} else if (explorePreviewAsset->getType() == AssetType::TextureView) {
+			} else if (explorePreviewAsset->getType() == AssetType::Texture2D) {
 				const Texture2DDesc desc = explorePreviewAsset->asTextureView()->tex->getDesc().texture2D;
 				const ImVec2 availableContentSize = ImGui::GetContentRegionAvail();
 

@@ -548,57 +548,43 @@ void DefaultGameDrawer::drawTraitStaticModel(TraitModel* modelTrait,
 			if (modelTrait->useSkeleton) {
 				if (model && model->sharedEval.isInitialized()) {
 					// Compute the overrdies.
-					vector_map<const Model::Node*, mat4f> boneOverrides;
+					std::vector<mat4f> boneOverrides;
 					modelTrait->computeSkeleton(boneOverrides);
 					// Draw
 					const mat4f n2w = actor->getTransformMtx() * modelTrait->m_additionalTransform;
-					model->sharedEval.evaluate(boneOverrides);
+					model->sharedEval.evaluateFromNodesGlobalTransform(boneOverrides);
 					m_modeldraw.draw(drawSets.rdest, camPos, camLookDir, drawSets.drawCamera->getProjView(), n2w, generalMods,
 					                 model->sharedEval, modelTrait->instanceDrawMods, &mtlOverrides);
 				}
-			} else if (modelTrait->animationName.empty()) {
+			} else {
 				if (model && model->staticEval.isInitialized()) {
 					const mat4f n2w = actor->getTransformMtx() * modelTrait->m_additionalTransform;
 					m_modeldraw.draw(drawSets.rdest, camPos, camLookDir, drawSets.drawCamera->getProjView(), n2w, generalMods,
 					                 model->staticEval, modelTrait->instanceDrawMods, &mtlOverrides);
-				}
-			} else {
-				if (model && model->sharedEval.isInitialized()) {
-					const mat4f n2w = actor->getTransformMtx() * modelTrait->m_additionalTransform;
-					model->sharedEval.evaluate(modelTrait->animationName.c_str(), modelTrait->animationTime);
-					m_modeldraw.draw(drawSets.rdest, camPos, camLookDir, drawSets.drawCamera->getProjView(), n2w, generalMods,
-					                 model->sharedEval, modelTrait->instanceDrawMods, &mtlOverrides); // TODO force no lighting in mods
 				}
 			}
 		} else {
 			if (modelTrait->useSkeleton) {
 				if (model && model->sharedEval.isInitialized()) {
 					// Compute the overrdies.
-					vector_map<const Model::Node*, mat4f> boneOverrides;
+					std::vector<mat4f> boneOverrides;
 					modelTrait->computeSkeleton(boneOverrides);
 
 					// Draw
 					const mat4f n2w = actor->getTransformMtx() * modelTrait->m_additionalTransform;
-					model->sharedEval.evaluate(boneOverrides);
+					model->sharedEval.evaluateFromNodesGlobalTransform(boneOverrides);
 					m_constantColorShader.draw(drawSets.rdest, drawSets.drawCamera->getProjView(), n2w, model->sharedEval,
 					                           generalMods.selectionTint);
 				}
-			} else if (modelTrait->animationName.empty()) {
+			} else {
 				if (model && model->staticEval.isInitialized()) {
 					const mat4f n2w = actor->getTransformMtx() * modelTrait->m_additionalTransform;
 					m_constantColorShader.draw(drawSets.rdest, drawSets.drawCamera->getProjView(), n2w, model->staticEval,
 					                           generalMods.selectionTint);
 				}
-			} else {
-				if (model && model->sharedEval.isInitialized()) {
-					const mat4f n2w = actor->getTransformMtx() * modelTrait->m_additionalTransform;
-					model->sharedEval.evaluate(modelTrait->animationName.c_str(), modelTrait->animationTime);
-					m_constantColorShader.draw(drawSets.rdest, drawSets.drawCamera->getProjView(), n2w, model->sharedEval,
-					                           generalMods.selectionTint);
-				}
 			}
 		}
-	} else if (isAssetLoaded(asset) && asset->getType() == AssetType::TextureView) {
+	} else if (isAssetLoaded(asset) && asset->getType() == AssetType::Texture2D) {
 		AssetTexture* ppTexture = asset->asTextureView();
 		if (ppTexture && ppTexture->tex.IsResourceValid()) {
 			Texture* const texture = ppTexture->tex.GetPtr();

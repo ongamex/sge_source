@@ -5,7 +5,7 @@
 #include "sge_engine/GameWorld.h"
 #include "sge_engine/windows/PropertyEditorWindow.h"
 #include "sge_utils/math/FABRIKSolver.h"
-#include "sge_utils/utils/common.h"
+#include "sge_utils/stl_algorithm_ex.h"
 
 namespace sge {
 

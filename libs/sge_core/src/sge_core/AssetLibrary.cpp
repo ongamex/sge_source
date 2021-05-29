@@ -120,7 +120,7 @@ SGE_CORE_API const char* assetType_getName(const AssetType type) {
 			return "None";
 		case AssetType::Model:
 			return "3D Model";
-		case AssetType::TextureView:
+		case AssetType::Texture2D:
 			return "Texture";
 		case AssetType::Text:
 			return "Text";
@@ -214,7 +214,7 @@ AssetType assetType_guessFromExtension(const char* const ext, bool includeExtern
 	}
 
 	if (sge_stricmp(ext, "png") == 0 || sge_stricmp(ext, "dds") == 0 || sge_stricmp(ext, "jpg") == 0) {
-		return AssetType::TextureView;
+		return AssetType::Texture2D;
 	}
 
 	if (sge_stricmp(ext, "txt") == 0) {
@@ -277,7 +277,7 @@ struct ModelAssetFactory : public IAssetFactory {
 		loadSettings.assetDir = extractFileDir(pPath, true);
 
 		Model::ModelReader modelReader;
-		const bool succeeded = modelReader.Load(loadSettings, pMngr->getDevice(), &frs, modelAsset.model);
+		const bool succeeded = modelReader.Load(loadSettings, &frs, modelAsset.model);
 
 		if (!succeeded) {
 			SGE_DEBUG_ERR("Unable to load model asset: '%s'!\n", pPath);
@@ -285,11 +285,13 @@ struct ModelAssetFactory : public IAssetFactory {
 			return false;
 		}
 
+		modelAsset.model.createRenderingResources(*pMngr->getDevice());
+
 		modelAsset.staticEval.initialize(pMngr, &modelAsset.model);
-		modelAsset.staticEval.evaluate(nullptr, 0);
+		modelAsset.staticEval.evaluateStatic();
 
 		modelAsset.sharedEval.initialize(pMngr, &modelAsset.model);
-		modelAsset.sharedEval.evaluate(nullptr, 0);
+		modelAsset.sharedEval.evaluateStatic();
 
 		return succeeded;
 	}
@@ -492,7 +494,7 @@ AssetLibrary::AssetLibrary(SGEDevice* const sgedev) {
 
 	// Register all supported asset types.
 	this->registerAssetType(AssetType::Model, new TAssetAllocatorDefault<AssetModel>(), new ModelAssetFactory());
-	this->registerAssetType(AssetType::TextureView, new TAssetAllocatorDefault<AssetTexture>(), new TextureViewAssetFactory());
+	this->registerAssetType(AssetType::Texture2D, new TAssetAllocatorDefault<AssetTexture>(), new TextureViewAssetFactory());
 	this->registerAssetType(AssetType::Text, new TAssetAllocatorDefault<std::string>(), new TextAssetFactory());
 	this->registerAssetType(AssetType::Sprite, new TAssetAllocatorDefault<SpriteAnimationAsset>(), new SpriteAssetFactory());
 	this->registerAssetType(AssetType::Audio, new TAssetAllocatorDefault<sge::AudioAsset>(), new AudioAssetFactory());

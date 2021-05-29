@@ -38,7 +38,7 @@ struct AssetModel {
 enum class AssetType : int {
 	None,        ///< Just an invalid asset type, used as a default.
 	Model,       ///< A 3D model.
-	TextureView, ///< AssetTexture
+	Texture2D, ///< AssetTexture
 	Text,        ///< A file containing some text (including code).
 	Sprite,      ///< A 2D sprite sheet animation.
 	Audio,       ///< Vorbis encoded audio file. Usually used for background music or longer audio tracks.
@@ -98,14 +98,14 @@ struct SGE_CORE_API Asset {
 	const void* asVoid() const { return m_pAsset; }
 
 	AssetTexture* asTextureView() {
-		if (getType() == AssetType::TextureView) {
+		if (getType() == AssetType::Texture2D) {
 			return (AssetTexture*)m_pAsset;
 		}
 		return nullptr;
 	}
 
 	const AssetTexture* asTextureView() const {
-		if (getType() == AssetType::TextureView) {
+		if (getType() == AssetType::Texture2D) {
 			return (const AssetTexture*)m_pAsset;
 		}
 		return nullptr;
@@ -249,6 +249,10 @@ inline bool isAssetLoaded(const Asset& asset, const AssetType type) {
 	return loaded && asset.asVoid() != nullptr && asset.getType() == type;
 }
 
+inline bool isAssetPath(const PAsset& asset, const std::string& path) {
+	return asset && isAssetLoaded(*asset.get()) && asset->getPath() == path;
+}
+
 /// @brief Returns true if the specified asset is loaded.
 inline bool isAssetLoaded(const std::shared_ptr<Asset>& asset) {
 	bool loaded = asset && (asset->getStatus() == AssetStatus::Loaded);
@@ -258,14 +262,10 @@ inline bool isAssetLoaded(const std::shared_ptr<Asset>& asset) {
 	return loaded;
 }
 
-/// @brief Returns true if the specified asset is loaded and if it is of the specified type.
-inline bool isAssetLoaded(const std::shared_ptr<Asset>& asset, const AssetType type) {
-	bool loaded = asset && (asset->getStatus() == AssetStatus::Loaded);
-	if (loaded) {
-		sgeAssert(asset && !!asset->asVoid());
-	}
-	return loaded && asset->getType() == type;
+inline bool isAssetLoaded(const PAsset& asset, const AssetType type) {
+	return isAssetLoaded(asset) && asset->getType() == type;
 }
+
 
 /// @brief Returns true if the asset is not loaded or loading it failed.
 inline bool isAssetNotLoadedOrLoadFailed(const std::shared_ptr<Asset>& asset) {

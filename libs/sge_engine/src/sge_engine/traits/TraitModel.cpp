@@ -8,6 +8,8 @@
 #include "sge_engine/actors/ALocator.h"
 #include "sge_engine/materials/Material.h"
 #include "sge_engine/windows/PropertyEditorWindow.h"
+#include "sge_utils/loop.h"
+#include "sge_utils/stl_algorithm_ex.h"
 #include "sge_utils/utils/vector_set.h"
 
 namespace sge {
@@ -89,17 +91,18 @@ void TraitModel::computeNodeToBoneIds() {
 		boneActors.insert(bone);
 	}
 
-	for (const Model::Node* modelNode : assetmodel->model.m_nodes) {
+	for (const int iNode : rng_int(assetmodel->model.getNumNodes())) {
+		const Model::Node* node = assetmodel->model.nodeAt(iNode);
 		for (Actor* boneActor : boneActors) {
-			if (modelNode->name == boneActor->getDisplayName()) {
-				nodeToBoneId[modelNode] = boneActor->getId();
+			if (node->name == boneActor->getDisplayName()) {
+				nodeToBoneId[iNode] = boneActor->getId();
 				break;
 			}
 		}
 	}
 }
 
-void TraitModel::computeSkeleton(vector_map<const Model::Node*, mat4f>& boneOverrides) {
+void TraitModel::computeSkeleton(std::vector<mat4f>& boneOverrides) {
 	boneOverrides.clear();
 
 	if (useSkeleton == false) {
@@ -138,79 +141,74 @@ void editTraitStaticModel(GameInspector& inspector, GameObject* actor, MemberCha
 	chain.pop();
 
 	if (AssetModel* loadedAsset = traitStaticModel.m_assetProperty.getAssetModel()) {
-		for (int t = 0; t < loadedAsset->model.m_materials.size(); ++t) {
+		for (Model::Material* mtl : loadedAsset->model.getMatrials()) {
 			// ImGui::Text(loadedAsset->model.m_materials[t]->name.c_str());
 			// Check if override for this material already exists.
-			auto itrExisting = std::find_if(traitStaticModel.m_materialOverrides.begin(), traitStaticModel.m_materialOverrides.end(),
-			                                [&](const TraitModel::MaterialOverride& ovr) -> bool {
-				                                return ovr.materialName == loadedAsset->model.m_materials[t]->name;
-			                                });
+			auto itrExisting = find_if(traitStaticModel.m_materialOverrides,
+			                           [&](const TraitModel::MaterialOverride& ovr) -> bool { return ovr.materialName == mtl->name; });
 
 			if (itrExisting == std::end(traitStaticModel.m_materialOverrides)) {
 				TraitModel::MaterialOverride ovr;
-				ovr.materialName = loadedAsset->model.m_materials[t]->name;
+				ovr.materialName = mtl->name;
 				traitStaticModel.m_materialOverrides.emplace_back(ovr);
 			}
 		}
 
 		// Now do the UI for each available slot (keep in mind that we are keeping old slots (from previous models still available).
-		{
-			for (int t = 0; t < loadedAsset->model.m_materials.size(); ++t) {
-				ImGui::PushID(t);
 
-				// ImGui::Text(loadedAsset->model.m_materials[t]->name.c_str());
-				// Check if override for this material already exists.
-				auto itrExisting = std::find_if(traitStaticModel.m_materialOverrides.begin(), traitStaticModel.m_materialOverrides.end(),
-				                                [&](const TraitModel::MaterialOverride& ovr) -> bool {
-					                                return ovr.materialName == loadedAsset->model.m_materials[t]->name;
-				                                });
+		for (int iMtl : rng_int(loadedAsset->model.getNumMaterials())) {
+			const ImGuiEx::IDGuard guard(iMtl);
 
-				if (itrExisting != std::end(traitStaticModel.m_materialOverrides)) {
-					ImGuiEx::BeginGroupPanel(itrExisting->materialName.c_str(), ImVec2(-1.f, 0.f));
-					{
-						const int slotIndex = int(itrExisting - traitStaticModel.m_materialOverrides.begin());
-						chain.add(sgeFindMember(TraitModel, m_materialOverrides), slotIndex);
-						chain.add(sgeFindMember(TraitModel::MaterialOverride, materialObjId));
-						ProperyEditorUIGen::doMemberUI(inspector, actor, chain);
+			const Model::Material* mtl = loadedAsset->model.materialAt(iMtl);
 
-						if (traitStaticModel.m_materialOverrides[slotIndex].materialObjId.isNull()) {
-							if (ImGui::Button("Create New Material")) {
-								CmdObjectCreation* cmdMtlCreate = new CmdObjectCreation();
-								cmdMtlCreate->setup(sgeTypeId(MDiffuseMaterial));
-								cmdMtlCreate->apply(&inspector);
+			// ImGui::Text(loadedAsset->model.m_materials[t]->name.c_str());
+			// Check if override for this material already exists.
+			auto itrExisting = find_if(traitStaticModel.m_materialOverrides,
+			                           [&](const TraitModel::MaterialOverride& ovr) -> bool { return ovr.materialName == mtl->name; });
 
-								CmdMemberChange* const cmdAssignMaterial = new CmdMemberChange();
-								const ObjectId originalValue = ObjectId();
-								const ObjectId createdMaterialId = cmdMtlCreate->getCreatedObjectId();
-								cmdAssignMaterial->setup(actor, chain, &originalValue, &createdMaterialId, nullptr);
-								cmdAssignMaterial->apply(&inspector);
+			if (itrExisting != std::end(traitStaticModel.m_materialOverrides)) {
+				ImGuiEx::BeginGroupPanel(itrExisting->materialName.c_str(), ImVec2(-1.f, 0.f));
+				{
+					const int slotIndex = int(itrExisting - traitStaticModel.m_materialOverrides.begin());
+					chain.add(sgeFindMember(TraitModel, m_materialOverrides), slotIndex);
+					chain.add(sgeFindMember(TraitModel::MaterialOverride, materialObjId));
+					ProperyEditorUIGen::doMemberUI(inspector, actor, chain);
 
-								CmdCompound* cmdCompound = new CmdCompound();
-								cmdCompound->addCommand(cmdMtlCreate);
-								cmdCompound->addCommand(cmdAssignMaterial);
-								inspector.appendCommand(cmdCompound, false);
-							}
-						}
+					if (traitStaticModel.m_materialOverrides[slotIndex].materialObjId.isNull()) {
+						if (ImGui::Button("Create New Material")) {
+							CmdObjectCreation* cmdMtlCreate = new CmdObjectCreation();
+							cmdMtlCreate->setup(sgeTypeId(MDiffuseMaterial));
+							cmdMtlCreate->apply(&inspector);
 
-						chain.pop();
-						chain.pop();
+							CmdMemberChange* const cmdAssignMaterial = new CmdMemberChange();
+							const ObjectId originalValue = ObjectId();
+							const ObjectId createdMaterialId = cmdMtlCreate->getCreatedObjectId();
+							cmdAssignMaterial->setup(actor, chain, &originalValue, &createdMaterialId, nullptr);
+							cmdAssignMaterial->apply(&inspector);
 
-						if (GameObject* const materialObject = inspector.getWorld()->getObjectById(itrExisting->materialObjId)) {
-							ImGui::PushID(materialObject);
-							ImGuiEx::BeginGroupPanel("", ImVec2(-1.f, 0.f));
-							if (ImGui::CollapsingHeader("Material")) {
-								ProperyEditorUIGen::doGameObjectUI(inspector, materialObject);
-							}
-							ImGuiEx::EndGroupPanel();
-							ImGui::PopID();
+							CmdCompound* cmdCompound = new CmdCompound();
+							cmdCompound->addCommand(cmdMtlCreate);
+							cmdCompound->addCommand(cmdAssignMaterial);
+							inspector.appendCommand(cmdCompound, false);
 						}
 					}
-					ImGuiEx::EndGroupPanel();
-				} else {
-					sgeAssert(false && "The slot should have been created above.");
-				}
 
-				ImGui::PopID();
+					chain.pop();
+					chain.pop();
+
+					if (GameObject* const materialObject = inspector.getWorld()->getObjectById(itrExisting->materialObjId)) {
+						ImGui::PushID(materialObject);
+						ImGuiEx::BeginGroupPanel("", ImVec2(-1.f, 0.f));
+						if (ImGui::CollapsingHeader("Material")) {
+							ProperyEditorUIGen::doGameObjectUI(inspector, materialObject);
+						}
+						ImGuiEx::EndGroupPanel();
+						ImGui::PopID();
+					}
+				}
+				ImGuiEx::EndGroupPanel();
+			} else {
+				sgeAssert(false && "The slot should have been created above.");
 			}
 		}
 
@@ -218,45 +216,34 @@ void editTraitStaticModel(GameInspector& inspector, GameObject* actor, MemberCha
 		if (ImGui::Button("Extract Skeleton")) {
 			AssetModel* modelAsset = traitStaticModel.m_assetProperty.getAssetModel();
 			GameWorld* world = inspector.getWorld();
-			ALocator* allBonesParent = world->alloc<ALocator>();
+			ALocator* allBonesParent = world->m_allocator<ALocator>();
 			allBonesParent->setTransform(traitStaticModel.getActor()->getTransform());
 
-			float boneLengthAuto = 0.05f * modelAsset->staticEval.aabox.diagonal().length();
+			const float boneLengthAuto = 0.05f * modelAsset->staticEval.aabox.diagonal().length();
 
 			struct NodeRemapEl {
 				transf3d localTransform;
 				ABone* boneActor = nullptr;
 			};
-			vector_map<Model::Node*, NodeRemapEl> nodeRemap;
+			vector_map<int, NodeRemapEl> nodeRemap;
 
 			transf3d n2w = actor->getActor()->getTransform();
-			for (Model::Node* node : modelAsset->model.m_nodes) {
-				ParameterBlock& pb = node->paramBlock;
-				const Parameter* const scalingPrm = pb.FindParameter("scaling");
-				const Parameter* const rotationPrm = pb.FindParameter("rotation");
-				const Parameter* const translationPrm = pb.FindParameter("translation");
 
-				const Parameter* const boneLengthPrm = pb.FindParameter("boneLength");
+			for (int iNode : rng_int(modelAsset->model.getNumNodes())) {
+				const Model::Node* node = modelAsset->model.nodeAt(iNode);
 
-				transf3d localTform;
+				const float boneLength = boneLengthAuto;
 
-				scalingPrm->Evalute(&localTform.s, nullptr, 0.f);
-				rotationPrm->Evalute(&localTform.r, nullptr, 0.f);
-				translationPrm->Evalute(&localTform.p, nullptr, 0.f);
-
-				float boneLength = boneLengthAuto;
-				if (boneLengthPrm) {
-					boneLengthPrm->Evalute(&boneLength, nullptr, 0.f);
-				}
-
-				nodeRemap[node].localTransform = localTform;
-				nodeRemap[node].boneActor = inspector.getWorld()->alloc<ABone>(ObjectId(), node->name.c_str());
-				nodeRemap[node].boneActor->boneLength = boneLength;
+				nodeRemap[iNode].localTransform = node->staticLocalTransform;
+				nodeRemap[iNode].boneActor = inspector.getWorld()->m_allocator<ABone>(ObjectId(), node->name.c_str());
+				nodeRemap[iNode].boneActor->boneLength = boneLength;
 			}
 
-			std::function<void(Model::Node * node, NodeRemapEl * parent)> traverseGlobalTransform;
-			traverseGlobalTransform = [&](Model::Node* node, NodeRemapEl* parent) -> void {
-				NodeRemapEl* remapNode = nodeRemap.find_element(node);
+			std::function<void(int nodeIndex, NodeRemapEl* parent)> traverseGlobalTransform;
+			traverseGlobalTransform = [&](int nodeIndex, NodeRemapEl* parent) -> void {
+				const Model::Node* node = modelAsset->model.nodeAt(nodeIndex);
+
+				NodeRemapEl* const remapNode = nodeRemap.find_element(nodeIndex);
 				if (parent) {
 					remapNode->boneActor->setTransform(parent->boneActor->getTransform() * remapNode->localTransform);
 					inspector.getWorld()->setParentOf(remapNode->boneActor->getId(), parent->boneActor->getId());
@@ -266,13 +253,13 @@ void editTraitStaticModel(GameInspector& inspector, GameObject* actor, MemberCha
 					world->setParentOf(remapNode->boneActor->getId(), allBonesParent->getId());
 				}
 
-				for (auto& childNode : node->childNodes) {
+				for (const int childNode : node->childNodes) {
 					traverseGlobalTransform(childNode, remapNode);
 				}
 			};
 
 
-			traverseGlobalTransform(modelAsset->model.m_rootNode, nullptr);
+			traverseGlobalTransform(modelAsset->model.getRootNodeIndex(), nullptr);
 		}
 
 		chain.add(sgeFindMember(TraitModel, useSkeleton));
@@ -315,7 +302,7 @@ mat4f TraitModel::ImageSettings::computeObjectToWorldTransform(const Asset& asse
 		const SpriteAnimation::Frame* frame = sprite->spriteAnimation.getFrameForTime(spriteFrameTime);
 		imageSize = vec2f(float(frame->wh.x), float(frame->wh.y));
 		hasValidImageToRender = true;
-	} else if (isAssetLoaded(asset, AssetType::TextureView)) {
+	} else if (isAssetLoaded(asset, AssetType::Texture2D)) {
 		const AssetTexture* assetTex = asset.asTextureView();
 		if (assetTex && assetTex->tex.IsResourceValid()) {
 			imageSize = vec2f(float(assetTex->tex->getDesc().texture2D.width), float(assetTex->tex->getDesc().texture2D.height));
@@ -359,14 +346,13 @@ AABox3f TraitModel::ImageSettings::computeBBoxOS(const Asset& asset, const mat4f
 	// However when there is billboarding the plane is allowed to rotate (based on the type of the bilboarding).
 	// it might be sweeping around an axis (Up only billboarding) or facing the camera (meaning int can rotate freely around its center
 	// point).
-	// In order to compute the bounding box for those cases we take the un-billboarded transformation, obtain its size around that center
-	// point and then use that vector to extend the bounding box in each cardinal direction that the quad could rotate.
-	// If we do not apply the @additionaTransform the point (0,0,0) in quad space is going to lay on the axis that the
-	// quad rotates about. So to compute the bounding box we take the furthest point of the quard form (0,0,0) and extend
-	// the initial (without billboarding bounding box based on it. After that we can safely apply @additionaTransform to move the bounding
-	// box in node space safely together with the plane.
-	// Note: it seems that this function is too complicated for what it does. The bounding box doesn't really need to be the smallest fit,
-	// just good enough so if it is a problem a simpler function might be written.
+	// In order to compute the bounding box for those cases we take the un-billboarded transformation, obtain its size around that
+	// center point and then use that vector to extend the bounding box in each cardinal direction that the quad could rotate. If we do
+	// not apply the @additionaTransform the point (0,0,0) in quad space is going to lay on the axis that the quad rotates about. So to
+	// compute the bounding box we take the furthest point of the quard form (0,0,0) and extend the initial (without billboarding
+	// bounding box based on it. After that we can safely apply @additionaTransform to move the bounding box in node space safely
+	// together with the plane. Note: it seems that this function is too complicated for what it does. The bounding box doesn't really
+	// need to be the smallest fit, just good enough so if it is a problem a simpler function might be written.
 	const transf3d fakeNodeToWorld;
 	const mat4f noAdditionalTransform = mat4f::getIdentity();
 	const mat4f planeTransfromObjectToNode = computeObjectToWorldTransform(asset, nullptr, fakeNodeToWorld, noAdditionalTransform);

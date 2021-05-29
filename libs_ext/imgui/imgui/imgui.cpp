@@ -11774,7 +11774,7 @@ void ImGui::UpdatePlatformWindows()
             if (viewport->LastNameHash != title_hash)
             {
                 char title_end_backup_c = *title_end;
-                *title_end = 0; // Cut existing buffer short instead of doing an alloc/free, no small gain.
+                *title_end = 0; // Cut existing buffer short instead of doing an m_allocator/free, no small gain.
                 g.PlatformIO.Platform_SetWindowTitle(viewport, title_begin);
                 *title_end = title_end_backup_c;
                 viewport->LastNameHash = title_hash;

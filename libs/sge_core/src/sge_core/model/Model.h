@@ -1,6 +1,7 @@
 #pragma once
 
-#include "sge_core/model/Parameter.h"
+#include <string>
+
 #include "sge_core/sgecore_api.h"
 #include "sge_renderer/renderer/renderer.h"
 #include "sge_utils/math/Box.h"
@@ -8,15 +9,12 @@
 #include "sge_utils/math/primitives.h"
 #include "sge_utils/math/transform.h"
 #include "sge_utils/utils/ChunkContainer.h"
-#include "sge_utils/utils/IStream.h"
-#include <string>
 
 #include "CollisionMesh.h"
 
 namespace sge {
 
 namespace Model {
-
 	struct CollisionShapeBox {
 		CollisionShapeBox() = default;
 		CollisionShapeBox(std::string name, transf3d transform, vec3f halfDiagonal)
@@ -29,8 +27,8 @@ namespace Model {
 		vec3f halfDiagonal = vec3f(0.f);
 	};
 
-	// Represents a capsule. The capsule is defined by all points that are at distace "radius" from
-	// the line defined by ({0.f, -halfHeight, 0.f}, {0.f, halfHeight, 0.f}}
+	/// Represents a capsule. The capsule is defined by all points that are at distace "radius" from
+	/// the line defined by ({0.f, -halfHeight, 0.f}, {0.f, halfHeight, 0.f}}
 	struct CollisionShapeCapsule {
 		CollisionShapeCapsule() = default;
 		CollisionShapeCapsule(std::string name, transf3d transform, float halfHeight, float radius)
@@ -85,131 +83,196 @@ namespace Model {
 
 	// Mesh material.
 	struct Material {
-		int id = -1; // The "id" used to identify this piece of data in the file.
 		std::string name;
-		ParameterBlock paramBlock;
+
+		vec4f diffuseColor = vec4f(1.f);
+		vec4f emissionColor = vec4f(0.f);
+		float metallic = 0.f;
+		float roughness = 1.f;
+
+		std::string diffuseTextureName;
+		std::string emissionTextureName;
+		std::string normalTextureName;
+		std::string metallicTextureName;
+		std::string roughnessTextureName;
 	};
 
 	// Skinning bone.
 	struct Bone {
-		mat4f offsetMatrix = mat4f::getIdentity();
-		struct Node* node = nullptr;
+		Bone() = default;
+		Bone(const mat4f& offsetMatrix, int nodeIdx)
+		    : offsetMatrix(offsetMatrix)
+		    , nodeIdx(nodeIdx) {}
+
+		mat4f offsetMatrix = mat4f::getIdentity(); ///< The transformation matrix used for binding a bone to a mesh.
+		int nodeIdx = -1;                          ///< The index of the node representing this bone transformation.
 	};
 
 	struct SGE_CORE_API Mesh {
-		int id = -1; // The "id" used to identify this piece of data in the file.
-		std::string name;
+		std::string name; ///< The name of the mesh.
 
-		PrimitiveTopology::Enum primTopo = PrimitiveTopology::Unknown; // TODO: Rename that variable.
-		int vbByteOffset = 0;                                          // 1st vertex byte offset into the vertex buffer
-		int ibByteOffset = 0;                                          // 1st index byte offse int the index buffer
-		UniformType::Enum ibFmt = UniformType::Unknown; // The format the index buffer, if unknown this mesh doesn't use index buffers.
-		int numElements = 0;                            // The number of vertices/indices used by this mesh.
-		int numVertices = 0;                            // The number of vertices in the mesh.
-		std::vector<VertexDecl> vertexDecl;             // The vertex declaration
+		PrimitiveTopology::Enum primTopo = PrimitiveTopology::Unknown;
+		int vbByteOffset = 0;                           ///< 1st vertex byte offset into the vertex buffer
+		int ibByteOffset = 0;                           ///< 1st index byte offse int the index buffer
+		UniformType::Enum ibFmt = UniformType::Unknown; ///< The format the index buffer, if unknown this mesh doesn't use index buffers.
+		int numElements = 0;                            ///< The number of vertices/indices used by this mesh.
+		int numVertices = 0;                            ///< The number of vertices in the mesh.
+		std::vector<VertexDecl> vertexDecl;             ///< The vertex declaration
 
-		struct MeshData* pMeshData = nullptr; // Vertex/index buffer ect. are stored here.
-		Material* pMaterial = nullptr;        // A pointer to the material.
+		int stride = 0;                    ///< The byte size stride of a single vertex.
+		int vbVertexColorOffsetBytes = -1; ///, The byte offset of the vertex color.
+		int vbPositionOffsetBytes = -1;    ///< The byte offset in the stride of vertex position.
+		int vbNormalOffsetBytes = -1;      ///< The byte offset in the stride of the vertex normal.
+		int vbTangetOffsetBytes = -1;
+		int vbBinormalOffsetBytes = -1;
+		int vbUVOffsetBytes = -1; ///< The byte offset in the stride of the 1st vertex UV channel.
+		int vbBonesIdsBytesOffset = -1;
+		int vbBonesWeightsByteOffset = -1;
 
-		std::vector<Bone> bones;
+		GpuHandle<Buffer> vertexBuffer; ///< The vertex buffer to be used for rendering of that mesh.
+		GpuHandle<Buffer> indexBuffer;  ///< The index buffer to be used for rendering of that mesh.
 
-		AABox3f aabox;
+		std::vector<char> vertexBufferRaw; ///< The raw data containing all vertices in the vertex buffer,
+		std::vector<char> indexBufferRaw;  ///< The raw data containing all indices in the vertex buffer,
 
-		// Few precached values for every mesh.
-		int stride = 0;
-		int vbPositionOffsetBytes = -1;
-		int vbNormalOffsetBytes = -1;
-		int vbUVOffsetBytes = -1;
-		float Raycast(const Ray& ray, const char* positionSemantic = "a_position") const;
+		AABox3f aabox; ///< The bounding box around the vertices of the mesh, without any deformation by skinning or anything else.
 
-	  private:
-		// The function expects validated data.
-		// T  could be ushort or uint32
-		// pAllIntersections - an optional array of interpolation coefficients where an intersection had happened (not sorted).
-		// Returns the interpolation coeffieceint FLT_MAX on no intersection.
-		template <typename T>
-		float RaycastIndexBuffer(const Ray& ray, const int posByteOffset, std::vector<float>* pAllIntersections = NULL) const;
-		float RaycastVertexBufferOnly(const Ray& ray, const int posByteOffset, std::vector<float>* pAllIntersections = NULL) const;
-	};
-
-	struct MeshData {
-		GpuHandle<Buffer> vertexBuffer;
-		GpuHandle<Buffer> indexBuffer;
-
-		std::vector<char> vertexBufferRaw; // CPU cached vertex buffer data. May be empty depending on import settings
-		std::vector<char> indexBufferRaw;  // CPU cached index buffer data. May be empty depending on import settings
-
-		std::vector<Mesh*> meshes;
-	};
-
-	struct AnimationInfo {
-		AnimationInfo() = default;
-		AnimationInfo(const char* curveName, float startTime, float duration)
-		    : curveName(curveName)
-		    , startTime(startTime)
-		    , duration(duration) {}
-
-		std::string curveName;
-		float startTime = 0;
-		float duration = 0;
+		int materialIndex = -1;  ///< The material assigned by default to this mesh.
+		std::vector<Bone> bones; ///< A list of bones affecting the mesh.
 	};
 
 	struct MeshAttachment {
-		Mesh* mesh = nullptr;
-		Material* material = nullptr;
+		MeshAttachment() = default;
+
+		MeshAttachment(int attachedMeshIndex, int attachedMaterialIndex)
+		    : attachedMeshIndex(attachedMeshIndex)
+		    , attachedMaterialIndex(attachedMaterialIndex) {}
+
+		int attachedMeshIndex = -1;
+		int attachedMaterialIndex = -1;
+	};
+
+	struct KeyFrames {
+		std::map<float, vec3f> positionKeyFrames;
+		std::map<float, quatf> rotationKeyFrames;
+		std::map<float, vec3f> scalingKeyFrames;
+
+		void evaluate(transf3d& result, const float t) const;
+	};
+
+	struct Animation {
+		Animation() = default;
+
+		Animation(std::string animationName, float durationSec, std::map<int, KeyFrames> perNodeKeyFrames)
+		    : animationName(std::move(animationName))
+		    , durationSec(durationSec)
+		    , perNodeKeyFrames(std::move(perNodeKeyFrames)) {}
+
+		bool evaluateForNode(transf3d& outTransform, const int nodeIndex, const float time) const {
+			auto itr = perNodeKeyFrames.find(nodeIndex);
+			if (itr != perNodeKeyFrames.end()) {
+				itr->second.evaluate(outTransform, time);
+				return true;
+			}
+			return false;
+		}
+
+	  public:
+		/// The name of the animation.
+		std::string animationName;
+
+		/// The lenght of the animation in seconds.. Keep in mind that there might be key frames beyond that value,
+		/// The artist might need them for interpolation purposes.
+		float durationSec = 0;
+
+		/// The keyframes of all affected nodes in their local space (relative to their parents).
+		std::map<int, KeyFrames> perNodeKeyFrames;
 	};
 
 	struct Node {
-		ParameterBlock paramBlock;
+		/// int nodeIdx = -1; // The "id" used to identify this piece of data in the file.
+		transf3d staticLocalTransform; ///< The local transformation of the node when not animated.
 
 		std::vector<MeshAttachment> meshAttachments;
-		std::vector<Node*> childNodes; // A pointers to the child nodes.
+		std::vector<int> childNodes; ///< The indices of all child nodes.
 
-		int id = -1; // The "id" used to identify this piece of data in the file.
-		std::string name;
+		std::string name; ///< The name of the node.
 	};
 
 	//--------------------------------------------------------------
 	// Model
-	//
-	// The member convension here:
-	// I - means this member is used when importing models (aka. in game).
-	// O - means this member MUST be VALID when exporting the model(in the ModelWriter).
-	// IO - means that the member is used by both.
 	//--------------------------------------------------------------
 	struct SGE_CORE_API Model {
-		// Searches for an object. If the object is missing these functions will return nullptr.
-		Material* FindMaterial(const int id);
-		Node* FindNode(const int id);
-		const Node* FindNode(const int id) const;
-		const Node* FindFirstNodeByName(const std::string& name) const;
-		Mesh* FindMesh(const int id);
-		const AnimationInfo* findAnimation(const std::string& name) const;
 
-	  public:
-		// The actual storage for most of the models data.
+		void createRenderingResources(SGEDevice& sgedev);
+
+		int makeNewNode();
+		int makeNewMaterial();
+		int makeNewMesh();
+		int makeNewAnim();
+
+		int getRootNodeIndex() const { return m_rootNodeIndex; }
+		Node* getRootNode() { return nodeAt(getRootNodeIndex()); }
+		const Node* getRootNode() const { return nodeAt(getRootNodeIndex()); }
+
+		int getNumNodes() const { return int(m_nodes.size()); }
+		Node* nodeAt(int nodeIndex);
+		const Node* nodeAt(int nodeIndex) const;
+		int findFistNodeIndexWithName(const std::string& name) const;
+
+		int getNumMaterials() const { return int(m_materials.size()); }
+		Material* materialAt(int materialIndex);
+		const Material* materialAt(int materialIndex) const;
+
+		int getNumMeshes() const { return int(m_meshes.size()); }
+		Mesh* getMeshByIndex(int meshIndex);
+		const Mesh* getMeshByIndex(int meshIndex) const;
+
+		int getNumAnimations() const { return int(m_animations.size()); }
+		const Animation* getAnimation(int iAnim) const {
+			if (iAnim >= 0 && iAnim < int(m_animations.size())) {
+				return &m_animations[iAnim];
+			}
+			return nullptr;
+		}
+		Animation* getAnimation(int iAnim) {
+			if (iAnim >= 0 && iAnim < int(m_animations.size())) {
+				return &m_animations[iAnim];
+			}
+			return nullptr;
+		}
+		const Animation* getAnimationByName(const std::string& name) const;
+
+		const std::vector<Node*>& getNodes() { return m_nodes; }
+		const std::vector<Mesh*>& getMeshes() { return m_meshes; }
+		const std::vector<Material*>& getMatrials() { return m_materials; }
+		
+
+	  private:
+		int m_rootNodeIndex = -1;
+		std::vector<Animation> m_animations;
+		std::vector<Node*> m_nodes;
+		std::vector<Mesh*> m_meshes;
+		std::vector<Material*> m_materials;
+
+		/// The actual storage for the model data.
 		ChunkContainer<Mesh> m_containerMesh;
-		ChunkContainer<MeshData> m_containerMeshData;
 		ChunkContainer<Material> m_containerMaterial;
 		ChunkContainer<Node> m_containerNode;
 
-		// The model working data. Those pointer must allways be valid.
-		Node* m_rootNode = nullptr;              // IO
-		std::vector<AnimationInfo> m_animations; // IO
-		std::vector<Node*> m_nodes;              // IO
-		std::vector<MeshData*> m_meshesData;     // IO
-		std::vector<Material*> m_materials;      // IO
+	  public:
+		/// Stores the various collision shapes defineded in the model.
+		/// They are useful for having one place for the rendering geometry and the
+		/// geometry that is going to be used for game physics.
+		std::vector<CollisionMesh> m_convexHulls;
+		std::vector<CollisionMesh> m_concaveHulls;
+		std::vector<CollisionShapeBox> m_collisionBoxes;
+		std::vector<CollisionShapeCapsule> m_collisionCapsules;
+		std::vector<CollisionShapeCylinder> m_collisionCylinders;
+		std::vector<CollisionShapeSphere> m_collisionSpheres;
 
-		// A set of convex hulls (if any) evaluated in the static moment using the meshes.
-		std::vector<CollisionMesh> m_convexHulls;                 // IO
-		std::vector<CollisionMesh> m_concaveHulls;                // IO
-		std::vector<CollisionShapeBox> m_collisionBoxes;          // IO
-		std::vector<CollisionShapeCapsule> m_collisionCapsules;   // IO
-		std::vector<CollisionShapeCylinder> m_collisionCylinders; // IO
-		std::vector<CollisionShapeSphere> m_collisionSpheres;     // IO
-
-		// Cached loading settings.
-		LoadSettings m_loadSets; // I
+		/// Cached loading settings.
+		LoadSettings m_loadSets;
 	};
 } // namespace Model
 

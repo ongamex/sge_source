@@ -1,5 +1,7 @@
 #pragma once
 
+#if 0
+
 #include "model/EvaluatedModel.h"
 #include "sgecore_api.h"
 #include <unordered_map>
@@ -88,3 +90,5 @@ struct SGE_CORE_API Animator {
 };
 
 } // namespace sge
+
+#endif

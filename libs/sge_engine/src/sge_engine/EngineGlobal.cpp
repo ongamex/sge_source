@@ -25,14 +25,14 @@ struct EditorGUINotification {
 void EngineGlobalAssets::initialize() {
 	AssetLibrary* const assetLib = getCore()->getAssetLib();
 
-	unknownObjectIcon = assetLib->getAsset(AssetType::TextureView, "assets/editor/textures/icons/obj/UnknownObject.png", true);
+	unknownObjectIcon = assetLib->getAsset(AssetType::Texture2D, "assets/editor/textures/icons/obj/UnknownObject.png", true);
 
 	sgeAssert(typeLib().m_gameObjectTypes.empty() == false && "Aren't you calling this too early?");
 
 	for (const auto& typeId : typeLib().m_gameObjectTypes) {
 		const TypeDesc* td = typeLib().find(typeId);
 		std::string assetName = "assets/editor/textures/icons/obj/" + std::string(td->name) + ".png";
-		std::shared_ptr<Asset> asset = getCore()->getAssetLib()->getAsset(AssetType::TextureView, assetName.c_str(), true);
+		std::shared_ptr<Asset> asset = getCore()->getAssetLib()->getAsset(AssetType::Texture2D, assetName.c_str(), true);
 		if (isAssetLoaded(asset)) {
 			perObjectTypeIcon[typeId] = asset;
 		}

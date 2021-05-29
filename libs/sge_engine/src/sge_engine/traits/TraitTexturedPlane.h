@@ -14,7 +14,7 @@ struct SGE_ENGINE_API TraitTexturedPlane : public Trait {
 	SGE_TraitDecl_Full(TraitTexturedPlane);
 
 	TraitTexturedPlane()
-	    : m_assetProperty(AssetType::TextureView) {}
+	    : m_assetProperty(AssetType::Texture2D) {}
 
 	void setTexture(const char* assetPath, bool updateNow) {
 		m_assetProperty.setTargetAsset(assetPath);

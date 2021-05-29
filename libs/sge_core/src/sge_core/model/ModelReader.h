@@ -2,11 +2,9 @@
 
 #include "Model.h"
 #include "sge_core/sgecore_api.h"
-#include "sge_renderer/renderer/renderer.h"
+#include "sge_utils/utils/IStream.h"
 
 namespace sge {
-
-struct JsonValue;
 
 namespace Model {
 	class SGE_CORE_API ModelReader {
@@ -20,10 +18,10 @@ namespace Model {
 		static PrimitiveTopology::Enum PrimitiveTolologyFromString(const char* str);
 		static UniformType::Enum UniformTypeFromString(const char* str);
 
-		ModelReader() {}
+		ModelReader() = default;
 		~ModelReader() {}
 
-		bool Load(const LoadSettings loadSets, SGEDevice* sgedev, IReadStream* const irs, Model& model);
+		bool Load(const LoadSettings loadSets, IReadStream* const irs, Model& model);
 
 	  private:
 		IReadStream* irs;
@@ -35,7 +33,6 @@ namespace Model {
 		template <typename T>
 		void LoadDataChunk(std::vector<T>& resultBuffer, const int chunkId);
 		void LoadDataChunkRaw(void* const ptr, const size_t ptrExpectedSize, const int chunkId);
-		bool LoadParamBlock(const JsonValue* jParamBlock, ParameterBlock& paramBlock);
 	};
 
 } // namespace Model

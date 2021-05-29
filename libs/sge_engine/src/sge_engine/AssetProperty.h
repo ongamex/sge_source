@@ -2,6 +2,7 @@
 
 #include "sge_core/AssetLibrary.h"
 #include "sge_engine_api.h"
+#include "sge_utils/utils/StaticArray.h"
 
 namespace sge {
 

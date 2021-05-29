@@ -58,11 +58,11 @@ bool assetPicker(
 					}
 
 					std::shared_ptr<Asset>& asset = itr.second;
-					if (assetType == AssetType::TextureView) {
+					if (assetType == AssetType::Texture2D) {
 						if (isAssetLoadFailed(asset) == false) {
 							if (!isAssetLoaded(asset)) {
 								if (ImGui::Button(itr.first.c_str(), ImVec2(48, 48))) {
-									getCore()->getAssetLib()->getAsset(AssetType::TextureView, asset->getPath().c_str(), true);
+									getCore()->getAssetLib()->getAsset(AssetType::Texture2D, asset->getPath().c_str(), true);
 								}
 							} else if (isAssetLoaded(asset)) {
 								if (ImGui::ImageButton(asset->asTextureView()->tex.GetPtr(), ImVec2(48, 48))) {

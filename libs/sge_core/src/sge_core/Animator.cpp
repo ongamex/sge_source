@@ -1,3 +1,4 @@
+#if 0
 #include "Animator.h"
 #include "sge_core/AssetLibrary.h"
 #include "sge_core/ICore.h"
@@ -160,3 +161,5 @@ void Animator::update(float const dt) {
 }
 
 } // namespace sge
+
+#endif

@@ -6,7 +6,7 @@ namespace sge {
 
 // A for loop helper that iterates in [a, b)
 template <typename T>
-struct range_t {
+struct rng {
 	struct const_iterator {
 		T i;
 
@@ -22,12 +22,12 @@ struct range_t {
 	};
 
 	// a is assumed 0. the interval is [0, _end)
-	range_t(const T _end)
+	rng(const T _end)
 	    : _begin(0)
 	    , _end(_end) {}
 
 	// [_begin, _end)
-	range_t(const T _begin, const T _end)
+	rng(const T _begin, const T _end)
 	    : _begin(_begin)
 	    , _end(_end) {
 		sgeAssert(_begin <= _end);
@@ -39,29 +39,8 @@ struct range_t {
 	T _begin, _end;
 };
 
-typedef range_t<int> range_int;
-typedef range_t<unsigned int> range_u32;
-typedef range_t<size_t> range_size_t;
-
-
-template <typename T>
-struct LoopCArray {
-	typedef T value_type;
-	typedef value_type* iterator;
-	typedef const value_type* const_iterator;
-
-	value_type* const ptr;
-	const size_t numElems;
-
-	LoopCArray(value_type* const ptr, const size_t numElems)
-	    : ptr(ptr)
-	    , numElems(numElems) {}
-
-	iterator begin() { return ptr; }
-	iterator end() { return ptr + numElems; }
-
-	const_iterator begin() const { return ptr; }
-	const_iterator end() const { return ptr + numElems; }
-};
+typedef rng<int> rng_int;
+typedef rng<unsigned int> rng_uint;
+typedef rng<size_t> rng_size;
 
 } // namespace sge
