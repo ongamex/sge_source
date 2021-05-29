@@ -75,7 +75,7 @@ struct SGE_CORE_API EvaluatedModel {
 	    : m_assetLibrary(NULL)
 	    , m_model(NULL) {}
 
-	void initialize(AssetLibrary* const assetLibrary, Model::Model* model);
+	void initialize(AssetLibrary* const assetLibrary, Model* model);
 	bool isInitialized() const { return m_model && m_assetLibrary; }
 
 	/// Adds an animation that can be specified to the evaluate function.
@@ -114,7 +114,7 @@ struct SGE_CORE_API EvaluatedModel {
 	};
 
   public:
-	Model::Model* m_model = nullptr;
+	Model* m_model = nullptr;
 	AssetLibrary* m_assetLibrary = nullptr;
 
 	/// Stores the state of each node, the index in this array corresponts to the index of the node in the @Model::m_nodes array.

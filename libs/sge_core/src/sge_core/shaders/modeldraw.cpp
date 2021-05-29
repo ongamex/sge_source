@@ -521,10 +521,10 @@ void BasicModelDraw::draw(const RenderDestination& rdest,
                           const std::vector<MaterialOverride>* mtlOverrides) {
 	for (int iNode = 0; iNode < evalModel.getNumEvalNodes(); ++iNode) {
 		const EvaluatedNode& evalNode = evalModel.getEvalNode(iNode);
-		const Model::Node* rawNode = evalModel.m_model->nodeAt(iNode);
+		const ModelNode* rawNode = evalModel.m_model->nodeAt(iNode);
 
 		for (int iMesh = 0; iMesh < rawNode->meshAttachments.size(); ++iMesh) {
-			const Model::MeshAttachment& meshAttachment = rawNode->meshAttachments[iMesh];
+			const MeshAttachment& meshAttachment = rawNode->meshAttachments[iMesh];
 			const EvaluatedMesh& mesh = evalModel.getEvalMesh(meshAttachment.attachedMeshIndex);
 			mat4f const finalTrasform = (mesh.boneTransformMatrices.size() == 0) ? preRoot * evalNode.evalGlobalTransform : preRoot;
 

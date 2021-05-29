@@ -6,7 +6,7 @@
 
 namespace sge {
 
-int ModelWriter::NewChunkFromPtr(const void* const ptr, const size_t sizeBytes) {
+int ModelWriter::newDataChunkFromPtr(const void* const ptr, const size_t sizeBytes) {
 	const int newChunkId = (dataChunks.size() == 0) ? 0 : dataChunks.back().id + 1;
 
 	dataChunks.emplace_back(DataChunk(newChunkId, ptr, sizeBytes));
@@ -34,7 +34,7 @@ char* ModelWriter::newDataChunkWithSize(size_t sizeBytes, int& outChunkId) {
 	return (char*)chunk.data;
 }
 
-JsonValue* ModelWriter::generateKeyFrames(const Model::KeyFrames& keyfames) {
+JsonValue* ModelWriter::generateKeyFrames(const KeyFrames& keyfames) {
 	JsonValue* jKeyFrames = jvb(JID_MAP);
 
 	if (!keyfames.positionKeyFrames.empty()) {
@@ -95,15 +95,15 @@ JsonValue* ModelWriter::generateKeyFrames(const Model::KeyFrames& keyfames) {
 	return jKeyFrames;
 }
 
-void ModelWriter::GenerateAnimations() {
-	if (model->getNumAnimations() == 0) {
+void ModelWriter::writeAnimations() {
+	if (model->numAnimations() == 0) {
 		return;
 	}
 
 	auto jAnimations = root->setMember("animations", jvb(JID_ARRAY_BEGIN));
 
-	for (int iAnim : range_int(model->getNumAnimations())) {
-		const Model::Animation& animation = *model->getAnimation(iAnim);
+	for (int iAnim : range_int(model->numAnimations())) {
+		const ModelAnimation& animation = *model->getAnimation(iAnim);
 
 		auto jAnim = jAnimations->arrPush(jvb(JID_MAP_BEGIN));
 
@@ -114,7 +114,7 @@ void ModelWriter::GenerateAnimations() {
 		JsonValue* jAllNodesKeyFrames = jAnim->setMember("perNodeKeyFrames", jvb(JID_ARRAY));
 
 		for (const auto& itrPerNodeKeyframes : animation.perNodeKeyFrames) {
-			JsonValue* jNodeKeyFrames = jvb(JID_ARRAY);
+			JsonValue* jNodeKeyFrames = jvb(JID_MAP);
 
 			jNodeKeyFrames->setMember("nodeIndex", jvb(itrPerNodeKeyframes.first));
 			JsonValue* jKeyFrames = generateKeyFrames(itrPerNodeKeyframes.second);
@@ -125,11 +125,12 @@ void ModelWriter::GenerateAnimations() {
 	}
 }
 
-void ModelWriter::GenerateNodes() {
+void ModelWriter::writeNodes() {
 	JsonValue* jNodes = root->setMember("nodes", jvb(JID_ARRAY));
+	root->setMember("rootNodeIndex", jvb(model->getRootNodeIndex()));
 
-	for (int iNode : range_int(model->getNumNodes())) {
-		const Model::Node* node = model->nodeAt(iNode);
+	for (int iNode : range_int(model->numNodes())) {
+		const ModelNode* node = model->nodeAt(iNode);
 
 		JsonValue* jNode = jNodes->arrPush(jvb(JID_MAP));
 
@@ -143,7 +144,7 @@ void ModelWriter::GenerateNodes() {
 		if (!node->meshAttachments.empty()) {
 			auto jMeshes = jNode->setMember("meshes", jvb(JID_ARRAY));
 
-			for (const Model::MeshAttachment attachmentMesh : node->meshAttachments) {
+			for (const MeshAttachment attachmentMesh : node->meshAttachments) {
 				JsonValue* const jAttachmentMesh = jvb(JID_MAP);
 				jAttachmentMesh->setMember("meshIndex", jvb(attachmentMesh.attachedMeshIndex));
 				jAttachmentMesh->setMember("materialIndex", jvb(attachmentMesh.attachedMaterialIndex));
@@ -162,13 +163,13 @@ void ModelWriter::GenerateNodes() {
 	}
 }
 
-void ModelWriter::GenerateMaterials() {
+void ModelWriter::writeMaterials() {
 	JsonValue* const jMaterials = root->setMember("materials", jvb(JID_ARRAY));
 
-	for (const int iMtl : range_int(model->getNumMaterials())) {
+	for (const int iMtl : range_int(model->numMaterials())) {
 		JsonValue* const jMaterial = jMaterials->arrPush(jvb(JID_MAP));
 
-		const Model::Material* mtl = model->materialAt(iMtl);
+		const ModelMaterial* mtl = model->materialAt(iMtl);
 
 		jMaterial->setMember("name", jvb(mtl->name));
 
@@ -195,7 +196,7 @@ void ModelWriter::GenerateMaterials() {
 	return;
 }
 
-void ModelWriter::GenerateMeshesData() {
+void ModelWriter::writeMeshes() {
 	auto UnformType2String = [](const UniformType::Enum ut) -> const char* {
 		switch (ut) {
 			case UniformType::Uint16:
@@ -228,19 +229,19 @@ void ModelWriter::GenerateMeshesData() {
 
 	JsonValue* const jMeshes = root->setMember("meshes", jvb(JID_ARRAY));
 
-	for (const int iMesh : range_int(model->getNumMeshes())) {
+	for (const int iMesh : range_int(model->numMeshes())) {
 		JsonValue* jMesh = jMeshes->arrPush(jvb(JID_MAP));
 
-		const Model::Mesh* mesh = model->getMeshByIndex(iMesh);
+		const ModelMesh* mesh = model->meshAt(iMesh);
 
 		// Write the vertex/index buffers chunks.
 		if (mesh->vertexBufferRaw.size()) {
-			const int vertexBufferChunkId = NewChunkFromStdVector(mesh->vertexBufferRaw);
+			const int vertexBufferChunkId = newChunkFromStdVector(mesh->vertexBufferRaw);
 			jMesh->setMember("vertexDataChunkId", jvb(vertexBufferChunkId));
 		}
 
 		if (mesh->indexBufferRaw.size()) {
-			const int indexBufferChunkId = NewChunkFromStdVector(mesh->indexBufferRaw);
+			const int indexBufferChunkId = newChunkFromStdVector(mesh->indexBufferRaw);
 			jMesh->setMember("indexDataChunkId", jvb(indexBufferChunkId));
 		}
 
@@ -271,7 +272,7 @@ void ModelWriter::GenerateMeshesData() {
 		if (mesh->bones.size() != 0) {
 			auto jBones = jMesh->setMember("bones", jvb(JID_ARRAY_BEGIN));
 			for (const auto& bone : mesh->bones) {
-				const int boneOffsetChunkId = NewChunkFromPtr(&bone.offsetMatrix, sizeof(bone.offsetMatrix));
+				const int boneOffsetChunkId = newDataChunkFromPtr(&bone.offsetMatrix, sizeof(bone.offsetMatrix));
 
 				auto jBone = jBones->arrPush(jvb(JID_MAP_BEGIN));
 				jBone->setMember("boneIndex", jvb(bone.nodeIdx));
@@ -287,7 +288,7 @@ void ModelWriter::GenerateMeshesData() {
 	return;
 }
 
-void ModelWriter::GenerateCollisionData() {
+void ModelWriter::writeCollisionData() {
 	const auto transf3dToJson = [&](const transf3d& tr) -> JsonValue* {
 		JsonValue* j = jvb(JID_MAP);
 		j->setMember("p", jvb(tr.p.data, 3));
@@ -303,8 +304,8 @@ void ModelWriter::GenerateCollisionData() {
 
 		for (int t = 0; t < model->m_convexHulls.size(); ++t) {
 			JsonValue* const jHull = jStaticConvecHulls->arrPush(jvb(JID_MAP));
-			const int hullVertsChunkId = NewChunkFromStdVector(model->m_convexHulls[t].vertices);
-			const int hullIndsChunkId = NewChunkFromStdVector(model->m_convexHulls[t].indices);
+			const int hullVertsChunkId = newChunkFromStdVector(model->m_convexHulls[t].vertices);
+			const int hullIndsChunkId = newChunkFromStdVector(model->m_convexHulls[t].indices);
 			jHull->setMember("vertsChunkId", jvb(hullVertsChunkId));
 			jHull->setMember("indicesChunkId", jvb(hullIndsChunkId));
 		}
@@ -316,8 +317,8 @@ void ModelWriter::GenerateCollisionData() {
 
 		for (int t = 0; t < model->m_concaveHulls.size(); ++t) {
 			JsonValue* const jHull = jStaticConvecHulls->arrPush(jvb(JID_MAP));
-			const int hullVertsChunkId = NewChunkFromStdVector(model->m_concaveHulls[t].vertices);
-			const int hullIndsChunkId = NewChunkFromStdVector(model->m_concaveHulls[t].indices);
+			const int hullVertsChunkId = newChunkFromStdVector(model->m_concaveHulls[t].vertices);
+			const int hullIndsChunkId = newChunkFromStdVector(model->m_concaveHulls[t].indices);
 			jHull->setMember("vertsChunkId", jvb(hullVertsChunkId));
 			jHull->setMember("indicesChunkId", jvb(hullIndsChunkId));
 		}
@@ -377,19 +378,24 @@ void ModelWriter::GenerateCollisionData() {
 	}
 }
 
-bool ModelWriter::write(const Model::Model& modelToWrite, IWriteStream* iws) {
+bool ModelWriter::write(const Model& modelToWrite, IWriteStream* iws) {
 	if (iws == nullptr) {
 		return false;
 	}
 
-	root = jvb(JID_MAP);
 	this->model = &modelToWrite;
 
-	GenerateAnimations();
-	GenerateNodes();
-	GenerateMaterials();
-	GenerateMeshesData();
-	GenerateCollisionData();
+	root = jvb(JID_MAP);
+
+	// The version of the file format.
+	// 0 is the starting version.
+	root->setMember("version", jvb(0));
+
+	writeNodes();
+	writeMaterials();
+	writeMeshes();
+	writeAnimations();
+	writeCollisionData();
 
 	// Generate the json that describes the data chunks.
 	JsonValue* const jDataChunkDesc = root->setMember("dataChunksDesc", jvb(JID_ARRAY));
@@ -416,7 +422,7 @@ bool ModelWriter::write(const Model::Model& modelToWrite, IWriteStream* iws) {
 	return true;
 }
 
-bool ModelWriter::write(const Model::Model& modelToWrite, const char* const filename) {
+bool ModelWriter::write(const Model& modelToWrite, const char* const filename) {
 	if (filename == nullptr) {
 		return false;
 	}

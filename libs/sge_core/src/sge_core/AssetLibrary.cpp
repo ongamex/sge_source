@@ -273,11 +273,11 @@ struct ModelAssetFactory : public IAssetFactory {
 			return false;
 		}
 
-		Model::LoadSettings loadSettings;
+		ModelLoadSettings loadSettings;
 		loadSettings.assetDir = extractFileDir(pPath, true);
 
-		Model::ModelReader modelReader;
-		const bool succeeded = modelReader.Load(loadSettings, &frs, modelAsset.model);
+		ModelReader modelReader;
+		const bool succeeded = modelReader.loadModel(loadSettings, &frs, modelAsset.model);
 
 		if (!succeeded) {
 			SGE_DEBUG_ERR("Unable to load model asset: '%s'!\n", pPath);

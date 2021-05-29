@@ -28,7 +28,7 @@ bool InitializeFBXSDK() {
 	return true;
 }
 
-Model::CollisionMesh fbxMeshToCollisionMesh(fbxsdk::FbxMesh* const fbxMesh) {
+ModelCollisionMesh fbxMeshToCollisionMesh(fbxsdk::FbxMesh* const fbxMesh) {
 	// Extract all vertices form all polygons and then remove the duplicate vertices and generate indices.
 	const int numPolygons = fbxMesh->GetPolygonCount();
 	const int numVerts = numPolygons * 3;
@@ -69,7 +69,7 @@ Model::CollisionMesh fbxMeshToCollisionMesh(fbxsdk::FbxMesh* const fbxMesh) {
 
 	sgeAssert(trianglesIndices.size() % 3 == 0);
 
-	return Model::CollisionMesh{std::move(trianglesVetices), std::move(trianglesIndices)};
+	return ModelCollisionMesh{std::move(trianglesVetices), std::move(trianglesIndices)};
 }
 
 // CAUTION: FBX SDK uses DEGREES this functon expects DEGREES!
@@ -170,7 +170,7 @@ void readGeometryElement(TFBXLayerElement* const element, int const controlPoint
 //---------------------------------------------------------------
 // FBXSDKParser
 //---------------------------------------------------------------
-bool FBXSDKParser::parse(Model::Model* result,
+bool FBXSDKParser::parse(Model* result,
                          std::vector<std::string>* pReferencedTextures,
                          fbxsdk::FbxScene* scene,
                          FbxNode* enforcedRootNode,
@@ -205,11 +205,13 @@ bool FBXSDKParser::parse(Model::Model* result,
 		fbxsdk::FbxNode* const rootNodeToBeUsed = enforcedRootNode != nullptr ? enforcedRootNode : m_fbxScene->GetRootNode();
 		const int importedRootNodeIndex = discoverNodesRecursive(rootNodeToBeUsed);
 
+		m_model->setRootNodeIndex(importedRootNodeIndex);
+
 		// Caution:
 		// I've encounteded a file that had a few nodes that weren't parented to any node.
 		// As a workaround for them, if we aren't exporting a sub-tree we attach them to root of the imported node.
 		if (enforcedRootNode == nullptr) {
-			Model::Node* rootNode = m_model->nodeAt(importedRootNodeIndex);
+			ModelNode* rootNode = m_model->nodeAt(importedRootNodeIndex);
 			for (int const iFbxNode : range_int(m_fbxScene->GetNodeCount())) {
 				// If the node hasn't been discovered yet, that means that is is not parented to the root node.
 				FbxNode* const fbxNode = m_fbxScene->GetNode(iFbxNode);
@@ -252,7 +254,7 @@ bool FBXSDKParser::parse(Model::Model* result,
 
 int FBXSDKParser::discoverNodesRecursive(fbxsdk::FbxNode* const fbxNode) {
 	const int nodeIndex = m_model->makeNewNode();
-	Model::Node* node = m_model->nodeAt(nodeIndex);
+	ModelNode* node = m_model->nodeAt(nodeIndex);
 	m_fbxNode2NodeIndex[fbxNode] = nodeIndex;
 
 	node->name = fbxNode->GetName();
@@ -352,7 +354,7 @@ int FBXSDKParser::discoverNodesRecursive(fbxsdk::FbxNode* const fbxNode) {
 void FBXSDKParser::importMaterials() {
 	for (auto& pair : m_fbxMtl2MtlIndex) {
 		FbxSurfaceMaterial* const fSurfMtl = pair.first;
-		Model::Material* const material = m_model->materialAt(pair.second);
+		ModelMaterial* const material = m_model->materialAt(pair.second);
 
 #if 0
 		// A loop useful for debugging while importing new types of materials.
@@ -522,7 +524,7 @@ void FBXSDKParser::importMeshes_singleMesh(FbxMesh* fbxMesh, int importedMeshInd
 		}
 	}
 
-	Model::Mesh& mesh = *m_model->getMeshByIndex(importedMeshIndex);
+	ModelMesh& mesh = *m_model->meshAt(importedMeshIndex);
 
 	mesh.name = fbxMesh->GetName();
 
@@ -709,7 +711,7 @@ void FBXSDKParser::importMeshes_singleMesh(FbxMesh* fbxMesh, int importedMeshInd
 				}
 
 				// Finally Add the bone to the mesh.
-				mesh.bones.push_back(Model::Bone(boneOffseMtx, boneNodeIndex));
+				mesh.bones.push_back(ModelMeshBone(boneOffseMtx, boneNodeIndex));
 			}
 
 			// We support so far only skin deformers. And we support only one skin deformer.
@@ -749,30 +751,30 @@ void FBXSDKParser::importMeshes_singleMesh(FbxMesh* fbxMesh, int importedMeshInd
 					}
 				}
 			}
+		}
 
-			{
-				sge::VertexDecl decl;
-				decl.bufferSlot = 0;
-				decl.semantic = "a_bonesIds";
-				decl.format = sge::UniformType::Int4;
-				decl.byteOffset = -1;
+		{
+			sge::VertexDecl decl;
+			decl.bufferSlot = 0;
+			decl.semantic = "a_bonesIds";
+			decl.format = sge::UniformType::Int4;
+			decl.byteOffset = -1;
 
-				boneIdsByteOffset = stride;
-				stride += 16;
-				mesh.vertexDecl.push_back(decl);
-			}
+			boneIdsByteOffset = stride;
+			stride += 16;
+			mesh.vertexDecl.push_back(decl);
+		}
 
-			{
-				sge::VertexDecl decl;
-				decl.bufferSlot = 0;
-				decl.semantic = "a_boneWeights";
-				decl.format = sge::UniformType::Float4;
-				decl.byteOffset = -1;
+		{
+			sge::VertexDecl decl;
+			decl.bufferSlot = 0;
+			decl.semantic = "a_boneWeights";
+			decl.format = sge::UniformType::Float4;
+			decl.byteOffset = -1;
 
-				boneWeightsByteOffset = stride;
-				stride += 16;
-				mesh.vertexDecl.push_back(decl);
-			}
+			boneWeightsByteOffset = stride;
+			stride += 16;
+			mesh.vertexDecl.push_back(decl);
 		}
 	}
 
@@ -1010,7 +1012,7 @@ void FBXSDKParser::importNodes() {
 }
 
 void FBXSDKParser::importNodes_singleNode(FbxNode* fbxNode, int importNodeIndex) {
-	Model::Node* node = m_model->nodeAt(importNodeIndex);
+	ModelNode* node = m_model->nodeAt(importNodeIndex);
 
 	node->name = fbxNode->GetName();
 
@@ -1067,7 +1069,7 @@ void FBXSDKParser::importNodes_singleNode(FbxNode* fbxNode, int importNodeIndex)
 				const auto& itrFindMaterialIndex = m_fbxMtl2MtlIndex.find(fbxSurfMtl);
 
 				if (itrFindMeshIndex != m_fbxMesh2MeshIndex.end() && itrFindMaterialIndex != m_fbxMtl2MtlIndex.end()) {
-					node->meshAttachments.push_back(Model::MeshAttachment(itrFindMeshIndex->second, itrFindMaterialIndex->second));
+					node->meshAttachments.push_back(MeshAttachment(itrFindMeshIndex->second, itrFindMaterialIndex->second));
 				}
 			}
 		}
@@ -1122,7 +1124,7 @@ void FBXSDKParser::importAnimations() {
 		const float animationDuration = animationEnd - animationStart;
 
 		// Per node keyframes for this animation. They keyframes are in node local space.
-		std::map<int, Model::KeyFrames> perNodeKeyFrames;
+		std::map<int, KeyFrames> perNodeKeyFrames;
 
 		// Each stack constist of multiple layers. This abstaction is used by the artist in Maya/Max/ect. to separate the different type
 		// of keyframes while animating. This us purely used to keep the animation timeline organized and has no functionally when
@@ -1134,7 +1136,7 @@ void FBXSDKParser::importAnimations() {
 			// Read each the animated values for each node on that curve.
 			for (const auto& itr : m_fbxNode2NodeIndex) {
 				fbxsdk::FbxNode* const fbxNode = itr.first;
-				Model::KeyFrames nodeKeyFrames = perNodeKeyFrames[itr.second];
+				KeyFrames nodeKeyFrames = perNodeKeyFrames[itr.second];
 
 				if (!fbxNode) {
 					sgeAssert(false && "Failed to find nodes for importing their animations.");
@@ -1199,7 +1201,7 @@ void FBXSDKParser::importAnimations() {
 		// Add the animation to the model.
 		const int newAnimIndex = m_model->makeNewAnim();
 
-		*(m_model->getAnimation(newAnimIndex)) = Model::Animation(animationName, animationDuration, perNodeKeyFrames);
+		*(m_model->getAnimation(newAnimIndex)) = ModelAnimation(animationName, animationDuration, std::move(perNodeKeyFrames));
 	}
 }
 
@@ -1208,7 +1210,7 @@ void FBXSDKParser::importCollisionGeometry() {
 	for (const auto& itrFbxMeshInstantiations : m_collision_ConvexHullMeshes) {
 		fbxsdk::FbxMesh* const fbxMesh = itrFbxMeshInstantiations.first;
 
-		Model::CollisionMesh collisionMeshObjectSpace = fbxMeshToCollisionMesh(fbxMesh);
+		ModelCollisionMesh collisionMeshObjectSpace = fbxMeshToCollisionMesh(fbxMesh);
 
 		if (collisionMeshObjectSpace.indices.size() % 3 == 0) {
 			// For every instance transform the vertices to model (or in this context world space).
@@ -1220,7 +1222,7 @@ void FBXSDKParser::importCollisionGeometry() {
 					v = mat_mul_pos(n2w, v);
 				}
 
-				m_model->m_convexHulls.emplace_back(Model::CollisionMesh{std::move(verticesWS), collisionMeshObjectSpace.indices});
+				m_model->m_convexHulls.emplace_back(ModelCollisionMesh{std::move(verticesWS), collisionMeshObjectSpace.indices});
 			}
 		} else {
 			printf("Invalid collision geometry '%s'!\n", fbxMesh->GetName());
@@ -1231,7 +1233,7 @@ void FBXSDKParser::importCollisionGeometry() {
 	for (const auto& itrFbxMeshInstantiations : m_collision_BvhTriMeshes) {
 		fbxsdk::FbxMesh* const fbxMesh = itrFbxMeshInstantiations.first;
 
-		Model::CollisionMesh collisionMeshObjectSpace = fbxMeshToCollisionMesh(fbxMesh);
+		ModelCollisionMesh collisionMeshObjectSpace = fbxMeshToCollisionMesh(fbxMesh);
 
 		if (collisionMeshObjectSpace.indices.size() % 3 == 0) {
 			// For every instance transform the vertices to model (or in this context world space).
@@ -1243,7 +1245,7 @@ void FBXSDKParser::importCollisionGeometry() {
 					v = mat_mul_pos(n2w, v);
 				}
 
-				m_model->m_concaveHulls.emplace_back(Model::CollisionMesh{std::move(verticesWS), collisionMeshObjectSpace.indices});
+				m_model->m_concaveHulls.emplace_back(ModelCollisionMesh{std::move(verticesWS), collisionMeshObjectSpace.indices});
 			}
 		} else {
 			printf("Invalid collision geometry '%s'!\n", fbxMesh->GetName());
@@ -1264,7 +1266,7 @@ void FBXSDKParser::importCollisionGeometry() {
 			transf3d n2w = m_collision_transfromCorrection * itrBoxInstantiations.second[iInstance];
 			n2w.p += bbox.center();
 			m_model->m_collisionBoxes.push_back(
-			    Model::CollisionShapeBox{std::string(fbxMesh->GetNode()->GetName()), n2w, bbox.halfDiagonal()});
+			    Model_CollisionShapeBox{std::string(fbxMesh->GetNode()->GetName()), n2w, bbox.halfDiagonal()});
 		}
 	}
 
@@ -1291,7 +1293,7 @@ void FBXSDKParser::importCollisionGeometry() {
 			transf3d n2w = m_collision_transfromCorrection * itrBoxInstantiations.second[iInstance];
 			n2w.p += bbox.center();
 			m_model->m_collisionCapsules.push_back(
-			    Model::CollisionShapeCapsule{std::string(fbxMesh->GetNode()->GetName()), n2w, halfHeight, radius});
+			    Model_CollisionShapeCapsule{std::string(fbxMesh->GetNode()->GetName()), n2w, halfHeight, radius});
 		}
 	}
 
@@ -1310,7 +1312,7 @@ void FBXSDKParser::importCollisionGeometry() {
 			transf3d const n2w = m_collision_transfromCorrection * itrCylinderInstantiations.second[iInstance];
 
 			m_model->m_collisionCylinders.push_back(
-			    Model::CollisionShapeCylinder{std::string(fbxMesh->GetNode()->GetName()), n2w, halfDiagonal});
+			    Model_CollisionShapeCylinder{std::string(fbxMesh->GetNode()->GetName()), n2w, halfDiagonal});
 		}
 	}
 
@@ -1329,7 +1331,7 @@ void FBXSDKParser::importCollisionGeometry() {
 		for (int const iInstance : range_int(int(itrSphereInstantiations.second.size()))) {
 			transf3d const n2w = m_collision_transfromCorrection * itrSphereInstantiations.second[iInstance];
 
-			m_model->m_collisionSpheres.push_back(Model::CollisionShapeSphere{std::string(fbxMesh->GetNode()->GetName()), n2w, radius});
+			m_model->m_collisionSpheres.push_back(Model_CollisionShapeSphere{std::string(fbxMesh->GetNode()->GetName()), n2w, radius});
 		}
 	}
 }

@@ -61,7 +61,7 @@ void ABlockingObstacle::postUpdate(const GameUpdateSets& UNUSED(updateSets)) {
 		// Collision geometry.
 		std::vector<AABox3f> bboxes;
 
-		Model::CollisionMesh slopeCollisionMesh;
+		ModelCollisionMesh slopeCollisionMesh;
 
 		if (currentDesc.type == SimpleObstacleType::Stairs &&
 		    TerrainGenerator::generateStairs(vertices, indices, bboxes, currentDesc.stairs, &numVerts, &numIndices)) {

@@ -9,7 +9,7 @@
 
 namespace sge {
 
-void EvaluatedModel::initialize(AssetLibrary* const assetLibrary, Model::Model* model) {
+void EvaluatedModel::initialize(AssetLibrary* const assetLibrary, Model* model) {
 	sgeAssert(assetLibrary != nullptr);
 	sgeAssert(model != nullptr);
 
@@ -26,11 +26,11 @@ bool EvaluatedModel::addAnimationDonor(const std::shared_ptr<Asset>& donorAsset)
 	AnimationDonor animDonor;
 
 	animDonor.donorModel = donorAsset;
-	animDonor.originalNodeId_to_donorNodeId.resize(m_model->getNumNodes(), -1);
+	animDonor.originalNodeId_to_donorNodeId.resize(m_model->numNodes(), -1);
 
 	// Build the node-to-node remapping, Keep in mind that some nodes might not be present in the donor.
 	// in that case -1 should be written for that node index.
-	for (const int iOrigNode : range_int(m_model->getNumNodes())) {
+	for (const int iOrigNode : range_int(m_model->numNodes())) {
 		animDonor.donorModel->asModel()->model.findFistNodeIndexWithName(m_model->nodeAt(iOrigNode)->name);
 	}
 
@@ -68,19 +68,19 @@ bool EvaluatedModel::evaluateFromNodesGlobalTransform(const std::vector<mat4f>& 
 
 bool EvaluatedModel::evaluateNodes_common() {
 	aabox.setEmpty();
-	m_evaluatedNodes.resize(m_model->getNumNodes());
+	m_evaluatedNodes.resize(m_model->numNodes());
 
 	// Initialize the attachments to the node.
 
-	for (int iNode : range_int(m_model->getNumNodes())) {
+	for (int iNode : range_int(m_model->numNodes())) {
 		EvaluatedNode& evalNode = m_evaluatedNodes[iNode];
 		// [EVAL_MESH_NODE_DEFAULT_ZERO]
 		evalNode.evalLocalTransform = mat4f::getZero();
 		evalNode.evalGlobalTransform = mat4f::getZero();
 
 		// Obtain the inital bounding box by getting the unevaluated attached meshes bounding boxes.
-		for (const Model::MeshAttachment& meshAttachment : m_model->nodeAt(iNode)->meshAttachments) {
-			const Model::Mesh* mesh = m_model->getMeshByIndex(meshAttachment.attachedMeshIndex);
+		for (const MeshAttachment& meshAttachment : m_model->nodeAt(iNode)->meshAttachments) {
+			const ModelMesh* mesh = m_model->meshAt(meshAttachment.attachedMeshIndex);
 			if (mesh) {
 				evalNode.aabb.expand(mesh->aabox);
 			}
@@ -108,12 +108,12 @@ bool EvaluatedModel::evaluateFromMomentsInternal(const EvalMomentSets evalMoment
 			}
 		}
 
-		const Model::Model& donorModel = (donor != nullptr) ? donor->donorModel->asModel()->model : *m_model;
-		const Model::Animation* const donorAnimation = donorModel.getAnimation(moment.animationIndex);
+		const Model& donorModel = (donor != nullptr) ? donor->donorModel->asModel()->model : *m_model;
+		const ModelAnimation* const donorAnimation = donorModel.getAnimation(moment.animationIndex);
 
 		const float evalTime = moment.time;
 
-		for (int iOrigNode = 0; iOrigNode < m_model->getNumNodes(); ++iOrigNode) {
+		for (int iOrigNode = 0; iOrigNode < m_model->numNodes(); ++iOrigNode) {
 			// Use the node form the specified Model in the node, if such node doesn't exists, fallback to the originalNode.
 			const int donorNodeIndex = (donor != nullptr) ? donor->originalNodeId_to_donorNodeId[iOrigNode] : iOrigNode;
 
@@ -158,12 +158,12 @@ bool EvaluatedModel::evaluateFromMomentsInternal(const EvalMomentSets evalMoment
 bool EvaluatedModel::evaluateNodesFromExternalBones(const std::vector<mat4f>& boneGlobalTrasnformOverrides) {
 	evaluateNodes_common();
 
-	if (boneGlobalTrasnformOverrides.size() != m_model->getNumNodes()) {
+	if (boneGlobalTrasnformOverrides.size() != m_model->numNodes()) {
 		sgeAssert(false && "It seems that the provided amount of node transforms isn't the one that we expect");
 		return false;
 	}
 
-	for (int iNode = 0; iNode < m_model->getNumNodes(); ++iNode) {
+	for (int iNode = 0; iNode < m_model->numNodes(); ++iNode) {
 		EvaluatedNode& evalNode = m_evaluatedNodes[iNode];
 
 		// evalNode.evalLocalTransform is not computed as it isn't needed by anything at the moment.
@@ -180,13 +180,13 @@ bool EvaluatedModel::evaluateMaterials() {
 	}
 
 	areMaterialsAlreadyEvaluated = true;
-	m_evaluatedMaterials.resize(m_model->getNumMaterials());
+	m_evaluatedMaterials.resize(m_model->numMaterials());
 
 	std::string texPath;
 
-	for (int iMaterial = 0; iMaterial < m_model->getNumMaterials(); ++iMaterial) {
+	for (int iMaterial = 0; iMaterial < m_model->numMaterials(); ++iMaterial) {
 		EvaluatedMaterial& evalMtl = m_evaluatedMaterials[iMaterial];
-		Model::Material* rawMaterial = m_model->materialAt(iMaterial);
+		ModelMaterial* rawMaterial = m_model->materialAt(iMaterial);
 
 		evalMtl.diffuseColor = rawMaterial->diffuseColor;
 		evalMtl.roughness = rawMaterial->roughness;
@@ -194,25 +194,25 @@ bool EvaluatedModel::evaluateMaterials() {
 
 		// Check if there is a diffuse texture attached here.
 		if (rawMaterial->diffuseTextureName.empty() == false) {
-			texPath = m_model->m_loadSets.assetDir + rawMaterial->diffuseTextureName;
+			texPath = m_model->getModelLoadSetting().assetDir + rawMaterial->diffuseTextureName;
 			evalMtl.diffuseTexture = m_assetLibrary->getAsset(AssetType::Texture2D, texPath.c_str(), true);
 		}
 
 		// Normal map.
 		if (rawMaterial->normalTextureName.empty() == false) {
-			texPath = m_model->m_loadSets.assetDir + rawMaterial->normalTextureName;
+			texPath = m_model->getModelLoadSetting().assetDir + rawMaterial->normalTextureName;
 			evalMtl.texNormalMap = m_assetLibrary->getAsset(AssetType::Texture2D, texPath.c_str(), true);
 		}
 
 		// Metallic map.
 		if (rawMaterial->metallicTextureName.empty() == false) {
-			texPath = m_model->m_loadSets.assetDir + rawMaterial->metallicTextureName;
+			texPath = m_model->getModelLoadSetting().assetDir + rawMaterial->metallicTextureName;
 			evalMtl.texMetallic = m_assetLibrary->getAsset(AssetType::Texture2D, texPath.c_str(), true);
 		}
 
 		// Roughness map.
 		if (rawMaterial->roughnessTextureName.empty() == false) {
-			texPath = m_model->m_loadSets.assetDir + rawMaterial->roughnessTextureName;
+			texPath = m_model->getModelLoadSetting().assetDir + rawMaterial->roughnessTextureName;
 			evalMtl.texRoughness = m_assetLibrary->getAsset(AssetType::Texture2D, texPath.c_str(), true);
 		}
 	}
@@ -223,12 +223,12 @@ bool EvaluatedModel::evaluateMaterials() {
 bool EvaluatedModel::evaluateSkinning() {
 	SGEContext* const context = m_assetLibrary->getDevice()->getContext();
 
-	m_evaluatedMeshes.resize(m_model->getNumMeshes());
+	m_evaluatedMeshes.resize(m_model->numMeshes());
 
 	// Evaluate the meshes.
-	for (int iMesh = 0; iMesh < m_model->getNumMeshes(); ++iMesh) {
+	for (int iMesh = 0; iMesh < m_model->numMeshes(); ++iMesh) {
 		EvaluatedMesh& evalMesh = m_evaluatedMeshes[iMesh];
-		const Model::Mesh& rawMesh = *m_model->getMeshByIndex(iMesh);
+		const ModelMesh& rawMesh = *m_model->meshAt(iMesh);
 
 		evalMesh.vertexDeclIndex = context->getDevice()->getVertexDeclIndex(rawMesh.vertexDecl.data(), int(rawMesh.vertexDecl.size()));
 
@@ -239,7 +239,7 @@ bool EvaluatedModel::evaluateSkinning() {
 			// the evaluated position of the node that represents the bone in the scene.
 			std::vector<mat4f> bonesTransformTexData(rawMesh.bones.size());
 			for (int iBone = 0; iBone < rawMesh.bones.size(); ++iBone) {
-				const Model::Bone& bone = rawMesh.bones[iBone];
+				const ModelMeshBone& bone = rawMesh.bones[iBone];
 
 				const mat4f boneTransformWithOffsetModelObjectSpace =
 				    m_evaluatedNodes[bone.nodeIdx].evalGlobalTransform * bone.offsetMatrix;

@@ -23,7 +23,7 @@ namespace sge {
 struct AssimpSceneParser
 {
 	void parse(
-		Model::Model* result,
+		Model* result,
 		const aiScene* scene, 
 		const ModelParseSettings& settings,
 		std::vector<std::string>* pReferencedTextures);
@@ -68,7 +68,7 @@ private :
 	// Import settings.
 	ModelParseSettings settings;
 	const aiScene* impScene = NULL; 
-	Model::Model* model = NULL;
+	Model* model = NULL;
 
 	int m_nextFreeId = 0;
 

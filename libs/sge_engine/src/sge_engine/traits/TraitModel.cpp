@@ -91,8 +91,8 @@ void TraitModel::computeNodeToBoneIds() {
 		boneActors.insert(bone);
 	}
 
-	for (const int iNode : rng_int(assetmodel->model.getNumNodes())) {
-		const Model::Node* node = assetmodel->model.nodeAt(iNode);
+	for (const int iNode : rng_int(assetmodel->model.numNodes())) {
+		const ModelNode* node = assetmodel->model.nodeAt(iNode);
 		for (Actor* boneActor : boneActors) {
 			if (node->name == boneActor->getDisplayName()) {
 				nodeToBoneId[iNode] = boneActor->getId();
@@ -103,7 +103,12 @@ void TraitModel::computeNodeToBoneIds() {
 }
 
 void TraitModel::computeSkeleton(std::vector<mat4f>& boneOverrides) {
-	boneOverrides.clear();
+	AssetModel* assetmodel = m_assetProperty.getAssetModel();
+	if (assetmodel == nullptr) {
+		return;
+	}
+
+	boneOverrides.resize(assetmodel->model.numNodes());
 
 	if (useSkeleton == false) {
 		return;
@@ -141,7 +146,7 @@ void editTraitStaticModel(GameInspector& inspector, GameObject* actor, MemberCha
 	chain.pop();
 
 	if (AssetModel* loadedAsset = traitStaticModel.m_assetProperty.getAssetModel()) {
-		for (Model::Material* mtl : loadedAsset->model.getMatrials()) {
+		for (ModelMaterial* mtl : loadedAsset->model.getMatrials()) {
 			// ImGui::Text(loadedAsset->model.m_materials[t]->name.c_str());
 			// Check if override for this material already exists.
 			auto itrExisting = find_if(traitStaticModel.m_materialOverrides,
@@ -156,10 +161,10 @@ void editTraitStaticModel(GameInspector& inspector, GameObject* actor, MemberCha
 
 		// Now do the UI for each available slot (keep in mind that we are keeping old slots (from previous models still available).
 
-		for (int iMtl : rng_int(loadedAsset->model.getNumMaterials())) {
+		for (int iMtl : rng_int(loadedAsset->model.numMaterials())) {
 			const ImGuiEx::IDGuard guard(iMtl);
 
-			const Model::Material* mtl = loadedAsset->model.materialAt(iMtl);
+			const ModelMaterial* mtl = loadedAsset->model.materialAt(iMtl);
 
 			// ImGui::Text(loadedAsset->model.m_materials[t]->name.c_str());
 			// Check if override for this material already exists.
@@ -229,8 +234,8 @@ void editTraitStaticModel(GameInspector& inspector, GameObject* actor, MemberCha
 
 			transf3d n2w = actor->getActor()->getTransform();
 
-			for (int iNode : rng_int(modelAsset->model.getNumNodes())) {
-				const Model::Node* node = modelAsset->model.nodeAt(iNode);
+			for (int iNode : rng_int(modelAsset->model.numNodes())) {
+				const ModelNode* node = modelAsset->model.nodeAt(iNode);
 
 				const float boneLength = boneLengthAuto;
 
@@ -241,7 +246,7 @@ void editTraitStaticModel(GameInspector& inspector, GameObject* actor, MemberCha
 
 			std::function<void(int nodeIndex, NodeRemapEl* parent)> traverseGlobalTransform;
 			traverseGlobalTransform = [&](int nodeIndex, NodeRemapEl* parent) -> void {
-				const Model::Node* node = modelAsset->model.nodeAt(nodeIndex);
+				const ModelNode* node = modelAsset->model.nodeAt(nodeIndex);
 
 				NodeRemapEl* const remapNode = nodeRemap.find_element(nodeIndex);
 				if (parent) {

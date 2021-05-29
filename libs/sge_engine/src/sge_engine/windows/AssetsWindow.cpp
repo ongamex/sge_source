@@ -51,7 +51,7 @@ bool AssetsWindow::importAsset(AssetImportData& aid) {
 	std::string fullAssetPath = aid.outputDir + "/" + aid.outputFilename;
 
 	if (aid.assetType == AssetType::Model && aid.importModelsAsMultipleFiles == false) {
-		Model::Model importedModel;
+		Model importedModel;
 
 		if (m_sgeImportFBXFile == nullptr) {
 			SGE_DEBUG_ERR("mdlconvlib dynamic library is not loaded. We cannot import FBX files without it!");

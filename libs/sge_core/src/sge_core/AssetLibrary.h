@@ -29,7 +29,7 @@ struct SGE_CORE_API AssetTexture {
 };
 
 struct AssetModel {
-	Model::Model model;
+	Model model;
 	EvaluatedModel staticEval;
 	EvaluatedModel sharedEval;
 };

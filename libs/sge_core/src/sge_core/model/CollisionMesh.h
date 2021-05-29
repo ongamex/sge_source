@@ -5,27 +5,24 @@
 #include <vector>
 
 namespace sge {
-namespace Model {
-	/// CollisionMesh stores the data extracted from the 3D file format
-	/// used for physics and navmesh geometry. Both convex and concave meshes are represented with this one
-	/// it is up to the artist to have them actually be convex.
-	struct SGE_CORE_API CollisionMesh {
-		CollisionMesh() = default;
-		CollisionMesh(std::vector<vec3f> vertices, std::vector<int> indices)
-		    : vertices(std::move(vertices))
-		    , indices(std::move(indices)) {}
 
-		void freeMemory() {
-			vertices = std::vector<vec3f>();
-			indices = std::vector<int>();
-		}
+/// CollisionMesh stores the data extracted from the 3D file format
+/// used for physics and navmesh geometry. Both convex and concave meshes are represented with this one
+/// it is up to the artist to have them actually be convex.
+struct SGE_CORE_API ModelCollisionMesh {
+	ModelCollisionMesh() = default;
+	ModelCollisionMesh(std::vector<vec3f> vertices, std::vector<int> indices)
+	    : vertices(std::move(vertices))
+	    , indices(std::move(indices)) {}
 
-		// static CollisionMesh getCombiendMesh(const std::vector<CollisionMesh>& collisionMeshes);
+	void freeMemory() {
+		vertices = std::vector<vec3f>();
+		indices = std::vector<int>();
+	}
 
-		// Stores a triangle list.
-		std::vector<vec3f> vertices;
-		std::vector<int> indices;
-	};
+	// Stores a triangle list.
+	std::vector<vec3f> vertices;
+	std::vector<int> indices;
+};
 
-} // namespace Model
 } // namespace sge

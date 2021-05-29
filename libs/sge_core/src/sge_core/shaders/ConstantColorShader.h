@@ -9,9 +9,7 @@
 namespace sge {
 
 struct EvaluatedModel;
-namespace Model {
-	struct Mesh;
-}
+struct ModelMesh;
 
 //------------------------------------------------------------
 // ConstantColorShader
