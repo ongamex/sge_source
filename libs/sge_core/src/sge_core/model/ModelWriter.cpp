@@ -103,7 +103,7 @@ void ModelWriter::writeAnimations() {
 	auto jAnimations = root->setMember("animations", jvb(JID_ARRAY_BEGIN));
 
 	for (int iAnim : range_int(model->numAnimations())) {
-		const ModelAnimation& animation = *model->getAnimation(iAnim);
+		const ModelAnimation& animation = *model->animationAt(iAnim);
 
 		auto jAnim = jAnimations->arrPush(jvb(JID_MAP_BEGIN));
 

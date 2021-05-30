@@ -124,14 +124,14 @@ const ModelMesh* Model::meshAt(int meshIndex) const {
 	return nullptr;
 }
 
-const ModelAnimation* Model::getAnimation(int iAnim) const {
+const ModelAnimation* Model::animationAt(int iAnim) const {
 	if (iAnim >= 0 && iAnim < int(m_animations.size())) {
 		return &m_animations[iAnim];
 	}
 	return nullptr;
 }
 
-ModelAnimation* Model::getAnimation(int iAnim) {
+ModelAnimation* Model::animationAt(int iAnim) {
 	if (iAnim >= 0 && iAnim < int(m_animations.size())) {
 		return &m_animations[iAnim];
 	}
@@ -145,6 +145,14 @@ const ModelAnimation* Model::getAnimationByName(const std::string& name) const {
 		}
 	}
 	return nullptr;
+}
+
+int Model::getAnimationIndexByName(const std::string& name) const {
+	for (int iAnimation = 0; iAnimation < m_animations.size(); ++iAnimation) {
+		if (m_animations[iAnimation].animationName == name)
+			return iAnimation;
+	}
+	return -1;
 }
 
 void KeyFrames::evaluate(transf3d& result, const float t) const {

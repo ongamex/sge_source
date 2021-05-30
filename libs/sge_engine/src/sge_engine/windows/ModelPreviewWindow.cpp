@@ -153,7 +153,7 @@ void ModelPreviewWindow::update(SGEContext* const sgecon, const InputState& is) 
 				}
 
 				for (int t = 0; t < m_eval.m_model->numAnimations(); ++t) {
-					const ModelAnimation* anim = m_eval.m_model->getAnimation(t);
+					const ModelAnimation* anim = m_eval.m_model->animationAt(t);
 					if (ImGui::Selectable(anim->animationName.c_str())) {
 						animationComboPreviewValue = anim->animationName;
 						iPreviewAnimDonor = -1;
@@ -164,7 +164,7 @@ void ModelPreviewWindow::update(SGEContext* const sgecon, const InputState& is) 
 				for (int iDonor = 0; iDonor < animationDonors.size(); ++iDonor) {
 					const Model& donorModel = animationDonors[iDonor]->asModel()->model;
 					for (int t = 0; t < donorModel.numAnimations(); ++t) {
-						const ModelAnimation* anim = donorModel.getAnimation(t);
+						const ModelAnimation* anim = donorModel.animationAt(t);
 						if (ImGui::Selectable((animationDonors[iDonor]->getPath() + " | " + anim->animationName).c_str())) {
 							animationComboPreviewValue = anim->animationName;
 							iPreviewAnimDonor = iDonor;

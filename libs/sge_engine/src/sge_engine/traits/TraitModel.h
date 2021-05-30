@@ -47,6 +47,7 @@ struct SGE_ENGINE_API TraitModel : public Trait {
 
 	void setModel(std::shared_ptr<Asset>& asset, bool updateNow) {
 		m_assetProperty.setAsset(asset);
+		m_evalModel = NullOptional();
 		if (updateNow) {
 			updateAssetProperty();
 		}
@@ -95,7 +96,13 @@ struct SGE_ENGINE_API TraitModel : public Trait {
 	void computeSkeleton(std::vector<mat4f>& boneOverrides);
 
   private:
-	bool updateAssetProperty() { return m_assetProperty.update(); }
+	bool updateAssetProperty() {
+		if (m_assetProperty.update()) {
+			m_evalModel = NullOptional();
+			return true;
+		}
+		return false;
+	}
 
 	void onModelChanged() {
 		useSkeleton = false;
@@ -111,6 +118,8 @@ struct SGE_ENGINE_API TraitModel : public Trait {
 
 	mat4f m_additionalTransform = mat4f::getIdentity();
 	AssetProperty m_assetProperty;
+
+	Optional<EvaluatedModel> m_evalModel;
 
 	// 3D model specific properties.
 	// TODO: move them in a strcuture.
@@ -139,8 +148,8 @@ struct SGE_ENGINE_API TraitModel : public Trait {
 		/// its size, orientation (billboarding), aligment and so on.
 		/// @param [in] asset is the asset that is going to be attached to the plane. it needs to be a texture or a sprite.
 		/// @param [in] drawCamera the camera that is going to be used for rendering. If null the billboarding effect will be missing.
-		/// @param [in] nodeToWorldTransform the transform that indicates the location of the object(for example, could be the transform of
-		/// an actor).
+		/// @param [in] nodeToWorldTransform the transform that indicates the location of the object(for example, could be the transform
+		/// of an actor).
 		/// @param [in] additionaTransform an additional transform to be applied before before all other transforms.
 		/// @return the matrix to be used as object-to-world transform form the quad described above.
 		mat4f computeObjectToWorldTransform(const Asset& asset,

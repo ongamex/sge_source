@@ -1157,6 +1157,7 @@ void FBXSDKParser::importAnimations() {
 						// Convert the keyframe to our own format and save it.
 						const float keyTimeSeconds = (float)fbxKeyTime.GetSecondDouble() - animationStart;
 						vec3f const position = vec3f((float)fbxPos.mData[0], (float)fbxPos.mData[1], (float)fbxPos.mData[2]);
+
 						nodeKeyFrames.positionKeyFrames[keyTimeSeconds] = position;
 					}
 				}
@@ -1209,7 +1210,7 @@ void FBXSDKParser::importAnimations() {
 		// FBX exporters tend to do this for some reason.
 		if (!perNodeKeyFrames.empty()) {
 			const int newAnimIndex = m_model->makeNewAnim();
-			*(m_model->getAnimation(newAnimIndex)) = ModelAnimation(animationName, animationDuration, std::move(perNodeKeyFrames));
+			*(m_model->animationAt(newAnimIndex)) = ModelAnimation(animationName, animationDuration, std::move(perNodeKeyFrames));
 		}
 	}
 }

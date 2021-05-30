@@ -18,9 +18,15 @@ void EvaluatedModel::initialize(AssetLibrary* const assetLibrary, Model* model) 
 	m_model = model;
 }
 
-bool EvaluatedModel::addAnimationDonor(const std::shared_ptr<Asset>& donorAsset) {
+int EvaluatedModel::addAnimationDonor(const std::shared_ptr<Asset>& donorAsset) {
 	if (isAssetLoaded(donorAsset, AssetType::Model) == false || !isInitialized()) {
-		return false;
+		return -1;
+	}
+
+	for (int iDonor = 0; iDonor < m_donors.size(); ++iDonor) {
+		if (donorAsset == m_donors[iDonor].donorModel) {
+			return iDonor;
+		}
 	}
 
 	AnimationDonor animDonor;
@@ -38,7 +44,7 @@ bool EvaluatedModel::addAnimationDonor(const std::shared_ptr<Asset>& donorAsset)
 
 	m_donors.emplace_back(std::move(animDonor));
 
-	return true;
+	return int(m_donors.size()) - 1;
 }
 
 bool EvaluatedModel::evaluateFromMoments(const EvalMomentSets evalMoments[], int numMoments) {
@@ -104,7 +110,7 @@ bool EvaluatedModel::evaluateFromMomentsInternal(const EvalMomentSets evalMoment
 		}
 
 		const Model& donorModel = (donor != nullptr) ? donor->donorModel->asModel()->model : *m_model;
-		const ModelAnimation* const donorAnimation = donorModel.getAnimation(moment.animationIndex);
+		const ModelAnimation* const donorAnimation = donorModel.animationAt(moment.animationIndex);
 
 		const float evalTime = moment.time;
 
@@ -280,11 +286,11 @@ bool EvaluatedModel::evaluateSkinning() {
 
 const ModelAnimation* EvaluatedModel::findAnimation(const int idxDonor, const int animIndex) const {
 	if (idxDonor == -1) {
-		return m_model->getAnimation(animIndex);
+		return m_model->animationAt(animIndex);
 	}
 
 	if (idxDonor >= 0 && idxDonor < m_donors.size()) {
-		return m_donors[idxDonor].donorModel->asModel()->model.getAnimation(animIndex);
+		return m_donors[idxDonor].donorModel->asModel()->model.animationAt(animIndex);
 	}
 
 	return nullptr;

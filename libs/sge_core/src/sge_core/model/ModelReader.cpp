@@ -169,7 +169,7 @@ bool ModelReader::loadModel(const ModelLoadSettings loadSets, IReadStream* const
 				auto jAnimation = jAnimations->arrAt(t);
 
 				int animantionIndex = model.makeNewAnim();
-				ModelAnimation& animation = *model.getAnimation(animantionIndex);
+				ModelAnimation& animation = *model.animationAt(animantionIndex);
 
 				animation.animationName = std::string(jAnimation->getMember("animationName")->GetString());
 				animation.durationSec = jAnimation->getMember("durationSec")->getNumberAs<float>();

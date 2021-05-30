@@ -77,9 +77,9 @@ struct SGE_CORE_API EvaluatedModel {
 	bool isInitialized() const { return m_model && m_assetLibrary; }
 
 	/// Adds an animation that can be specified to the evaluate function.
-	/// Returns the id of the animation to be specified to the evaluation function.
+	/// Returns the index of the donor.
 	/// The asset will be taken form the assetLibrary specified to @initialize.
-	bool addAnimationDonor(const std::shared_ptr<Asset>& donorAsset);
+	int addAnimationDonor(const std::shared_ptr<Asset>& donorAsset);
 
 	/// Evaluates the model at the specified momemnt.
 	bool evaluateStatic() { return evaluateFromMoments(nullptr, 0); }
@@ -115,7 +115,7 @@ struct SGE_CORE_API EvaluatedModel {
 
   private:
 	struct AnimationDonor {
-		/// Todo: handle asset changeing. In that case the asset will still be valid,
+		/// TODO: handle asset changeing. In that case the asset will still be valid,
 		/// but the data in it bill be different and @originalNodeId_to_donorNodeId will be wrong and we will crash.
 		std::shared_ptr<Asset> donorModel;
 		std::vector<int> originalNodeId_to_donorNodeId;

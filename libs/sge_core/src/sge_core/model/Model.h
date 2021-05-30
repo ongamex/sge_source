@@ -128,9 +128,9 @@ struct SGE_CORE_API ModelMesh {
 
 	// The member below are available only if @Model::createRenderingResources gets called:
 
-	GpuHandle<Buffer> vertexBuffer; ///< The vertex buffer to be used for rendering of that mesh.
-	GpuHandle<Buffer> indexBuffer;  ///< The index buffer to be used for rendering of that mesh.
-	bool hasUsableTangetSpace = false;   ///< True if uv and all 3 tangent space vectors are available in the vertex declaration.
+	GpuHandle<Buffer> vertexBuffer;    ///< The vertex buffer to be used for rendering of that mesh.
+	GpuHandle<Buffer> indexBuffer;     ///< The index buffer to be used for rendering of that mesh.
+	bool hasUsableTangetSpace = false; ///< True if uv and all 3 tangent space vectors are available in the vertex declaration.
 	VertexDeclIndex vertexDeclIndex = VertexDeclIndex_Null;
 };
 
@@ -226,9 +226,10 @@ struct SGE_CORE_API Model {
 	const ModelMesh* meshAt(int meshIndex) const;
 
 	int numAnimations() const { return int(m_animations.size()); }
-	const ModelAnimation* getAnimation(int iAnim) const;
-	ModelAnimation* getAnimation(int iAnim);
+	const ModelAnimation* animationAt(int iAnim) const;
+	ModelAnimation* animationAt(int iAnim);
 	const ModelAnimation* getAnimationByName(const std::string& name) const;
+	int getAnimationIndexByName(const std::string& name) const;
 
 	const std::vector<ModelNode*>& getNodes() { return m_nodes; }
 	const std::vector<ModelMesh*>& getMeshes() { return m_meshes; }

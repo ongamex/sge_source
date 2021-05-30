@@ -557,7 +557,11 @@ void DefaultGameDrawer::drawTraitStaticModel(TraitModel* modelTrait,
 					                 model->sharedEval, modelTrait->instanceDrawMods, &mtlOverrides);
 				}
 			} else {
-				if (model && model->staticEval.isInitialized()) {
+				if (modelTrait->m_evalModel) {
+					const mat4f n2w = actor->getTransformMtx() * modelTrait->m_additionalTransform;
+					m_modeldraw.draw(drawSets.rdest, camPos, camLookDir, drawSets.drawCamera->getProjView(), n2w, generalMods,
+					                 *modelTrait->m_evalModel, modelTrait->instanceDrawMods, &mtlOverrides);
+				} else if (model && model->staticEval.isInitialized()) {
 					const mat4f n2w = actor->getTransformMtx() * modelTrait->m_additionalTransform;
 					m_modeldraw.draw(drawSets.rdest, camPos, camLookDir, drawSets.drawCamera->getProjView(), n2w, generalMods,
 					                 model->staticEval, modelTrait->instanceDrawMods, &mtlOverrides);
@@ -577,7 +581,11 @@ void DefaultGameDrawer::drawTraitStaticModel(TraitModel* modelTrait,
 					                           generalMods.selectionTint);
 				}
 			} else {
-				if (model && model->staticEval.isInitialized()) {
+				if (modelTrait->m_evalModel) {
+					const mat4f n2w = actor->getTransformMtx() * modelTrait->m_additionalTransform;
+					m_modeldraw.draw(drawSets.rdest, camPos, camLookDir, drawSets.drawCamera->getProjView(), n2w, generalMods,
+					                 *modelTrait->m_evalModel, modelTrait->instanceDrawMods, &mtlOverrides);
+				} else if (model && model->staticEval.isInitialized()) {
 					const mat4f n2w = actor->getTransformMtx() * modelTrait->m_additionalTransform;
 					m_constantColorShader.draw(drawSets.rdest, drawSets.drawCamera->getProjView(), n2w, model->staticEval,
 					                           generalMods.selectionTint);

@@ -1,92 +1,99 @@
 #pragma once
 
-#if 0
+#if 1
 
 #include "model/EvaluatedModel.h"
+#include "sge_core/AssetLibrary.h"
+#include "sge_utils/utils/optional.h"
 #include "sgecore_api.h"
 #include <unordered_map>
 
 namespace sge {
 
-enum AnimationTransition : int {
-	animationTransition_loop,
-	animationTransition_stop,
-	// animationTransition_pingPong
-	animationTransition_switchTo,
+/// @brief Describes what should happen when an animation track finishes.
+enum TrackTransition : int {
+	trackTransition_loop,     ///< The animation should continue to loop when it ends. Example idle animation.
+	trackTransition_stop,     ///< The animation should stop at the end frame. Example death animations.
+	trackTransition_switchTo, ///< The animation should switch to another one when it ends. Example is when jump animation ends usually
+	                          ///< we want to be in landing anticipation animation.
 };
 
-struct AnimatorAnimationTransition {
-	int targetState = -1;
-	float blendDurationSecs = 0.f; // The time time that we are going to blend during the transition.
+/// @brief AnimatorTrack describes a state in which our 3D model could be.
+/// For example a character might be jumping, running, idling, dying and so on.
+/// Each animation track could have multiple animations be available to it - again for example we might have multiple idle animations
+/// to make the character feel a bit more alive.
+///
+/// AnimatorTrack state consists of the id of the track. This is defined by the user and it is assigned to some their own meaning:
+/// it could mean that the character is idle, running and so on.
+/// A transition - transition tell the animation what should happen when the animation ends. For example we want the idle and walking
+/// animations to loop, while we want the dying animation to stop at the end.
+struct AnimatorTrack {
+	AnimatorTrack() = default;
+
+	struct AnimationDonor {
+		std::shared_ptr<Asset> modelAnimationDonor;
+		int donorIndex = -1;
+		int animationIndexInDonor = -1;
+		float playbackSpeed = 1.f;
+
+		const ModelAnimation* getAnimation() const {
+			if (isAssetLoaded(modelAnimationDonor, AssetType::Model)) {
+				return modelAnimationDonor->asModel()->model.animationAt(animationIndexInDonor);
+			}
+
+			return nullptr;
+		}
+	};
+
+	std::vector<AnimationDonor> animations;
+
+	/// The time that should be used to fade out the other animations that are playing and 100% fade in that one.
+	float blendingTime = 0.f;
+
+	TrackTransition transition = trackTransition_loop;
+	/// If the @transition is set to animationTransition_switchTo then this hold the id of the animation that we need to switch to.
+	int switchToPlaybackTrackId = -1;
 };
 
-struct AnimationSrc {
-	AnimationSrc() = default;
-	AnimationSrc(std::string srcModel, std::string animationName)
-	    : srcModel(std::move(srcModel))
-	    , animationName(std::move(animationName)) {}
+struct SGE_CORE_API ModelAnimator {
+	ModelAnimator() = default;
 
-	std::string srcModel; // The mdl file that contains the animaton.
-	std::string animationName;
-};
+	void addTrack_begin(EvaluatedModel& modelToBeAnimated);
+	void addTrack(int newTrackId, float fadeInTime, TrackTransition transition);
+	void addAnimationToTrack(int newTrackId, const char* const donorModelPath, const char* donorAnimationName);
+	void addTrack_finish();
 
-struct AnimatorAnimation {
-	AnimatorAnimation() = default;
-
-	std::string srcModel;      // The mdl file that contains the animaton.
-	std::string animationName; // The name of the animation that we are going to play form that file,
-	AnimationTransition transition = animationTransition_loop;
-
-	// if the transition is set to animationTransition_switchTo then this hold the id of the animation that we need to switch to.
-	int switchToAnimationId = -1;
-	float playbackSpeed = 1.f;
-
-	std::vector<AnimationSrc> animationSources;
-};
-
-struct SGE_CORE_API Animator {
-	Animator() = default;
-
-	const std::vector<EvalMomentSets>& getEvalMoments() const { return m_moments; }
-
-	void setModel(const char* const modelPath);
-	std::shared_ptr<Asset>& getModel() { return m_model; }
-
-	void addAnimation(int const animid, const char* const srcModel, const char* const animName);
-
-	AnimatorAnimation& getAnimation(int const animid) { return m_animations[animid]; }
-
-	void playAnimation(int const animid, bool dontBlend = true);
+	void playTrack(int const trackId, Optional<float> blendToSeconds = NullOptional());
 
 	// Advanced the animation.
 	void update(float const dt);
 
+	/// @brief Generates the moments that are needed to evalute a 3d model in the specified state.
+	/// Keep in mind that it is assument that the model has the same animation donors as the ModelAnimator in the same order.
+	void computeEvalMoments(std::vector<EvalMomentSets>& outMoments);
+
   private:
-	void pickAnimation(EvalMomentSets& moment, int const animid, float pevanimProgress);
+	struct TrackPlayback {
+		int trackId = -1;
 
-	void clear() { *this = Animator(); }
+		int iAnimation = -1;
+		float timeInAnimation = 0.f;
+		float unormWeight = 1.f;
+	};
 
-	// The model that we are animating.
-	std::shared_ptr<Asset> m_model;
+  private:
+	std::unordered_map<int, AnimatorTrack> m_tracks;
 
-	// For each animation id, we associate an animation (or multiple animations).
-	// Multiple animations mith be needed to example if we got multiple "idle" animations in the *.mdl files (or across multiple files)
-	// we want to basically pick different animation each time.
-	std::unordered_map<int, AnimatorAnimation> m_animations;
+	/// The main track that we are currently playing. This does not mean that we are playing only this track,
+	/// there might be other track currently fading out.
+	int m_playingTrack = -1;
 
-	// A reference to all models used by the animator.
-	// NOTE: Now that I think about it, do we really need thid LUT, we could directly use the
-	// the asset library, I doubt that it is going to get parallel?
-	std::unordered_map<std::string, std::shared_ptr<Asset>> m_modelsLUT;
+	/// The state of each playing track.
+	std::vector<TrackPlayback> m_playbacks;
 
-	//
-	// std::unordered_map<int, int> m_animTransitions;
+	float fadeoutTimeTotal = 0.f;
 
-	// The animation that we are currently playing as the main thing.
-	int m_playingAnimId = -1;
-
-	// Intrernal state data.
-	std::vector<EvalMomentSets> m_moments;
+	EvaluatedModel* m_modelToBeAnimated = nullptr;
 };
 
 } // namespace sge
