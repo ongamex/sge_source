@@ -778,7 +778,7 @@ void FBXSDKParser::importMeshes_singleMesh(FbxMesh* fbxMesh, int importedMeshInd
 		}
 	}
 
-	mesh.primTopo = PrimitiveTopology::TriangleList;
+	mesh.primitiveTopology = PrimitiveTopology::TriangleList;
 	mesh.vertexDecl = sge::VertexDecl::NormalizeDecl(mesh.vertexDecl.data(), int(mesh.vertexDecl.size()));
 
 	auto const findVertexChannelByteOffset = [](const char* semantic, const std::vector<VertexDecl>& decl) -> int {
@@ -1136,7 +1136,7 @@ void FBXSDKParser::importAnimations() {
 			// Read each the animated values for each node on that curve.
 			for (const auto& itr : m_fbxNode2NodeIndex) {
 				fbxsdk::FbxNode* const fbxNode = itr.first;
-				KeyFrames nodeKeyFrames = perNodeKeyFrames[itr.second];
+				KeyFrames& nodeKeyFrames = perNodeKeyFrames[itr.second];
 
 				if (!fbxNode) {
 					sgeAssert(false && "Failed to find nodes for importing their animations.");

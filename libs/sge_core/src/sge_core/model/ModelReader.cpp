@@ -306,7 +306,7 @@ bool ModelReader::loadModel(const ModelLoadSettings loadSets, IReadStream* const
 				}
 
 				mesh->name = jMesh->getMember("name")->GetString();
-				mesh->primTopo = PrimitiveTolologyFromString(jMesh->getMember("primitiveTopology")->GetString());
+				mesh->primitiveTopology = PrimitiveTolologyFromString(jMesh->getMember("primitiveTopology")->GetString());
 				mesh->vbByteOffset = jMesh->getMember("vbByteOffset")->getNumberAs<uint32>();
 				mesh->numElements = jMesh->getMember("numElements")->getNumberAs<uint32>();
 				mesh->numVertices = jMesh->getMember("numVertices")->getNumberAs<uint32>();

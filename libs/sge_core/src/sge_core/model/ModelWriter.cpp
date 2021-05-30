@@ -16,7 +16,7 @@ int ModelWriter::newDataChunkFromPtr(const void* const ptr, const size_t sizeByt
 char* ModelWriter::newDataChunkWithSize(size_t sizeBytes, int& outChunkId) {
 	const int newChunkId = (dataChunks.size() == 0) ? 0 : dataChunks.back().id + 1;
 
-	std::vector<char> memory;
+	std::vector<char> memory(sizeBytes);
 	DataChunk chunk;
 	chunk.data = memory.data();
 	chunk.id = newChunkId;
@@ -42,7 +42,7 @@ JsonValue* ModelWriter::generateKeyFrames(const KeyFrames& keyfames) {
 		const size_t chunkSizeBytes = numKeyFrames * (sizeof(float) + sizeof(vec3f));
 
 		int chunkId = -1;
-		char* chunkData = newDataChunkWithSize(keyfames.positionKeyFrames.size(), chunkId);
+		char* chunkData = newDataChunkWithSize(chunkSizeBytes, chunkId);
 
 		for (const auto& itr : keyfames.positionKeyFrames) {
 			*(float*)(chunkData) = itr.first;
@@ -60,7 +60,7 @@ JsonValue* ModelWriter::generateKeyFrames(const KeyFrames& keyfames) {
 		const size_t chunkSizeBytes = numKeyFrames * (sizeof(float) + sizeof(quatf));
 
 		int chunkId = -1;
-		char* chunkData = newDataChunkWithSize(keyfames.rotationKeyFrames.size(), chunkId);
+		char* chunkData = newDataChunkWithSize(chunkSizeBytes, chunkId);
 
 		for (const auto& itr : keyfames.rotationKeyFrames) {
 			*(float*)(chunkData) = itr.first;
@@ -78,7 +78,7 @@ JsonValue* ModelWriter::generateKeyFrames(const KeyFrames& keyfames) {
 		const size_t chunkSizeBytes = numKeyFrames * (sizeof(float) + sizeof(vec3f));
 
 		int chunkId = -1;
-		char* chunkData = newDataChunkWithSize(keyfames.scalingKeyFrames.size(), chunkId);
+		char* chunkData = newDataChunkWithSize(chunkSizeBytes, chunkId);
 
 		for (const auto& itr : keyfames.scalingKeyFrames) {
 			*(float*)(chunkData) = itr.first;
@@ -249,7 +249,7 @@ void ModelWriter::writeMeshes() {
 
 		// Draw call settings.
 		jMesh->setMember("name", jvb(mesh->name));
-		jMesh->setMember("primitiveTopology", jvb(PrimitiveTopology2String(mesh->primTopo)));
+		jMesh->setMember("primitiveTopology", jvb(PrimitiveTopology2String(mesh->primitiveTopology)));
 		jMesh->setMember("vbByteOffset", jvb((int)mesh->vbByteOffset));
 		jMesh->setMember("numElements", jvb((int)mesh->numElements));
 		jMesh->setMember("numVertices", jvb((int)mesh->numVertices));

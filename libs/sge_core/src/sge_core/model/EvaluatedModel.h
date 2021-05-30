@@ -35,12 +35,10 @@ struct EvaluatedNode {
 };
 
 struct EvaluatedMesh {
-	GpuHandle<Buffer> vertexBuffer;
-	GpuHandle<Buffer> indexBuffer;
 	GpuHandle<Texture> skinningBoneTransfsTex;
-	VertexDeclIndex vertexDeclIndex = VertexDeclIndex_Null;
-	Geometry geom;
 	std::vector<mat4f> boneTransformMatrices;
+
+	Geometry geometry;
 };
 
 struct EvalMomentSets {
@@ -84,8 +82,16 @@ struct SGE_CORE_API EvaluatedModel {
 	bool addAnimationDonor(const std::shared_ptr<Asset>& donorAsset);
 
 	/// Evaluates the model at the specified momemnt.
-	bool evaluateStatic();
+	bool evaluateStatic() { return evaluateFromMoments(nullptr, 0); }
+
+	/// @brief Evaluates the model with the specified animations at the specified time.
+	/// If you want to evaluate the model with no animation, just pass @evalMoments nullptr and numMoments 0.
 	bool evaluateFromMoments(const EvalMomentSets evalMoments[], int numMoments);
+
+	/// @brief Evaluates the models with the specified transforms for each node (in model global space, not local).
+	/// Useful for ragdolls or inverse kinematics.
+	/// @param boneGlobalTrasnformOverrides an array for each node matched by the index in the array specifying the global transformation to
+	/// be used.
 	bool evaluateFromNodesGlobalTransform(const std::vector<mat4f>& boneGlobalTrasnformOverrides);
 
 	int getNumEvalMeshes() const { return int(m_evaluatedMeshes.size()); }
@@ -96,6 +102,8 @@ struct SGE_CORE_API EvaluatedModel {
 
 	int getNumEvalNodes() const { return int(m_evaluatedNodes.size()); }
 	const EvaluatedNode& getEvalNode(const int iNode) const { return m_evaluatedNodes[iNode]; }
+
+	const ModelAnimation* findAnimation(const int idxDonor, const int animIndex) const;
 
   private:
 	bool evaluateNodes_common();

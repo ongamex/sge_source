@@ -11,13 +11,15 @@
 
 namespace sge {
 
-static void promptForModel(std::shared_ptr<Asset>& asset) {
+static bool promptForModel(std::shared_ptr<Asset>& asset) {
 	AssetLibrary* const assetLib = getCore()->getAssetLib();
 
 	const std::string filename = FileOpenDialog("Pick a model", true, "*.mdl\0*.mdl\0", nullptr);
 	if (!filename.empty()) {
 		asset = assetLib->getAsset(AssetType::Model, filename.c_str(), true);
+		return true;
 	}
+	return false;
 }
 
 void ModelPreviewWidget::doWidget(SGEContext* const sgecon, const InputState& is, EvaluatedModel& m_eval, Optional<vec2f> widgetSize) {
@@ -113,8 +115,24 @@ void ModelPreviewWindow::update(SGEContext* const sgecon, const InputState& is) 
 		if (ImGui::Button("Pick##ModeToPreview")) {
 			promptForModel(m_model);
 			m_eval = EvaluatedModel();
+			iPreviewAnimDonor = -1;
+			iPreviewAnimation = -1;
+			animationComboPreviewValue = "<None>";
+			animationDonors.clear();
+			previewAimationTime = 0.f;
+			autoPlayAnimation = true;
 			if (m_model) {
 				m_eval.initialize(assetLib, &m_model->asModel()->model);
+			}
+		}
+
+		if (isAssetLoaded(m_model)) {
+			if (ImGui::Button("Add Animation Donor")) {
+				PAsset donor;
+				if (promptForModel(donor)) {
+					animationDonors.push_back(donor);
+					m_eval.addAnimationDonor(donor);
+				}
 			}
 		}
 
@@ -127,7 +145,60 @@ void ModelPreviewWindow::update(SGEContext* const sgecon, const InputState& is) 
 		ImGui::EndChild();
 		ImGui::NextColumn();
 		if (m_model.get() != NULL) {
-			m_eval.evaluateStatic();
+			if (ImGui::BeginCombo("Animation", animationComboPreviewValue.c_str())) {
+				if (ImGui::Selectable("<None>")) {
+					animationComboPreviewValue = "<None>";
+					iPreviewAnimDonor = -1;
+					iPreviewAnimation = -1;
+				}
+
+				for (int t = 0; t < m_eval.m_model->numAnimations(); ++t) {
+					const ModelAnimation* anim = m_eval.m_model->getAnimation(t);
+					if (ImGui::Selectable(anim->animationName.c_str())) {
+						animationComboPreviewValue = anim->animationName;
+						iPreviewAnimDonor = -1;
+						iPreviewAnimation = t;
+					}
+				}
+
+				for (int iDonor = 0; iDonor < animationDonors.size(); ++iDonor) {
+					const Model& donorModel = animationDonors[iDonor]->asModel()->model;
+					for (int t = 0; t < donorModel.numAnimations(); ++t) {
+						const ModelAnimation* anim = donorModel.getAnimation(t);
+						if (ImGui::Selectable((animationDonors[iDonor]->getPath() + " | " + anim->animationName).c_str())) {
+							animationComboPreviewValue = anim->animationName;
+							iPreviewAnimDonor = iDonor;
+							iPreviewAnimation = t;
+						}
+					}
+				}
+
+				ImGui::EndCombo();
+			}
+
+			EvalMomentSets evalMoment;
+			if (iPreviewAnimation == -1) {
+				evalMoment = EvalMomentSets();
+			} else {
+				const ModelAnimation* anim = m_eval.findAnimation(iPreviewAnimDonor, iPreviewAnimation);
+
+				ImGui::Checkbox("Auto Play", &autoPlayAnimation);
+				if (autoPlayAnimation) {
+					previewAimationTime += 0.016f; // TODO timer.
+
+					if (previewAimationTime > anim->durationSec) {
+						previewAimationTime -= anim->durationSec;
+					}
+				}
+
+				ImGui::SliderFloat("Time", &previewAimationTime, 0.f, anim->durationSec);
+
+				evalMoment.donorIndex = iPreviewAnimDonor;
+				evalMoment.animationIndex = iPreviewAnimation;
+				evalMoment.time = previewAimationTime;
+			}
+
+			m_eval.evaluateFromMoments(&evalMoment, 1);
 
 			const ImVec2 canvas_pos = ImGui::GetCursorScreenPos();
 			ImVec2 canvas_size = ImGui::GetContentRegionAvail();

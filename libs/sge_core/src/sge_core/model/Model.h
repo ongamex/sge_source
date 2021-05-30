@@ -101,7 +101,7 @@ struct ModelMeshBone {
 struct SGE_CORE_API ModelMesh {
 	std::string name; ///< The name of the mesh.
 
-	PrimitiveTopology::Enum primTopo = PrimitiveTopology::Unknown;
+	PrimitiveTopology::Enum primitiveTopology = PrimitiveTopology::Unknown;
 	int vbByteOffset = 0;                           ///< 1st vertex byte offset into the vertex buffer
 	int ibByteOffset = 0;                           ///< 1st index byte offse int the index buffer
 	UniformType::Enum ibFmt = UniformType::Unknown; ///< The format the index buffer, if unknown this mesh doesn't use index buffers.
@@ -119,16 +119,19 @@ struct SGE_CORE_API ModelMesh {
 	int vbBonesIdsBytesOffset = -1;
 	int vbBonesWeightsByteOffset = -1;
 
-	GpuHandle<Buffer> vertexBuffer; ///< The vertex buffer to be used for rendering of that mesh.
-	GpuHandle<Buffer> indexBuffer;  ///< The index buffer to be used for rendering of that mesh.
-
 	std::vector<char> vertexBufferRaw; ///< The raw data containing all vertices in the vertex buffer,
 	std::vector<char> indexBufferRaw;  ///< The raw data containing all indices in the vertex buffer,
 
 	AABox3f aabox; ///< The bounding box around the vertices of the mesh, without any deformation by skinning or anything else.
 
-	int materialIndex = -1;           ///< The material assigned by default to this mesh.
 	std::vector<ModelMeshBone> bones; ///< A list of bones affecting the mesh.
+
+	// The member below are available only if @Model::createRenderingResources gets called:
+
+	GpuHandle<Buffer> vertexBuffer; ///< The vertex buffer to be used for rendering of that mesh.
+	GpuHandle<Buffer> indexBuffer;  ///< The index buffer to be used for rendering of that mesh.
+	bool hasUsableTangetSpace = false;   ///< True if uv and all 3 tangent space vectors are available in the vertex declaration.
+	VertexDeclIndex vertexDeclIndex = VertexDeclIndex_Null;
 };
 
 struct MeshAttachment {

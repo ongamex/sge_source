@@ -16,6 +16,11 @@ void Model::createRenderingResources(SGEDevice& sgedev) {
 			const BufferDesc vbd = BufferDesc::GetDefaultVertexBuffer((uint32)mesh->vertexBufferRaw.size(), usage);
 			mesh->vertexBuffer->create(vbd, mesh->vertexBufferRaw.data());
 
+			mesh->vertexDeclIndex = sgedev.getVertexDeclIndex(mesh->vertexDecl.data(), int(mesh->vertexDecl.size()));
+
+			mesh->hasUsableTangetSpace = mesh->vbNormalOffsetBytes >= 0 && mesh->vbNormalOffsetBytes >= 0 &&
+			                             mesh->vbTangetOffsetBytes >= 0 && mesh->vbBinormalOffsetBytes >= 0;
+
 			if (mesh->indexBufferRaw.size() != 0) {
 				mesh->indexBuffer = sgedev.requestResource<Buffer>();
 				const BufferDesc ibd = BufferDesc::GetDefaultIndexBuffer((uint32)mesh->indexBufferRaw.size(), usage);
@@ -149,17 +154,17 @@ void KeyFrames::evaluate(transf3d& result, const float t) const {
 		if (keyItr == positionKeyFrames.end()) {
 			result.p = positionKeyFrames.rbegin()->second;
 		} else {
-			const auto& nextKeyItr = std::next(keyItr);
+			const auto& prevKeyItr = std::prev(keyItr);
 
-			if (nextKeyItr == positionKeyFrames.end()) {
+			if (prevKeyItr == positionKeyFrames.end()) {
 				result.p = keyItr->second;
 			} else {
-				const float t0 = keyItr->first;
-				const float t1 = nextKeyItr->first;
+				const float t0 = prevKeyItr->first;
+				const float t1 = keyItr->first;
 				const float dt = t1 - t0;
 
 				if (dt > 1e-6f) {
-					result.p = lerp(keyItr->second, nextKeyItr->second, t / dt);
+					result.p = lerp(prevKeyItr->second, keyItr->second, (t - t0) / dt);
 				} else {
 					result.p = keyItr->second;
 				}
@@ -173,17 +178,17 @@ void KeyFrames::evaluate(transf3d& result, const float t) const {
 		if (keyItr == rotationKeyFrames.end()) {
 			result.r = rotationKeyFrames.rbegin()->second;
 		} else {
-			auto nextKeyItr = std::next(keyItr);
+			const auto& prevKeyItr = std::prev(keyItr);
 
-			if (nextKeyItr == rotationKeyFrames.end()) {
+			if (prevKeyItr == rotationKeyFrames.end()) {
 				result.r = keyItr->second;
 			} else {
-				const float t0 = keyItr->first;
-				const float t1 = nextKeyItr->first;
+				const float t0 = prevKeyItr->first;
+				const float t1 = keyItr->first;
 				const float dt = t1 - t0;
 
 				if (dt > 1e-6f) {
-					result.r = lerp(keyItr->second, nextKeyItr->second, t / dt);
+					result.r = lerp(prevKeyItr->second, keyItr->second, (t - t0) / dt);
 				} else {
 					result.r = keyItr->second;
 				}
@@ -198,17 +203,17 @@ void KeyFrames::evaluate(transf3d& result, const float t) const {
 		if (keyItr == scalingKeyFrames.end()) {
 			result.s = scalingKeyFrames.rbegin()->second;
 		} else {
-			auto nextKeyItr = std::next(keyItr);
+			const auto& prevKeyItr = std::prev(keyItr);
 
-			if (nextKeyItr == scalingKeyFrames.end()) {
+			if (prevKeyItr == scalingKeyFrames.end()) {
 				result.s = keyItr->second;
 			} else {
-				const float t0 = keyItr->first;
-				const float t1 = nextKeyItr->first;
+				const float t0 = prevKeyItr->first;
+				const float t1 = keyItr->first;
 				const float dt = t1 - t0;
 
 				if (dt > 1e-6f) {
-					result.s = lerp(keyItr->second, nextKeyItr->second, t / dt);
+					result.s = lerp(prevKeyItr->second, keyItr->second, (t - t0) / dt);
 				} else {
 					result.s = keyItr->second;
 				}

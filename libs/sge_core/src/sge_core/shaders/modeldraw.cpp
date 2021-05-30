@@ -563,7 +563,7 @@ void BasicModelDraw::draw(const RenderDestination& rdest,
 				}
 			}
 
-			drawGeometry(rdest, camPos, camLookDir, projView, finalTrasform, generalMods, &mesh.geom, material, mods);
+			drawGeometry(rdest, camPos, camLookDir, projView, finalTrasform, generalMods, &mesh.geometry, material, mods);
 		}
 	}
 }

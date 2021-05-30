@@ -31,28 +31,23 @@ bool EvaluatedModel::addAnimationDonor(const std::shared_ptr<Asset>& donorAsset)
 	// Build the node-to-node remapping, Keep in mind that some nodes might not be present in the donor.
 	// in that case -1 should be written for that node index.
 	for (const int iOrigNode : range_int(m_model->numNodes())) {
-		animDonor.donorModel->asModel()->model.findFistNodeIndexWithName(m_model->nodeAt(iOrigNode)->name);
+		const std::string& originalNodeName = m_model->nodeAt(iOrigNode)->name;
+		animDonor.originalNodeId_to_donorNodeId[iOrigNode] =
+		    animDonor.donorModel->asModel()->model.findFistNodeIndexWithName(originalNodeName);
 	}
 
 	m_donors.emplace_back(std::move(animDonor));
 
 	return true;
 }
-bool EvaluatedModel::evaluateStatic() {
-	EvalMomentSets staticMoment;
-	evaluateFromMomentsInternal(&staticMoment, 1);
-	evaluateMaterials();
-	evaluateSkinning();
-
-	return true;
-}
 
 bool EvaluatedModel::evaluateFromMoments(const EvalMomentSets evalMoments[], int numMoments) {
-	if (numMoments <= 0) {
-		return false;
+	if (numMoments != 0 && evalMoments != nullptr) {
+		evaluateFromMomentsInternal(evalMoments, numMoments);
+	} else {
+		EvalMomentSets staticMoment;
+		evaluateFromMomentsInternal(&staticMoment, 1);
 	}
-
-	evaluateFromMomentsInternal(evalMoments, numMoments);
 	evaluateMaterials();
 	evaluateSkinning();
 
@@ -230,10 +225,6 @@ bool EvaluatedModel::evaluateSkinning() {
 		EvaluatedMesh& evalMesh = m_evaluatedMeshes[iMesh];
 		const ModelMesh& rawMesh = *m_model->meshAt(iMesh);
 
-		evalMesh.vertexDeclIndex = context->getDevice()->getVertexDeclIndex(rawMesh.vertexDecl.data(), int(rawMesh.vertexDecl.size()));
-
-		evalMesh.indexBuffer = rawMesh.indexBuffer;
-		evalMesh.vertexBuffer = rawMesh.vertexBuffer;
 		if (rawMesh.bones.empty() == false) {
 			// Compute the tansform of the bone, it combines the binding offset matrix of the bone and
 			// the evaluated position of the node that represents the bone in the scene.
@@ -250,15 +241,21 @@ bool EvaluatedModel::evaluateSkinning() {
 			// Compute the bones skinning matrix.
 			// TODO: this texture should be created by a shader if needed and maybe reused between draw calls.
 			{
+				int neededTexWidth = 4;
+				int neededTexHeight = int(rawMesh.bones.size());
+
 				TextureData data = TextureData(bonesTransformTexData.data(), sizeof(vec4f) * 4);
 
-				if (evalMesh.skinningBoneTransfsTex.HasResource() == false) {
+				const bool doesBigEnoughTextureExists = evalMesh.skinningBoneTransfsTex.HasResource() &&
+				                                        evalMesh.skinningBoneTransfsTex->getDesc().texture2D.height >= neededTexHeight;
+
+				if (doesBigEnoughTextureExists == false) {
 					TextureDesc td;
 					td.textureType = UniformType::Texture2D;
 					td.usage = TextureUsage::DynamicResource;
 					td.format = TextureFormat::R32G32B32A32_FLOAT;
 					td.texture2D.arraySize = 1;
-					td.texture2D = Texture2DDesc(4, int(rawMesh.bones.size()));
+					td.texture2D = Texture2DDesc(neededTexWidth, neededTexHeight);
 
 					SamplerDesc sd;
 					sd.filter = TextureFilter::Min_Mag_Mip_Point;
@@ -271,34 +268,26 @@ bool EvaluatedModel::evaluateSkinning() {
 			}
 		}
 
-		// clang-format off
-		const bool hasUsableTangetSpace = 
-				rawMesh.vbNormalOffsetBytes >= 0 
-			&& rawMesh.vbNormalOffsetBytes >= 0 
-			&& rawMesh.vbTangetOffsetBytes >= 0 
-			&& rawMesh.vbBinormalOffsetBytes >= 0;
-
 		// Finally fill the geometry structure.
-		evalMesh.geom = Geometry(
-			evalMesh.vertexBuffer.GetPtr(),
-			evalMesh.indexBuffer.GetPtr(),
-			evalMesh.skinningBoneTransfsTex.GetPtr(),
-			evalMesh.vertexDeclIndex,
-			rawMesh.vbVertexColorOffsetBytes >= 0,
-			rawMesh.vbUVOffsetBytes >= 0, 
-			rawMesh.vbNormalOffsetBytes >= 0,
-			hasUsableTangetSpace,
-			rawMesh.primTopo,
-			rawMesh.vbByteOffset,
-			rawMesh.ibByteOffset,
-			rawMesh.stride,
-			rawMesh.ibFmt,
-			rawMesh.numElements
-		);
-		// clang-format on
+		evalMesh.geometry = Geometry(rawMesh.vertexBuffer.GetPtr(), rawMesh.indexBuffer.GetPtr(), evalMesh.skinningBoneTransfsTex.GetPtr(),
+		                             rawMesh.vertexDeclIndex, rawMesh.vbVertexColorOffsetBytes >= 0, rawMesh.vbUVOffsetBytes >= 0,
+		                             rawMesh.vbNormalOffsetBytes >= 0, rawMesh.hasUsableTangetSpace, rawMesh.primitiveTopology,
+		                             rawMesh.vbByteOffset, rawMesh.ibByteOffset, rawMesh.stride, rawMesh.ibFmt, rawMesh.numElements);
 	}
 
 	return true;
+}
+
+const ModelAnimation* EvaluatedModel::findAnimation(const int idxDonor, const int animIndex) const {
+	if (idxDonor == -1) {
+		return m_model->getAnimation(animIndex);
+	}
+
+	if (idxDonor >= 0 && idxDonor < m_donors.size()) {
+		return m_donors[idxDonor].donorModel->asModel()->model.getAnimation(animIndex);
+	}
+
+	return nullptr;
 }
 
 } // namespace sge
