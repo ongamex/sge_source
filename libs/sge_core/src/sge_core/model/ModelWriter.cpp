@@ -136,9 +136,17 @@ void ModelWriter::writeNodes() {
 
 		jNode->setMember("name", jvb(node->name));
 
-		jNode->setMember("translation", jvb(node->staticLocalTransform.p.data, 3)); // An array of 3 floats.
-		jNode->setMember("rotation", jvb(node->staticLocalTransform.r.data, 4));    // An array of 4 floats.
-		jNode->setMember("scaling", jvb(node->staticLocalTransform.s.data, 3));     // An array of 4 floats.
+		if (node->staticLocalTransform.p != vec3f(0.f)) {
+			jNode->setMember("translation", jvb(node->staticLocalTransform.p.data, 3)); // An array of 3 floats.
+		}
+
+		if (node->staticLocalTransform.r != quatf::getIdentity()) {
+			jNode->setMember("rotation", jvb(node->staticLocalTransform.r.data, 4)); // An array of 4 floats.
+		}
+
+		if (node->staticLocalTransform.s != vec3f(1.f)) {
+			jNode->setMember("scaling", jvb(node->staticLocalTransform.s.data, 3)); // An array of 3 floats.
+		}
 
 		// Attached meshes.
 		if (!node->meshAttachments.empty()) {

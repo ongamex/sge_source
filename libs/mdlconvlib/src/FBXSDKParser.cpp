@@ -768,7 +768,7 @@ void FBXSDKParser::importMeshes_singleMesh(FbxMesh* fbxMesh, int importedMeshInd
 		{
 			sge::VertexDecl decl;
 			decl.bufferSlot = 0;
-			decl.semantic = "a_boneWeights";
+			decl.semantic = "a_bonesWeights";
 			decl.format = sge::UniformType::Float4;
 			decl.byteOffset = -1;
 
@@ -1136,7 +1136,7 @@ void FBXSDKParser::importAnimations() {
 			// Read each the animated values for each node on that curve.
 			for (const auto& itr : m_fbxNode2NodeIndex) {
 				fbxsdk::FbxNode* const fbxNode = itr.first;
-				KeyFrames& nodeKeyFrames = perNodeKeyFrames[itr.second];
+				KeyFrames nodeKeyFrames;
 
 				if (!fbxNode) {
 					sgeAssert(false && "Failed to find nodes for importing their animations.");
@@ -1195,13 +1195,22 @@ void FBXSDKParser::importAnimations() {
 						nodeKeyFrames.scalingKeyFrames[keyTimeSeconds] = scaling;
 					}
 				}
+
+				// Save the keyframes to the animation.
+				// if there are no key frames, skip the node.
+				if (!nodeKeyFrames.positionKeyFrames.empty() || !nodeKeyFrames.rotationKeyFrames.empty() ||
+				    !nodeKeyFrames.scalingKeyFrames.empty()) {
+					perNodeKeyFrames[itr.second] = std::move(nodeKeyFrames);
+				}
 			} // End for each node loop.
 		}     // End for each layer loop.
 
-		// Add the animation to the model.
-		const int newAnimIndex = m_model->makeNewAnim();
-
-		*(m_model->getAnimation(newAnimIndex)) = ModelAnimation(animationName, animationDuration, std::move(perNodeKeyFrames));
+		// Add the animation to the model if it is not empty (no key frames).
+		// FBX exporters tend to do this for some reason.
+		if (!perNodeKeyFrames.empty()) {
+			const int newAnimIndex = m_model->makeNewAnim();
+			*(m_model->getAnimation(newAnimIndex)) = ModelAnimation(animationName, animationDuration, std::move(perNodeKeyFrames));
+		}
 	}
 }
 

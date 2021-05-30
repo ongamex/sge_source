@@ -396,9 +396,17 @@ bool ModelReader::loadModel(const ModelLoadSettings loadSets, IReadStream* const
 
 				node->name = jNode->getMember("name")->GetString();
 
-				jNode->getMember("translation")->getNumberArrayAs<float>(node->staticLocalTransform.p.data, 3);
-				jNode->getMember("rotation")->getNumberArrayAs<float>(node->staticLocalTransform.r.data, 4);
-				jNode->getMember("scaling")->getNumberArrayAs<float>(node->staticLocalTransform.s.data, 3);
+				if (auto jTranslation = jNode->getMember("translation")) {
+					jTranslation->getNumberArrayAs<float>(node->staticLocalTransform.p.data, 3);
+				}
+
+				if (auto jRotation = jNode->getMember("rotation")) {
+					jRotation->getNumberArrayAs<float>(node->staticLocalTransform.r.data, 4);
+				}
+
+				if (auto jScaling = jNode->getMember("scaling")) {
+					jScaling->getNumberArrayAs<float>(node->staticLocalTransform.s.data, 3);
+				}
 
 				// Read the mesh attachments.
 				if (auto jMeshes = jNode->getMember("meshes")) {

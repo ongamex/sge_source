@@ -86,7 +86,7 @@ struct VS_INPUT {
 
 #if OPT_HasVertexSkinning == kHasVertexSkinning_Yes
 	int4 a_bonesIds : a_bonesIds;
-	float4 a_boneWeights : a_boneWeights;
+	float4 a_bonesWeights : a_bonesWeights;
 #endif
 };
 
@@ -178,10 +178,10 @@ VS_OUTPUT vsMain(VS_INPUT vsin) {
 	#define ROW3_U ((0.5 + 3.0) / 4.)
 	
 	float4x4 skinMtx = 
-		  getBoneTransform(vsin.a_bonesIds.x, boneTexSize) * vsin.a_boneWeights.x
-		+ getBoneTransform(vsin.a_bonesIds.y, boneTexSize) * vsin.a_boneWeights.y
-		+ getBoneTransform(vsin.a_bonesIds.z, boneTexSize) * vsin.a_boneWeights.z
-		+ getBoneTransform(vsin.a_bonesIds.w, boneTexSize) * vsin.a_boneWeights.w
+		  getBoneTransform(vsin.a_bonesIds.x, boneTexSize) * vsin.a_bonesWeights.x
+		+ getBoneTransform(vsin.a_bonesIds.y, boneTexSize) * vsin.a_bonesWeights.y
+		+ getBoneTransform(vsin.a_bonesIds.z, boneTexSize) * vsin.a_bonesWeights.z
+		+ getBoneTransform(vsin.a_bonesIds.w, boneTexSize) * vsin.a_bonesWeights.w
 	;
 
 	vertexPosOs = mul(skinMtx, float4(vertexPosOs, 1.0)).xyz;
