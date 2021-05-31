@@ -94,7 +94,7 @@ void ConstantColorShader::draw(const RenderDestination& rdest,
 		for (int iMesh = 0; iMesh < rawNode->meshAttachments.size(); ++iMesh) {
 			const MeshAttachment& meshAttachment = rawNode->meshAttachments[iMesh];
 			const EvaluatedMesh& mesh = evalModel.getEvalMesh(meshAttachment.attachedMeshIndex);
-			mat4f const finalTrasform = (mesh.boneTransformMatrices.size() == 0) ? preRoot * evalNode.evalGlobalTransform : preRoot;
+			mat4f const finalTrasform = (true) ? preRoot * evalNode.evalGlobalTransform : preRoot;
 
 			drawGeometry(rdest, projView, finalTrasform, mesh.geometry, shadingColor);
 		}

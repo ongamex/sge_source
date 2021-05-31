@@ -31,12 +31,12 @@ struct EvaluatedMaterial {
 struct EvaluatedNode {
 	mat4f evalLocalTransform = mat4f::getZero();
 	mat4f evalGlobalTransform = mat4f::getIdentity();
-	AABox3f aabb; // untransformed contents bounding box.
+	AABox3f aabbGlobalSpace; // untransformed contents bounding box.
 };
 
 struct EvaluatedMesh {
 	GpuHandle<Texture> skinningBoneTransfsTex;
-	std::vector<mat4f> boneTransformMatrices;
+	//std::vector<mat4f> boneTransformMatrices;
 
 	Geometry geometry;
 };

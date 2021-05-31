@@ -188,7 +188,7 @@ struct ModelNode {
 
 	std::vector<MeshAttachment> meshAttachments;
 	std::vector<int> childNodes; ///< The indices of all child nodes.
-
+	float limbLength = 0.f; ///< If the node seemed to be used for skinning, this is the length of the bone in the interface. 0 otherwise.
 	std::string name; ///< The name of the node.
 };
 

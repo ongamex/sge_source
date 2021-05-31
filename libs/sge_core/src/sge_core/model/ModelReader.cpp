@@ -408,6 +408,13 @@ bool ModelReader::loadModel(const ModelLoadSettings loadSets, IReadStream* const
 					jScaling->getNumberArrayAs<float>(node->staticLocalTransform.s.data, 3);
 				}
 
+
+				if (auto jlimbLength = jNode->getMember("limbLength")) {
+					node->limbLength = jlimbLength->getNumberAs<float>();
+				}
+
+				
+
 				// Read the mesh attachments.
 				if (auto jMeshes = jNode->getMember("meshes")) {
 					for (size_t iAttachment = 0; iAttachment < jMeshes->arrSize(); ++iAttachment) {

@@ -83,7 +83,7 @@ bool EvaluatedModel::evaluateNodes_common() {
 		for (const MeshAttachment& meshAttachment : m_model->nodeAt(iNode)->meshAttachments) {
 			const ModelMesh* mesh = m_model->meshAt(meshAttachment.attachedMeshIndex);
 			if (mesh) {
-				evalNode.aabb.expand(mesh->aabox);
+				evalNode.aabbGlobalSpace.expand(mesh->aabox);
 			}
 		}
 	}
@@ -142,13 +142,14 @@ bool EvaluatedModel::evaluateFromMomentsInternal(const EvalMomentSets evalMoment
 	traverseGlobalTransform = [&](int iNode, const mat4f& parentTransfrom) -> void {
 		EvaluatedNode& evalNode = m_evaluatedNodes[iNode];
 		evalNode.evalGlobalTransform = parentTransfrom * evalNode.evalLocalTransform;
+		evalNode.aabbGlobalSpace = evalNode.aabbGlobalSpace.getTransformed(evalNode.evalGlobalTransform);
 
 		for (const int childNodeIndex : m_model->nodeAt(iNode)->childNodes) {
 			traverseGlobalTransform(childNodeIndex, evalNode.evalGlobalTransform);
 		}
 
-		if (evalNode.aabb.IsEmpty() == false) {
-			aabox.expand(evalNode.aabb.getTransformed(evalNode.evalGlobalTransform));
+		if (evalNode.aabbGlobalSpace.IsEmpty() == false) {
+			aabox.expand(evalNode.aabbGlobalSpace);
 		}
 	};
 
@@ -169,7 +170,8 @@ bool EvaluatedModel::evaluateNodesFromExternalBones(const std::vector<mat4f>& bo
 
 		// evalNode.evalLocalTransform is not computed as it isn't needed by anything at the moment.
 		evalNode.evalGlobalTransform = boneGlobalTrasnformOverrides[iNode];
-		aabox.expand(evalNode.aabb.getTransformed(evalNode.evalGlobalTransform));
+		evalNode.aabbGlobalSpace = evalNode.aabbGlobalSpace.getTransformed(evalNode.evalGlobalTransform);
+		aabox.expand(evalNode.aabbGlobalSpace.getTransformed(evalNode.evalGlobalTransform));
 	}
 
 	return true;
@@ -273,6 +275,8 @@ bool EvaluatedModel::evaluateSkinning() {
 				}
 			}
 		}
+
+		sgeAssert(!rawMesh.bones.empty() == evalMesh.skinningBoneTransfsTex.HasResource());
 
 		// Finally fill the geometry structure.
 		evalMesh.geometry = Geometry(rawMesh.vertexBuffer.GetPtr(), rawMesh.indexBuffer.GetPtr(), evalMesh.skinningBoneTransfsTex.GetPtr(),

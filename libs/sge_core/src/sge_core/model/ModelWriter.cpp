@@ -148,6 +148,10 @@ void ModelWriter::writeNodes() {
 			jNode->setMember("scaling", jvb(node->staticLocalTransform.s.data, 3)); // An array of 3 floats.
 		}
 
+		if (node->limbLength > 0.f) {
+				jNode->setMember("limbLength", jvb(node->limbLength));
+		}
+
 		// Attached meshes.
 		if (!node->meshAttachments.empty()) {
 			auto jMeshes = jNode->setMember("meshes", jvb(JID_ARRAY));

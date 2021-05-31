@@ -652,7 +652,9 @@ void FBXSDKParser::importMeshes_singleMesh(FbxMesh* fbxMesh, int importedMeshInd
 
 	// Find if there is a skinning data and if so, load the bones for mesh skinning (skeletal animation).
 	if (importSkinningData) {
-		for (int const iDeformer : range_int(fbxMesh->GetDeformerCount())) {
+		const int numDeformers = fbxMesh->GetDeformerCount();
+		sgeAssert(numDeformers == 1 && "We support only 1 deformer!");
+		for (int const iDeformer : range_int(numDeformers)) {
 			fbxsdk::FbxDeformer* const fDeformer = fbxMesh->GetDeformer(iDeformer);
 			fbxsdk::FbxSkin* const fSkin = fbxsdk::FbxCast<fbxsdk::FbxSkin>(fDeformer);
 
@@ -725,30 +727,32 @@ void FBXSDKParser::importMeshes_singleMesh(FbxMesh* fbxMesh, int importedMeshInd
 	// If there are bones in the mesh. Create the vertex attributres for them.
 	if (perControlPointBoneInfluence.empty() == false) {
 		for (auto& pair : perControlPointBoneInfluence) {
-			// Sort by weigths.
-			for (int i = 0; i < pair.second.size(); ++i) {
-				for (int j = i + 1; j < pair.second.size(); ++j) {
-					if (pair.second[j].boneWeight > pair.second[i].boneWeight) {
-						std::swap(pair.second[j], pair.second[i]);
-					}
-				}
-			}
-
 			// Some control point might be infuenced by more then kMaxBonesPerVertex,
 			// if reduce the bones that amount and renormalize the weigths so they sum to 1.
 			if (pair.second.size() > kMaxBonesPerVertex) {
-				pair.second.resize(kMaxBonesPerVertex);
-
-				float weigthSum = 0.f;
-				for (int t = 0; t < kMaxBonesPerVertex; ++t) {
-					weigthSum += pair.second[t].boneWeight;
+				// Sort by weigths.
+				for (int i = 0; i < pair.second.size(); ++i) {
+					for (int j = i + 1; j < pair.second.size(); ++j) {
+						if (pair.second[j].boneWeight > pair.second[i].boneWeight) {
+							std::swap(pair.second[j], pair.second[i]);
+						}
+					}
 				}
 
-				if (weigthSum > 1e-6f) {
-					float invSum = 1.f / weigthSum;
-					for (int t = 0; t < kMaxBonesPerVertex; ++t) {
-						pair.second[t].boneWeight = pair.second[t].boneWeight * invSum;
-					}
+				pair.second.resize(kMaxBonesPerVertex);
+			}
+
+			// Believe it or not some vertices had the sum of all weights exceed 1 (the Jammo robot form mix and jam).
+			// I'm not sure if the way we read the bones for control points is wrong but this seemed necessery.
+			float weigthSum = 0.f;
+			for (int t = 0; t < pair.second.size(); ++t) {
+				weigthSum += pair.second[t].boneWeight;
+			}
+
+			if (weigthSum > 1e-6f) {
+				float invSum = 1.f / weigthSum;
+				for (int t = 0; t < pair.second.size(); ++t) {
+					pair.second[t].boneWeight = pair.second[t].boneWeight * invSum;
 				}
 			}
 		}
@@ -1057,7 +1061,10 @@ void FBXSDKParser::importNodes_singleNode(FbxNode* fbxNode, int importNodeIndex)
 
 		const fbxsdk::FbxNodeAttribute::EType fbxAttriuteType = fbxNodeAttrib->GetAttributeType();
 		if (fbxAttriuteType == fbxsdk::FbxNodeAttribute::eSkeleton) {
-			// Nothing to do nere.
+			if (fbxsdk::FbxSkeleton* const fbxSkeleton = fbxsdk::FbxCast<fbxsdk::FbxSkeleton>(fbxNodeAttrib)) {
+				float limbLength = float(fbxSkeleton->Size.Get()) / 100.f;
+				node->limbLength = limbLength;
+			}
 		} else if (fbxAttriuteType == fbxsdk::FbxNodeAttribute::eMesh) {
 			if (fbxsdk::FbxMesh* const fbxMesh = fbxsdk::FbxCast<fbxsdk::FbxMesh>(fbxNodeAttrib)) {
 				// Attach the imported mesh to the imported node.

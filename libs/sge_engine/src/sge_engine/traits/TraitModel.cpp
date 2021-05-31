@@ -224,8 +224,6 @@ void editTraitStaticModel(GameInspector& inspector, GameObject* actor, MemberCha
 			ALocator* allBonesParent = world->m_allocator<ALocator>();
 			allBonesParent->setTransform(traitStaticModel.getActor()->getTransform());
 
-			const float boneLengthAuto = 0.05f * modelAsset->staticEval.aabox.diagonal().length();
-
 			struct NodeRemapEl {
 				transf3d localTransform;
 				ABone* boneActor = nullptr;
@@ -237,7 +235,8 @@ void editTraitStaticModel(GameInspector& inspector, GameObject* actor, MemberCha
 			for (int iNode : rng_int(modelAsset->model.numNodes())) {
 				const ModelNode* node = modelAsset->model.nodeAt(iNode);
 
-				const float boneLength = boneLengthAuto;
+				const float boneLengthAuto = 0.1f;
+				const float boneLength = node->limbLength > 0.f ? node->limbLength : boneLengthAuto;
 
 				nodeRemap[iNode].localTransform = node->staticLocalTransform;
 				nodeRemap[iNode].boneActor = inspector.getWorld()->m_allocator<ABone>(ObjectId(), node->name.c_str());
