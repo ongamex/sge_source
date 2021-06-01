@@ -19,16 +19,21 @@ using namespace sge;
 //-----------------------------------------------------------------------------
 void ConstantColorShader::drawGeometry(
     const RenderDestination& rdest, const mat4f& projView, const mat4f& world, const Geometry& geometry, const vec4f& shadingColor) {
+	enum : int { OPT_HasVertexSkinning, kNumOptions };
+
 	enum : int {
 		uColor,
 		uWorld,
 		uProjView,
+		uSkinningBones,
 	};
 
 	if (shadingPermut.isValid() == false) {
 		shadingPermut = ShadingProgramPermuator();
 
-		static const std::vector<OptionPermuataor::OptionDesc> compileTimeOptions = {};
+		static const std::vector<OptionPermuataor::OptionDesc> compileTimeOptions = {
+		    {OPT_HasVertexSkinning, "OPT_HasVertexSkinning", {SGE_MACRO_STR(kHasVertexSkinning_No), SGE_MACRO_STR(kHasVertexSkinning_Yes)}},
+		};
 
 		// clang-format off
 		// Caution: It is important that the order of the elements here MATCHES the order in the enum above.
@@ -36,14 +41,23 @@ void ConstantColorShader::drawGeometry(
 		    {uColor, "uColor"},
 		    {uWorld, "uWorld"},
 		    {uProjView, "uProjView"},
+			{uSkinningBones, "uSkinningBones"}
 		};
 		// clang-format on
+
+
 
 		SGEDevice* const sgedev = rdest.getDevice();
 		shadingPermut->createFromFile(sgedev, "core_shaders/ConstantColor.shader", compileTimeOptions, uniformsToCache);
 	}
 
-	const int iShaderPerm = shadingPermut->getCompileTimeOptionsPerm().computePermutationIndex(nullptr, 0);
+	const int optHasVertexSkinning = (geometry.skinningBoneTransforms != nullptr) ? kHasVertexSkinning_Yes : kHasVertexSkinning_No;
+
+	const OptionPermuataor::OptionChoice optionChoice[kNumOptions] = {
+	    {OPT_HasVertexSkinning, optHasVertexSkinning},
+	};
+
+	const int iShaderPerm = shadingPermut->getCompileTimeOptionsPerm().computePermutationIndex(optionChoice, SGE_ARRSZ(optionChoice));
 	const ShadingProgramPermuator::Permutation& shaderPerm = shadingPermut->getShadersPerPerm()[iShaderPerm];
 
 	DrawCall dc;
@@ -68,6 +82,11 @@ void ConstantColorShader::drawGeometry(
 	shaderPerm.bind<24>(uniforms, uWorld, (void*)&world);
 	shaderPerm.bind<24>(uniforms, uProjView, (void*)&projView);
 	shaderPerm.bind<24>(uniforms, uColor, (void*)&shadingColor);
+
+	if (shaderPerm.uniformLUT[uSkinningBones].isNull() == false) {
+		uniforms.push_back(BoundUniform(shaderPerm.uniformLUT[uSkinningBones], (geometry.skinningBoneTransforms)));
+		sgeAssert(uniforms.back().bindLocation.isNull() == false && uniforms.back().bindLocation.uniformType != 0);
+	}
 
 	// Lights and draw call.
 	dc.setUniforms(uniforms.data(), uniforms.size());
@@ -94,7 +113,8 @@ void ConstantColorShader::draw(const RenderDestination& rdest,
 		for (int iMesh = 0; iMesh < rawNode->meshAttachments.size(); ++iMesh) {
 			const MeshAttachment& meshAttachment = rawNode->meshAttachments[iMesh];
 			const EvaluatedMesh& mesh = evalModel.getEvalMesh(meshAttachment.attachedMeshIndex);
-			mat4f const finalTrasform = (true) ? preRoot * evalNode.evalGlobalTransform : preRoot;
+			mat4f const finalTrasform =
+			    (mesh.geometry.skinningBoneTransforms == nullptr) ? preRoot * evalNode.evalGlobalTransform : preRoot;
 
 			drawGeometry(rdest, projView, finalTrasform, mesh.geometry, shadingColor);
 		}

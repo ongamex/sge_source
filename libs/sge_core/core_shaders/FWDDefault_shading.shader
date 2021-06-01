@@ -133,10 +133,10 @@ float lavafn(float x, float y) {
 #endif
 
 float4x4 getBoneTransform(int iBone, int2 texSize) {
-#define ROW0_U ((0.5 + 0.0) / 4.0)
-#define ROW1_U ((0.5 + 1.0) / 4.0)
-#define ROW2_U ((0.5 + 2.0) / 4.0)
-#define ROW3_U ((0.5 + 3.0) / 4.0)	
+	#define ROW0_U ((0.5 + 0.0) / 4.0)
+	#define ROW1_U ((0.5 + 1.0) / 4.0)
+	#define ROW2_U ((0.5 + 2.0) / 4.0)
+	#define ROW3_U ((0.5 + 3.0) / 4.0)	
 
 	float v = ((float)iBone + 0.5f) / (float)texSize.y;
 
@@ -145,14 +145,6 @@ float4x4 getBoneTransform(int iBone, int2 texSize) {
 	float4 c2 = tex2Dlod(uSkinningBones, float4(ROW2_U, v, 0.f, 0.f));
 	float4 c3 = tex2Dlod(uSkinningBones, float4(ROW3_U, v, 0.f, 0.f));
 
-
-	//float4x4 mtx = float4x4(
-	//	c0.x, c0.y, c0.z, c0.w,
-	//	c1.x, c1.y, c1.z, c1.w,
-	//	c2.x, c2.y, c2.z, c2.w,
-	//	c3.x, c3.y, c3.z, c3.w
-	//);
-	
 	float4x4 mtx = float4x4(
 		c0.x, c1.x, c2.x, c3.x,
 		c0.y, c1.y, c2.y, c3.y,
@@ -185,7 +177,7 @@ VS_OUTPUT vsMain(VS_INPUT vsin) {
 	;
 
 	vertexPosOs = mul(skinMtx, float4(vertexPosOs, 1.0)).xyz;
-	normalOs = mul(skinMtx, float4(normalOs, 0.0)).xyz;
+	normalOs = mul(skinMtx, float4(normalOs, 0.0)).xyz; // TODO: Proper normal transfrom by inverse transpose.
 	
 #endif
 	

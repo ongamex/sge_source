@@ -91,7 +91,7 @@ void ModelPreviewWidget::doWidget(SGEContext* const sgecon, const InputState& is
 	}
 
 	if (ImGui::IsItemHovered()) {
-		camera.update(is.IsKeyDown(Key_LAlt), is.IsKeyDown(Key_MouseLeft), is.IsKeyDown(Key_MouseMiddle), is.IsKeyDown(Key_MouseRight),
+		camera.update(true, is.IsKeyDown(Key_MouseLeft), false, is.IsKeyDown(Key_MouseRight),
 		              is.GetCursorPos());
 	}
 }
