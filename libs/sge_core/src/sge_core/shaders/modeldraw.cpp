@@ -45,24 +45,28 @@ void BasicModelDraw::drawGeometry_FWDBuildShadowMap(const RenderDestination& rde
                                                     const InstanceDrawMods& mods) {
 	enum {
 		OPT_LightType,
+		OPT_HasVertexSkinning,
+		kNumOptions,
 	};
 
-	enum : int { uWorld, uProjView, uPointLightPositionWs, uPointLightFarPlaneDistance };
+	enum : int { uWorld, uProjView, uPointLightPositionWs, uPointLightFarPlaneDistance, uSkinningBones };
 
 	if (shadingPermutFWDBuildShadowMaps.isValid() == false) {
 		shadingPermutFWDBuildShadowMaps = ShadingProgramPermuator();
 
-		static const std::vector<OptionPermuataor::OptionDesc> compileTimeOptions = {
+		const std::vector<OptionPermuataor::OptionDesc> compileTimeOptions = {
 		    {OPT_LightType,
 		     "OPT_LightType",
 		     {SGE_MACRO_STR(FWDDBSM_OPT_LightType_SpotOrDirectional), SGE_MACRO_STR(FWDDBSM_OPT_LightType_Point)}},
+		    {OPT_HasVertexSkinning, "OPT_HasVertexSkinning", {SGE_MACRO_STR(kHasVertexSkinning_No), SGE_MACRO_STR(kHasVertexSkinning_Yes)}},
 		};
 
-		static const std::vector<ShadingProgramPermuator::Unform> uniformsToCache = {
+		const std::vector<ShadingProgramPermuator::Unform> uniformsToCache = {
 		    {uWorld, "world"},
 		    {uProjView, "projView"},
 		    {uPointLightPositionWs, "uPointLightPositionWs"},
 		    {uPointLightFarPlaneDistance, "uPointLightFarPlaneDistance"},
+		    {uSkinningBones, "uSkinningBones"},
 		};
 
 		SGEDevice* const sgedev = rdest.getDevice();
@@ -70,8 +74,11 @@ void BasicModelDraw::drawGeometry_FWDBuildShadowMap(const RenderDestination& rde
 		                                                uniformsToCache);
 	}
 
-	const OptionPermuataor::OptionChoice optionChoice[] = {
+	const int optHasVertexSkinning = (geometry->skinningBoneTransforms != nullptr) ? kHasVertexSkinning_Yes : kHasVertexSkinning_No;
+
+	const OptionPermuataor::OptionChoice optionChoice[kNumOptions] = {
 	    {OPT_LightType, generalMods.isShadowMapForPointLight ? FWDDBSM_OPT_LightType_Point : FWDDBSM_OPT_LightType_SpotOrDirectional},
+	    {OPT_HasVertexSkinning, optHasVertexSkinning},
 	};
 
 	const int iShaderPerm =
@@ -87,6 +94,11 @@ void BasicModelDraw::drawGeometry_FWDBuildShadowMap(const RenderDestination& rde
 		vec3f pointLightPositionWs = camPos;
 		shaderPerm.bind<8>(uniforms, uPointLightPositionWs, (void*)&pointLightPositionWs);
 		shaderPerm.bind<8>(uniforms, uPointLightFarPlaneDistance, (void*)&generalMods.shadowMapPointLightDepthRange);
+	}
+
+	if (shaderPerm.uniformLUT[uSkinningBones].isNull() == false) {
+		uniforms.push_back(BoundUniform(shaderPerm.uniformLUT[uSkinningBones], (geometry->skinningBoneTransforms)));
+		sgeAssert(uniforms.back().bindLocation.isNull() == false && uniforms.back().bindLocation.uniformType != 0);
 	}
 
 	// Feed the draw call data to the state group.
@@ -197,7 +209,7 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 	if (shadingPermutFWDShading.isValid() == false) {
 		shadingPermutFWDShading = ShadingProgramPermuator();
 
-		static const std::vector<OptionPermuataor::OptionDesc> compileTimeOptions = {
+		const std::vector<OptionPermuataor::OptionDesc> compileTimeOptions = {
 		    {OPT_UseNormalMap, "OPT_UseNormalMap", {"0", "1"}},
 		    {OPT_DiffuseColorSrc, "OPT_DiffuseColorSrc", {"0", "1", "2", "3", "4"}},
 		    {OPT_Lighting, "OPT_Lighting", {SGE_MACRO_STR(kLightingShaded), SGE_MACRO_STR(kLightingForceNoLighting)}},
@@ -207,7 +219,7 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 		// clang-format off
 
 		// Caution: It is important that the order of the elements here MATCHES the order in the enum above.
-		static const std::vector<ShadingProgramPermuator::Unform> uniformsToCache = {
+		const std::vector<ShadingProgramPermuator::Unform> uniformsToCache = {
 		    {uiHighLightColor, "uiHighLightColor"},
 		    {uTexDiffuse, "texDiffuse"},
 		    {uTexDiffuseSampler, "texDiffuse_sampler"},
