@@ -583,8 +583,8 @@ void DefaultGameDrawer::drawTraitStaticModel(TraitModel* modelTrait,
 			} else {
 				if (modelTrait->m_evalModel) {
 					const mat4f n2w = actor->getTransformMtx() * modelTrait->m_additionalTransform;
-					m_modeldraw.draw(drawSets.rdest, camPos, camLookDir, drawSets.drawCamera->getProjView(), n2w, generalMods,
-					                 *modelTrait->m_evalModel, modelTrait->instanceDrawMods, &mtlOverrides);
+					m_constantColorShader.draw(drawSets.rdest, drawSets.drawCamera->getProjView(), n2w, *modelTrait->m_evalModel,
+					                           generalMods.selectionTint);
 				} else if (model && model->staticEval.isInitialized()) {
 					const mat4f n2w = actor->getTransformMtx() * modelTrait->m_additionalTransform;
 					m_constantColorShader.draw(drawSets.rdest, drawSets.drawCamera->getProjView(), n2w, model->staticEval,

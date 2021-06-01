@@ -58,6 +58,26 @@ ReflBlock() {
 }
 // clang-format on
 
+AABox3f TraitModel::getBBoxOS() const {
+	// If the attached asset is a model use it to compute the bounding box.
+	const AssetModel* const assetModel = getAssetProperty().getAssetModel();
+	if (assetModel && assetModel->staticEval.isInitialized()) {
+		AABox3f bbox = assetModel->staticEval.aabox.getTransformed(m_additionalTransform);
+		return bbox;
+	}
+
+	// If the attached asset is a texture or a sprite compute the bounding box using them.
+	const SpriteAnimationAsset* const assetSprite = getAssetProperty().getAssetSprite();
+	const AssetTexture* const assetTexture = getAssetProperty().getAssetTexture();
+
+	if ((assetSprite || assetTexture) && isAssetLoaded(getAssetProperty().getAsset())) {
+		return imageSettings.computeBBoxOS(*getAssetProperty().getAsset().get(), m_additionalTransform);
+	}
+
+	// Not implemented or no asset is loaded.
+	return AABox3f();
+}
+
 void TraitModel::computeNodeToBoneIds() {
 	if (nodeToBoneId.empty() == false) {
 		return;

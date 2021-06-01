@@ -67,25 +67,7 @@ struct SGE_ENGINE_API TraitModel : public Trait {
 	mat4f getAdditionalTransform() const { return m_additionalTransform; }
 	void setAdditionalTransform(const mat4f& tr) { m_additionalTransform = tr; }
 
-	AABox3f getBBoxOS() const {
-		// If the attached asset is a model use it to compute the bounding box.
-		const AssetModel* const assetModel = getAssetProperty().getAssetModel();
-		if (assetModel && assetModel->staticEval.isInitialized()) {
-			AABox3f bbox = assetModel->staticEval.aabox;
-			return bbox;
-		}
-
-		// If the attached asset is a texture or a sprite compute the bounding box using them.
-		const SpriteAnimationAsset* const assetSprite = getAssetProperty().getAssetSprite();
-		const AssetTexture* const assetTexture = getAssetProperty().getAssetTexture();
-
-		if ((assetSprite || assetTexture) && isAssetLoaded(getAssetProperty().getAsset())) {
-			return imageSettings.computeBBoxOS(*getAssetProperty().getAsset().get(), m_additionalTransform);
-		}
-
-		// Not implemented or no asset is loaded.
-		return AABox3f();
-	}
+	AABox3f getBBoxOS() const;
 
 	void setRenderable(bool v) { isRenderable = v; }
 	bool getRenderable() const { return isRenderable; }

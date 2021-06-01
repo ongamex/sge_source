@@ -78,14 +78,6 @@ bool EvaluatedModel::evaluateNodes_common() {
 		// [EVAL_MESH_NODE_DEFAULT_ZERO]
 		evalNode.evalLocalTransform = mat4f::getZero();
 		evalNode.evalGlobalTransform = mat4f::getZero();
-
-		// Obtain the inital bounding box by getting the unevaluated attached meshes bounding boxes.
-		for (const MeshAttachment& meshAttachment : m_model->nodeAt(iNode)->meshAttachments) {
-			const ModelMesh* mesh = m_model->meshAt(meshAttachment.attachedMeshIndex);
-			if (mesh) {
-				evalNode.aabbGlobalSpace.expand(mesh->aabox);
-			}
-		}
 	}
 
 	return true;
@@ -147,10 +139,6 @@ bool EvaluatedModel::evaluateFromMomentsInternal(const EvalMomentSets evalMoment
 		for (const int childNodeIndex : m_model->nodeAt(iNode)->childNodes) {
 			traverseGlobalTransform(childNodeIndex, evalNode.evalGlobalTransform);
 		}
-
-		if (evalNode.aabbGlobalSpace.IsEmpty() == false) {
-			aabox.expand(evalNode.aabbGlobalSpace);
-		}
 	};
 
 	traverseGlobalTransform(m_model->getRootNodeIndex(), mat4f::getIdentity());
@@ -167,11 +155,8 @@ bool EvaluatedModel::evaluateNodesFromExternalBones(const std::vector<mat4f>& bo
 
 	for (int iNode = 0; iNode < m_model->numNodes(); ++iNode) {
 		EvaluatedNode& evalNode = m_evaluatedNodes[iNode];
-
 		// evalNode.evalLocalTransform is not computed as it isn't needed by anything at the moment.
 		evalNode.evalGlobalTransform = boneGlobalTrasnformOverrides[iNode];
-		evalNode.aabbGlobalSpace = evalNode.aabbGlobalSpace.getTransformed(evalNode.evalGlobalTransform);
-		aabox.expand(evalNode.aabbGlobalSpace.getTransformed(evalNode.evalGlobalTransform));
 	}
 
 	return true;
@@ -283,6 +268,17 @@ bool EvaluatedModel::evaluateSkinning() {
 		                             rawMesh.vertexDeclIndex, rawMesh.vbVertexColorOffsetBytes >= 0, rawMesh.vbUVOffsetBytes >= 0,
 		                             rawMesh.vbNormalOffsetBytes >= 0, rawMesh.hasUsableTangetSpace, rawMesh.primitiveTopology,
 		                             rawMesh.vbByteOffset, rawMesh.ibByteOffset, rawMesh.stride, rawMesh.ibFmt, rawMesh.numElements);
+	}
+
+	aabox.setEmpty();
+	for (int iNode = 0; iNode < this->getNumEvalNodes(); ++iNode) {
+		ModelNode* node = m_model->nodeAt(iNode);
+		m_evaluatedNodes[iNode].aabbGlobalSpace.setEmpty();
+		for (const MeshAttachment& att : node->meshAttachments) {
+			ModelMesh* mesh = m_model->meshAt(att.attachedMeshIndex);
+			m_evaluatedNodes[iNode].aabbGlobalSpace.expand(mesh->aabox.getTransformed(m_evaluatedNodes[iNode].evalGlobalTransform));
+			aabox.expand(m_evaluatedNodes[iNode].aabbGlobalSpace);
+		}
 	}
 
 	return true;
