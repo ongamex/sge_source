@@ -7,38 +7,38 @@
 namespace sge {
 
 bool initializeCollisionShapeBasedOnModel(std::vector<CollsionShapeDesc>& shapeDescs, const EvaluatedModel& evaluatedMode) {
-	const Model::Model* const model = evaluatedMode.m_model;
+	const Model* const model = evaluatedMode.m_model;
 	if (model == nullptr) {
 		return false;
 	}
 
 	// Attempt to use the convex hulls first.
 	if (model->m_convexHulls.size() > 0) {
-		for (const Model::CollisionMesh& cvxHull : model->m_convexHulls) {
+		for (const ModelCollisionMesh& cvxHull : model->m_convexHulls) {
 			shapeDescs.emplace_back(CollsionShapeDesc::createConvexPoly(cvxHull.vertices, cvxHull.indices));
 		}
 	}
 	// Then the concave.
 	else if (model->m_concaveHulls.size() > 0) {
-		for (const Model::CollisionMesh& cvxHull : model->m_concaveHulls) {
+		for (const ModelCollisionMesh& cvxHull : model->m_concaveHulls) {
 			shapeDescs.emplace_back(CollsionShapeDesc::createTriMesh(cvxHull.vertices, cvxHull.indices));
 		}
 	}
 	// Then the collision shapes (boxes, capsules, cylinders ect.)
 	else {
-		for (const Model::CollisionShapeBox& box : model->m_collisionBoxes) {
+		for (const Model_CollisionShapeBox& box : model->m_collisionBoxes) {
 			shapeDescs.emplace_back(CollsionShapeDesc::createBox(box.halfDiagonal, box.transform));
 		}
 
-		for (const Model::CollisionShapeCapsule& capsule : model->m_collisionCapsules) {
+		for (const Model_CollisionShapeCapsule& capsule : model->m_collisionCapsules) {
 			shapeDescs.emplace_back(CollsionShapeDesc::createCapsule(capsule.radius, capsule.halfHeight * 2.f, capsule.transform));
 		}
 
-		for (const Model::CollisionShapeCylinder& cylinder : model->m_collisionCylinders) {
+		for (const Model_CollisionShapeCylinder& cylinder : model->m_collisionCylinders) {
 			shapeDescs.emplace_back(CollsionShapeDesc::createCylinder(cylinder.halfDiagonal, cylinder.transform));
 		}
 
-		for (const Model::CollisionShapeSphere& sphere : model->m_collisionSpheres) {
+		for (const Model_CollisionShapeSphere& sphere : model->m_collisionSpheres) {
 			shapeDescs.emplace_back(CollsionShapeDesc::createSphere(sphere.radius, sphere.transform));
 		}
 

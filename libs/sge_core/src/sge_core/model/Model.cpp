@@ -4,189 +4,230 @@
 
 namespace sge {
 
-namespace Model {
+//--------------------------------------------------------------
+// Model
+//--------------------------------------------------------------
+void Model::createRenderingResources(SGEDevice& sgedev) {
+	for (ModelMesh* const mesh : m_meshes) {
+		const ResourceUsage::Enum usage = ResourceUsage::Immutable;
 
-	// CollisionMesh CollisionMesh::getCombiendMesh(const std::vector<CollisionMesh>& collisionMeshes) {
-	//	CollisionMesh result;
-	//	int indexOffset = 0;
-	//	for (const CollisionMesh& meshToAppend : collisionMeshes) {
-	//		result.vertices.emplace_back(meshToAppend.vertices);
+		if (mesh->vertexBufferRaw.size() != 0) {
+			mesh->vertexBuffer = sgedev.requestResource<Buffer>();
+			const BufferDesc vbd = BufferDesc::GetDefaultVertexBuffer((uint32)mesh->vertexBufferRaw.size(), usage);
+			mesh->vertexBuffer->create(vbd, mesh->vertexBufferRaw.data());
 
-	//		sgeAssert(meshToAppend.indices.size() % 3 == 0);
-	//		result.indices.reserve(result.indices.size() + meshToAppend.indices.size());
-	//		for (const int index : meshToAppend.indices) {
-	//			result.indices.push_back(index + indexOffset);
-	//		}
+			mesh->vertexDeclIndex = sgedev.getVertexDeclIndex(mesh->vertexDecl.data(), int(mesh->vertexDecl.size()));
 
-	//		indexOffset += int(meshToAppend.indices.size());
-	//	}
-	//}
+			mesh->hasUsableTangetSpace = mesh->vbNormalOffsetBytes >= 0 && mesh->vbNormalOffsetBytes >= 0 &&
+			                             mesh->vbTangetOffsetBytes >= 0 && mesh->vbBinormalOffsetBytes >= 0;
 
-	Material* Model::FindMaterial(const int id) {
-		for (Material* mtl : m_materials) {
-			if (mtl->id == id) {
-				return mtl;
+			if (mesh->indexBufferRaw.size() != 0) {
+				mesh->indexBuffer = sgedev.requestResource<Buffer>();
+				const BufferDesc ibd = BufferDesc::GetDefaultIndexBuffer((uint32)mesh->indexBufferRaw.size(), usage);
+				mesh->indexBuffer->create(ibd, mesh->indexBufferRaw.data());
 			}
 		}
-
-		return NULL;
 	}
+}
 
-	Node* Model::FindNode(const int id) {
-		for (Node* node : m_nodes) {
-			if (node->id == id) {
-				return node;
-			}
+int Model::makeNewNode() {
+	ModelNode* node = m_containerNode.new_element();
+	const int nodeIndex = int(m_nodes.size());
+	m_nodes.push_back(node);
+
+	return nodeIndex;
+}
+
+int Model::makeNewMaterial() {
+	ModelMaterial* newMtl = m_containerMaterial.new_element();
+	int materialIndex = int(m_materials.size());
+	m_materials.push_back(newMtl);
+	return materialIndex;
+}
+
+int Model::makeNewMesh() {
+	ModelMesh* mesh = m_containerMesh.new_element();
+	int meshIndex = int(m_meshes.size());
+	m_meshes.push_back(mesh);
+	return meshIndex;
+}
+
+int Model::makeNewAnim() {
+	int animIndex = int(m_animations.size());
+	m_animations.push_back(ModelAnimation());
+	return animIndex;
+}
+
+inline void Model::setRootNodeIndex(const int newRootNodeIndex) {
+	if (newRootNodeIndex >= 0 && newRootNodeIndex < numNodes()) {
+		m_rootNodeIndex = newRootNodeIndex;
+	} else {
+		sgeAssert(false);
+	}
+}
+
+
+ModelNode* Model::nodeAt(int nodeIndex) {
+	if (nodeIndex >= 0 && nodeIndex < int(m_nodes.size())) {
+		return m_nodes[nodeIndex];
+	}
+	sgeAssert(false);
+	return nullptr;
+}
+
+const ModelNode* Model::nodeAt(int nodeIndex) const {
+	if (nodeIndex >= 0 && nodeIndex < int(m_nodes.size())) {
+		return m_nodes[nodeIndex];
+	}
+	sgeAssert(false);
+	return nullptr;
+}
+
+int Model::findFistNodeIndexWithName(const std::string& name) const {
+	for (int t = 0; t < int(m_nodes.size()); ++t) {
+		if (m_nodes[t]->name == name) {
+			return t;
 		}
-
-		return NULL;
 	}
+	return -1;
+}
 
-	const Node* Model::FindNode(const int id) const {
-		for (Node* node : m_nodes) {
-			if (node->id == id) {
-				return node;
-			}
+ModelMaterial* Model::materialAt(int materialIndex) {
+	if (materialIndex >= 0 && materialIndex < int(m_materials.size())) {
+		return m_materials[materialIndex];
+	}
+	sgeAssert(false);
+	return nullptr;
+}
+
+const ModelMaterial* Model::materialAt(int materialIndex) const {
+	if (materialIndex >= 0 && materialIndex < int(m_materials.size())) {
+		return m_materials[materialIndex];
+	}
+	sgeAssert(false);
+	return nullptr;
+}
+
+ModelMesh* Model::meshAt(int meshIndex) {
+	if (meshIndex >= 0 && meshIndex < int(m_meshes.size())) {
+		return m_meshes[meshIndex];
+	}
+	sgeAssert(false);
+	return nullptr;
+}
+
+const ModelMesh* Model::meshAt(int meshIndex) const {
+	if (meshIndex >= 0 && meshIndex < int(m_meshes.size())) {
+		return m_meshes[meshIndex];
+	}
+	sgeAssert(false);
+	return nullptr;
+}
+
+const ModelAnimation* Model::animationAt(int iAnim) const {
+	if (iAnim >= 0 && iAnim < int(m_animations.size())) {
+		return &m_animations[iAnim];
+	}
+	return nullptr;
+}
+
+ModelAnimation* Model::animationAt(int iAnim) {
+	if (iAnim >= 0 && iAnim < int(m_animations.size())) {
+		return &m_animations[iAnim];
+	}
+	return nullptr;
+}
+
+const ModelAnimation* Model::getAnimationByName(const std::string& name) const {
+	for (const ModelAnimation& a : m_animations) {
+		if (a.animationName == name) {
+			return &a;
 		}
-
-		return NULL;
 	}
+	return nullptr;
+}
 
-	const Node* Model::FindFirstNodeByName(const std::string& name) const {
-		for (Node* node : m_nodes) {
-			if (node->name == name) {
-				return node;
-			}
-		}
-
-		return NULL;
+int Model::getAnimationIndexByName(const std::string& name) const {
+	for (int iAnimation = 0; iAnimation < m_animations.size(); ++iAnimation) {
+		if (m_animations[iAnimation].animationName == name)
+			return iAnimation;
 	}
+	return -1;
+}
 
-	Mesh* Model::FindMesh(const int id) {
-		for (MeshData* meshData : m_meshesData) {
-			for (auto& mesh : meshData->meshes) {
-				if (mesh->id == id) {
-					return mesh;
+void KeyFrames::evaluate(transf3d& result, const float t) const {
+	// Evaluate the translation.
+	if (positionKeyFrames.empty() == false) {
+		const auto& keyItr = positionKeyFrames.upper_bound(t);
+		if (keyItr == positionKeyFrames.end()) {
+			result.p = positionKeyFrames.rbegin()->second;
+		} else {
+			const auto& prevKeyItr = std::prev(keyItr);
+
+			if (prevKeyItr == positionKeyFrames.end()) {
+				result.p = keyItr->second;
+			} else {
+				const float t0 = prevKeyItr->first;
+				const float t1 = keyItr->first;
+				const float dt = t1 - t0;
+
+				if (dt > 1e-6f) {
+					result.p = lerp(prevKeyItr->second, keyItr->second, (t - t0) / dt);
+				} else {
+					result.p = keyItr->second;
 				}
 			}
 		}
-
-		return NULL;
 	}
 
-	const AnimationInfo* Model::findAnimation(const std::string& name) const {
-		for (auto& anim : m_animations) {
-			if (anim.curveName == name)
-				return &anim;
-		}
+	// Evaluate the translation.
+	if (rotationKeyFrames.empty() == false) {
+		const auto& keyItr = rotationKeyFrames.upper_bound(t);
+		if (keyItr == rotationKeyFrames.end()) {
+			result.r = rotationKeyFrames.rbegin()->second;
+		} else {
+			const auto& prevKeyItr = std::prev(keyItr);
 
-		return nullptr;
+			if (prevKeyItr == rotationKeyFrames.end()) {
+				result.r = keyItr->second;
+			} else {
+				const float t0 = prevKeyItr->first;
+				const float t1 = keyItr->first;
+				const float dt = t1 - t0;
+
+				if (dt > 1e-6f) {
+					result.r = lerp(prevKeyItr->second, keyItr->second, (t - t0) / dt);
+				} else {
+					result.r = keyItr->second;
+				}
+			}
+		}
 	}
 
-	float Mesh::Raycast(const Ray& ray, const char* positionSemantic) const {
-		if (pMeshData == nullptr || pMeshData->vertexBufferRaw.size() == 0 || primTopo != PrimitiveTopology::TriangleList ||
-		    positionSemantic == nullptr) {
-			//(
-			//    "%s: Failed! There isn't avaiable mesh data"
-			//    "OR the primitive toplogy is != TriangleList! Mesh: '%s'!\n",
-			//    __FUNCTION__, name.c_str());
-			sgeAssert(false);
-			return false;
-		}
 
-		sgeAssert(primTopo == PrimitiveTopology::TriangleList);
+	// Evaluate the scaling.
+	if (scalingKeyFrames.empty() == false) {
+		const auto& keyItr = scalingKeyFrames.upper_bound(t);
+		if (keyItr == scalingKeyFrames.end()) {
+			result.s = scalingKeyFrames.rbegin()->second;
+		} else {
+			const auto& prevKeyItr = std::prev(keyItr);
 
-		// Position semantic byte offset.
-		int posByteOffset = -1;
-		for (const auto& decl : vertexDecl) {
-			if (decl.semantic == positionSemantic) {
-				posByteOffset = (int)decl.byteOffset;
-				break;
+			if (prevKeyItr == scalingKeyFrames.end()) {
+				result.s = keyItr->second;
+			} else {
+				const float t0 = prevKeyItr->first;
+				const float t1 = keyItr->first;
+				const float dt = t1 - t0;
+
+				if (dt > 1e-6f) {
+					result.s = lerp(prevKeyItr->second, keyItr->second, (t - t0) / dt);
+				} else {
+					result.s = keyItr->second;
+				}
 			}
 		}
-
-		if (posByteOffset < 0) {
-			sgeAssert(false && "Failed! Position semantic is missing! ");
-			return false;
-		}
-
-		// Check if there is a index buffer.
-		if (ibFmt != UniformType::Unknown) {
-			if (pMeshData->indexBufferRaw.size() == 0)
-				return false;
-
-			if (ibFmt == UniformType::Uint16)
-				return RaycastIndexBuffer<uint16>(ray, posByteOffset);
-			if (ibFmt == UniformType::Uint)
-				return RaycastIndexBuffer<uint32>(ray, posByteOffset);
-			else {
-				sgeAssert(false && "Failed unsupported index buffer format!");
-				return false;
-			}
-		}
-
-		// No index buffer, raycast vs vertex buffer.
-		return RaycastVertexBufferOnly(ray, posByteOffset);
 	}
-
-	template <typename T>
-	float Mesh::RaycastIndexBuffer(const Ray& ray, const int posByteOffset, std::vector<float>* pAllIntersections) const {
-		const char* const vb = (char*)pMeshData->vertexBufferRaw.data();
-		const T* const ib = (T*)pMeshData->indexBufferRaw.data();
-		const size_t numIndices = pMeshData->indexBufferRaw.size() / sizeof(T);
-
-		float mint = FLT_MAX; // Something invalid.
-		for (size_t iIdx = 0; iIdx < numIndices; iIdx += 3) {
-			const int vertByteOffset[3] = {
-			    int(ib[iIdx] * stride) + posByteOffset,
-			    int(ib[iIdx + 1] * stride) + posByteOffset,
-			    int(ib[iIdx + 2] * stride) + posByteOffset,
-			};
-
-			const vec3f p[] = {
-			    *(vec3f*)(vb + vertByteOffset[0]),
-			    *(vec3f*)(vb + vertByteOffset[1]),
-			    *(vec3f*)(vb + vertByteOffset[2]),
-			};
-
-			const float t = IntersectRayTriangle(ray, p);
-			if (t < mint) {
-				mint = t;
-			}
-
-			if (pAllIntersections != nullptr && t != FLT_MAX) {
-				pAllIntersections->push_back(t);
-			}
-		}
-
-		return mint;
-	}
-
-	float Mesh::RaycastVertexBufferOnly(const Ray& ray, const int posByteOffset, std::vector<float>* pAllIntersections) const {
-		const char* const vb = (char*)pMeshData->vertexBufferRaw.data();
-		// const size_t numVertices = pMeshData->vertexBufferRaw.size() / stride;
-
-		float mint = FLT_MAX; // Something invalid.
-		for (int iVtx = 0; iVtx < numVertices; iVtx += 3) {
-			const vec3f p[3] = {
-			    *(vec3f*)(vb + (iVtx)*stride + posByteOffset),
-			    *(vec3f*)(vb + (iVtx + 1) * stride + posByteOffset),
-			    *(vec3f*)(vb + (iVtx + 2) * stride + posByteOffset),
-			};
-
-			const float t = IntersectRayTriangle(ray, p);
-			if (t < mint) {
-				mint = t;
-			}
-
-			if (pAllIntersections != nullptr && t != FLT_MAX) {
-				pAllIntersections->push_back(t);
-			}
-		}
-
-		return mint;
-	}
-
-} // namespace Model.
+}
 
 } // namespace sge

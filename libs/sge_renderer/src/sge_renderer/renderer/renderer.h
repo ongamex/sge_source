@@ -308,6 +308,9 @@ struct SGEContext {
 	virtual void* map(Buffer* buffer, const Map::Enum map) = 0;
 	virtual void unMap(Buffer* buffer) = 0;
 
+	// Textures.
+	virtual void updateTextureData(Texture* texture,  const TextureData& td) = 0;
+
 	// Frame targets.
 	virtual void clearColor(FrameTarget* target, int index, const float rgba[4]) = 0;
 	virtual void clearDepth(FrameTarget* target, float depth) = 0;

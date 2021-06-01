@@ -11,13 +11,15 @@
 
 namespace sge {
 
-static void promptForModel(std::shared_ptr<Asset>& asset) {
+static bool promptForModel(std::shared_ptr<Asset>& asset) {
 	AssetLibrary* const assetLib = getCore()->getAssetLib();
 
 	const std::string filename = FileOpenDialog("Pick a model", true, "*.mdl\0*.mdl\0", nullptr);
 	if (!filename.empty()) {
 		asset = assetLib->getAsset(AssetType::Model, filename.c_str(), true);
+		return true;
 	}
+	return false;
 }
 
 void ModelPreviewWidget::doWidget(SGEContext* const sgecon, const InputState& is, EvaluatedModel& m_eval, Optional<vec2f> widgetSize) {
@@ -89,63 +91,10 @@ void ModelPreviewWidget::doWidget(SGEContext* const sgecon, const InputState& is
 	}
 
 	if (ImGui::IsItemHovered()) {
-		camera.update(is.IsKeyDown(Key_LAlt), is.IsKeyDown(Key_MouseLeft), is.IsKeyDown(Key_MouseMiddle), is.IsKeyDown(Key_MouseRight),
+		camera.update(true, is.IsKeyDown(Key_MouseLeft), false, is.IsKeyDown(Key_MouseRight),
 		              is.GetCursorPos());
 	}
 }
-
-void ModelPreviewWindow::doMomentUI(MomentDataUI& moment) {
-	ImGui::Separator();
-
-	ImGui::Checkbox("Enabled", &moment.isEnabled);
-
-	if (ImGui::Button("Pick##Moment UI")) {
-		promptForModel(moment.modelAsset);
-		if (isAssetLoaded(moment.modelAsset)) {
-			moment.moment.model = &moment.modelAsset->asModel()->model;
-		}
-	}
-
-	ImGui::SameLine();
-	if (isAssetLoaded(moment.modelAsset))
-		ImGui::Text("%s", moment.modelAsset->getPath().c_str());
-	else
-		ImGui::Text("Pick a Model");
-
-	if (isAssetLoaded(moment.modelAsset)) {
-		const auto fnListAnimations = [](void* vptrModel, int idx, const char** out) -> bool {
-			if (idx == 0) {
-				*out = "<Static Moment>";
-				return true;
-			}
-
-			Model::Model* const model = (Model::Model*)vptrModel;
-			*out = model->m_animations[idx - 1].curveName.c_str();
-			return true;
-		};
-
-		if (ImGui::Combo("Animation", &moment.animationMagicIndex, fnListAnimations, (void*)&moment.modelAsset->asModel()->model,
-		                 int(moment.modelAsset->asModel()->model.m_animations.size()) + 1)) {
-			if (moment.animationMagicIndex == 0) {
-				moment.moment.animationName = "";
-			} else {
-				int idx = moment.animationMagicIndex - 1;
-				moment.moment.animationName = moment.modelAsset->asModel()->model.m_animations[idx].curveName;
-			}
-		}
-
-		if (moment.animationMagicIndex != 0) {
-			int const idx = moment.animationMagicIndex - 1;
-			const Model::AnimationInfo& animInfo = moment.modelAsset->asModel()->model.m_animations[idx];
-
-			ImGui::SliderFloat("time", &moment.moment.time, 0.f, animInfo.duration);
-		}
-
-		ImGui::SliderFloat("weight", &moment.moment.weight, 0.f, 1.f);
-	}
-}
-
-
 
 void ModelPreviewWindow::update(SGEContext* const sgecon, const InputState& is) {
 	if (isClosed()) {
@@ -166,9 +115,24 @@ void ModelPreviewWindow::update(SGEContext* const sgecon, const InputState& is) 
 		if (ImGui::Button("Pick##ModeToPreview")) {
 			promptForModel(m_model);
 			m_eval = EvaluatedModel();
-			m_momentsUI.clear();
+			iPreviewAnimDonor = -1;
+			iPreviewAnimation = -1;
+			animationComboPreviewValue = "<None>";
+			animationDonors.clear();
+			previewAimationTime = 0.f;
+			autoPlayAnimation = true;
 			if (m_model) {
 				m_eval.initialize(assetLib, &m_model->asModel()->model);
+			}
+		}
+
+		if (isAssetLoaded(m_model)) {
+			if (ImGui::Button("Add Animation Donor")) {
+				PAsset donor;
+				if (promptForModel(donor)) {
+					animationDonors.push_back(donor);
+					m_eval.addAnimationDonor(donor);
+				}
 			}
 		}
 
@@ -178,64 +142,63 @@ void ModelPreviewWindow::update(SGEContext* const sgecon, const InputState& is) 
 		else
 			ImGui::Text("Pick a Model");
 
-		if (ImGui::CollapsingHeader("Animation")) {
-			ImGui::Checkbox("Autoplay", &m_autoPlay);
-			for (auto& momentUI : m_momentsUI) {
-				ImGui::PushID(&momentUI);
-				doMomentUI(momentUI);
-				ImGui::PopID();
-			}
-
-			if (ImGui::Button("+")) {
-				m_momentsUI.push_back(MomentDataUI());
-			}
-		}
-
 		ImGui::EndChild();
 		ImGui::NextColumn();
 		if (m_model.get() != NULL) {
-			// Update the evaluation moments.
-			if (m_autoPlay) {
-				float maxAnimationDuration = 0.f;
-				int longestMomentIndex = -1;
-				for (int t = 0; t < m_momentsUI.size(); ++t) {
-					auto& momentUI = m_momentsUI[t];
-					if (momentUI.animationMagicIndex != 0) {
-						float const duration = momentUI.moment.model->m_animations[momentUI.animationMagicIndex - 1].duration;
-						if (duration > maxAnimationDuration) {
-							maxAnimationDuration = duration;
-							longestMomentIndex = t;
-						}
+			if (ImGui::BeginCombo("Animation", animationComboPreviewValue.c_str())) {
+				if (ImGui::Selectable("<None>")) {
+					animationComboPreviewValue = "<None>";
+					iPreviewAnimDonor = -1;
+					iPreviewAnimation = -1;
+				}
 
-						momentUI.moment.time += ImGui::GetIO().DeltaTime;
+				for (int t = 0; t < m_eval.m_model->numAnimations(); ++t) {
+					const ModelAnimation* anim = m_eval.m_model->animationAt(t);
+					if (ImGui::Selectable(anim->animationName.c_str())) {
+						animationComboPreviewValue = anim->animationName;
+						iPreviewAnimDonor = -1;
+						iPreviewAnimation = t;
 					}
 				}
 
-				// Check if the animation should start over.
-				if (longestMomentIndex >= 0)
-					if (maxAnimationDuration < m_momentsUI[longestMomentIndex].moment.time) {
-						for (auto& momentUI : m_momentsUI) {
-							if (momentUI.animationMagicIndex != 0) {
-								momentUI.moment.time = 0.f;
-							}
+				for (int iDonor = 0; iDonor < animationDonors.size(); ++iDonor) {
+					const Model& donorModel = animationDonors[iDonor]->asModel()->model;
+					for (int t = 0; t < donorModel.numAnimations(); ++t) {
+						const ModelAnimation* anim = donorModel.animationAt(t);
+						if (ImGui::Selectable((animationDonors[iDonor]->getPath() + " | " + anim->animationName).c_str())) {
+							animationComboPreviewValue = anim->animationName;
+							iPreviewAnimDonor = iDonor;
+							iPreviewAnimation = t;
 						}
 					}
+				}
+
+				ImGui::EndCombo();
 			}
 
-			m_moments.clear();
-			for (auto& momentUI : m_momentsUI) {
-				if (momentUI.isEnabled == false)
-					continue;
-				if (momentUI.moment.model == nullptr)
-					continue;
-				m_moments.push_back(momentUI.moment);
+			EvalMomentSets evalMoment;
+			if (iPreviewAnimation == -1) {
+				evalMoment = EvalMomentSets();
+			} else {
+				const ModelAnimation* anim = m_eval.findAnimation(iPreviewAnimDonor, iPreviewAnimation);
+
+				ImGui::Checkbox("Auto Play", &autoPlayAnimation);
+				if (autoPlayAnimation) {
+					previewAimationTime += 0.016f; // TODO timer.
+
+					if (previewAimationTime > anim->durationSec) {
+						previewAimationTime -= anim->durationSec;
+					}
+				}
+
+				ImGui::SliderFloat("Time", &previewAimationTime, 0.f, anim->durationSec);
+
+				evalMoment.donorIndex = iPreviewAnimDonor;
+				evalMoment.animationIndex = iPreviewAnimation;
+				evalMoment.time = previewAimationTime;
 			}
 
-			if (m_moments.empty())
-				m_eval.evaluate("", 0.f);
-			else
-				m_eval.evaluate(m_moments);
-
+			m_eval.evaluateFromMoments(&evalMoment, 1);
 
 			const ImVec2 canvas_pos = ImGui::GetCursorScreenPos();
 			ImVec2 canvas_size = ImGui::GetContentRegionAvail();

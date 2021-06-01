@@ -1,195 +1,214 @@
-#include <sge_utils/utils/FileStream.h>
-#include <sge_utils/utils/json.h>
-
-#include "Model.h"
 #include "ModelWriter.h"
-
+#include "Model.h"
+#include "sge_utils/utils/FileStream.h"
+#include "sge_utils/utils/json.h"
+#include "sge_utils/utils/range_loop.h"
 
 namespace sge {
 
-int ModelWriter::NewChunkFromPtr(const void* const ptr, const size_t sizeBytes) {
+int ModelWriter::newDataChunkFromPtr(const void* const ptr, const size_t sizeBytes) {
 	const int newChunkId = (dataChunks.size() == 0) ? 0 : dataChunks.back().id + 1;
+
 	dataChunks.emplace_back(DataChunk(newChunkId, ptr, sizeBytes));
 	return newChunkId;
 }
 
-JsonValue* ModelWriter::WriteParamBlock(const ParameterBlock& paramBlock) {
-	JsonValue* jParamBlock = jvb(JID_ARRAY);
+char* ModelWriter::newDataChunkWithSize(size_t sizeBytes, int& outChunkId) {
+	const int newChunkId = (dataChunks.size() == 0) ? 0 : dataChunks.back().id + 1;
 
-	for (const auto& itr : paramBlock) {
-		const std::string& paramName = itr.first;
-		const Parameter& param = itr.second;
+	std::vector<char> memory(sizeBytes);
+	DataChunk chunk;
+	chunk.data = memory.data();
+	chunk.id = newChunkId;
+	chunk.sizeBytes = sizeBytes;
 
-		JsonValue* jParam = jParamBlock->arrPush(jvb(JID_MAP));
-		jParam->setMember("name", jvb(paramName));
-		jParam->setMember("type", jvb(ParameterType::info(param.GetType()).name));
+	dataChunks.push_back(chunk);
 
-		switch (param.GetType()) {
-			case ParameterType::Float: {
-				jParam->setMember("staticValue", jvb(*(const float*)param.GetStaticValue()));
-			} break;
-			case ParameterType::Float2: {
-				const float* const f = (const float*)param.GetStaticValue();
-				jParam->setMember("staticValue", jvb(f, 2));
-			} break;
-			case ParameterType::Float3: {
-				const float* const f = (const float*)param.GetStaticValue();
-				jParam->setMember("staticValue", jvb(f, 3));
-			} break;
-			case ParameterType::Float4:
-			case ParameterType::Quaternion: {
-				const float* f = (const float*)param.GetStaticValue();
-				jParam->setMember("staticValue", jvb(f, 4));
-			} break;
-			case ParameterType::String: {
-				jParam->setMember("staticValue", jvb((const char*)param.GetStaticValue()));
-			} break;
-			default: {
-				sgeAssert(false && "Unknown parameter type");
-			}
-		}
+	// [MODERL_WRITER_MOVE_ASSUME]
+	m_dynamicallyAlocatedPointersToDelete.emplace_back(std::move(memory));
+	// memory is now empty becuase of the move.
+	sgeAssert(memory.empty());
+	sgeAssert(m_dynamicallyAlocatedPointersToDelete.back().data() == chunk.data);
 
-		// Do not export an empty array for the curves.
-		if (param.GetNumCurves() > 0) {
-			JsonValue* jCurves = jParam->setMember("curves", jvb(JID_ARRAY));
-			for (int iCurve = 0; iCurve < param.GetNumCurves(); ++iCurve) {
-				const ParameterCurve* curve = param.GetCurve(iCurve);
-
-				sgeAssert(curve->debug_VerifyData());
-
-				// Duplicate the curve keyframes and values into the data chunks.
-				int chunkKeysId = NewChunkFromStdVector(curve->keys);
-				int chunkValuesId = NewChunkFromStdVector(curve->data);
-
-				// Create the json for the curve.
-				JsonValue* jCurve = jCurves->arrPush(jvb(JID_MAP));
-				jCurve->setMember("name", jvb(param.GetCurveName(iCurve)));
-				jCurve->setMember("keyframesChunkId", jvb(chunkKeysId));
-				jCurve->setMember("valuesChunkId", jvb(chunkValuesId));
-			}
-		}
-	}
-
-	return jParamBlock;
+	outChunkId = newChunkId;
+	return (char*)chunk.data;
 }
 
-void ModelWriter::GenerateAnimations() {
-	if (model->m_animations.size()) {
-		auto jAnimations = root->setMember("animations", jvb(JID_ARRAY_BEGIN));
-		for (auto& animation : model->m_animations) {
-			auto jAnim = jvb(JID_MAP_BEGIN);
+JsonValue* ModelWriter::generateKeyFrames(const KeyFrames& keyfames) {
+	JsonValue* jKeyFrames = jvb(JID_MAP);
 
-			jAnim->setMember("curve", jvb(animation.curveName));
-			jAnim->setMember("timeOffset", jvb(animation.startTime)); // will be used in the future
-			jAnim->setMember("duration", jvb(animation.duration));
+	if (!keyfames.positionKeyFrames.empty()) {
+		const int numKeyFrames = int(keyfames.positionKeyFrames.size());
+		const size_t chunkSizeBytes = numKeyFrames * (sizeof(float) + sizeof(vec3f));
 
-			jAnimations->arrPush(jAnim);
+		int chunkId = -1;
+		char* chunkData = newDataChunkWithSize(chunkSizeBytes, chunkId);
+
+		for (const auto& itr : keyfames.positionKeyFrames) {
+			*(float*)(chunkData) = itr.first;
+			chunkData += sizeof(float);
+
+			*(vec3f*)(chunkData) = itr.second;
+			chunkData += sizeof(itr.second);
 		}
+
+		jKeyFrames->setMember("positionKeyFrames_chunkId", jvb(chunkId));
 	}
 
-	return;
+	if (!keyfames.rotationKeyFrames.empty()) {
+		const int numKeyFrames = int(keyfames.rotationKeyFrames.size());
+		const size_t chunkSizeBytes = numKeyFrames * (sizeof(float) + sizeof(quatf));
+
+		int chunkId = -1;
+		char* chunkData = newDataChunkWithSize(chunkSizeBytes, chunkId);
+
+		for (const auto& itr : keyfames.rotationKeyFrames) {
+			*(float*)(chunkData) = itr.first;
+			chunkData += sizeof(float);
+
+			*(quatf*)(chunkData) = itr.second;
+			chunkData += sizeof(itr.second);
+		}
+
+		jKeyFrames->setMember("rotationKeyFrames_chunkId", jvb(chunkId));
+	}
+
+	if (!keyfames.scalingKeyFrames.empty()) {
+		const int numKeyFrames = int(keyfames.scalingKeyFrames.size());
+		const size_t chunkSizeBytes = numKeyFrames * (sizeof(float) + sizeof(vec3f));
+
+		int chunkId = -1;
+		char* chunkData = newDataChunkWithSize(chunkSizeBytes, chunkId);
+
+		for (const auto& itr : keyfames.scalingKeyFrames) {
+			*(float*)(chunkData) = itr.first;
+			chunkData += sizeof(float);
+
+			*(vec3f*)(chunkData) = itr.second;
+			chunkData += sizeof(itr.second);
+		}
+
+		jKeyFrames->setMember("scalingKeyFrames_chunkId", jvb(chunkId));
+	}
+
+
+	return jKeyFrames;
 }
 
-void ModelWriter::GenerateNodeHierarchy() {
-	{
-		JsonValue* jHierarchy = root->setMember("nodeHierarchy", jvb(JID_ARRAY));
-
-		// The 1st elements is the root node ...
-		jHierarchy->arrPush(jvb(model->m_rootNode->id));
-
-		// ...and after that is the hierarchy desc
-		// [<RootNodeName>, <NodeName0>, [Childs] ...]
-		for (const auto& node : model->m_nodes) {
-			// Skip the node if there are not childs.
-			if (node->childNodes.empty()) {
-				continue;
-			}
-
-			// Add the parent node.
-			jHierarchy->arrPush(jvb(node->id));
-
-			// Add the child nodes.
-			JsonValue* jChildNodes = jHierarchy->arrPush(jvb(JID_ARRAY));
-			for (const auto& childNode : node->childNodes) {
-				jChildNodes->arrPush(jvb(childNode->id));
-			}
-		}
+void ModelWriter::writeAnimations() {
+	if (model->numAnimations() == 0) {
+		return;
 	}
 
-	// The same as the code above, but using the names, this stucture should only be used to simplify the
-	// debugging and for nothing else.
-	{
-		JsonValue* jHierarchy = root->setMember("debug_nodeHierarchyNames", jvb(JID_ARRAY));
+	auto jAnimations = root->setMember("animations", jvb(JID_ARRAY_BEGIN));
 
-		// The 1st elements is the name of the root node ...
-		jHierarchy->arrPush(jvb(model->m_rootNode->name.c_str()));
+	for (int iAnim : range_int(model->numAnimations())) {
+		const ModelAnimation& animation = *model->animationAt(iAnim);
 
-		// ...and after that is the hierarchy desc
-		// [<RootNodeName>, <NodeName0>, [Childs] ...]
-		for (const auto& node : model->m_nodes) {
-			// skip the node if there are not childs.
-			if (node->childNodes.empty()) {
-				continue;
-			}
+		auto jAnim = jAnimations->arrPush(jvb(JID_MAP_BEGIN));
 
-			// Add the node and than add the array with child names.
-			jHierarchy->arrPush(jvb(node->name.c_str()));
+		jAnim->setMember("animationName", jvb(animation.animationName));
+		jAnim->setMember("durationSec", jvb(animation.durationSec)); // will be used in the future
 
-			JsonValue* jChildNodes = jHierarchy->arrPush(jvb(JID_ARRAY));
-			for (const auto& childNode : node->childNodes) {
-				jChildNodes->arrPush(jvb(childNode->name.c_str()));
-			}
+		// Serialize the actual key frames.
+		JsonValue* jAllNodesKeyFrames = jAnim->setMember("perNodeKeyFrames", jvb(JID_ARRAY));
+
+		for (const auto& itrPerNodeKeyframes : animation.perNodeKeyFrames) {
+			JsonValue* jNodeKeyFrames = jvb(JID_MAP);
+
+			jNodeKeyFrames->setMember("nodeIndex", jvb(itrPerNodeKeyframes.first));
+			JsonValue* jKeyFrames = generateKeyFrames(itrPerNodeKeyframes.second);
+			jNodeKeyFrames->setMember("keyFrames", jKeyFrames);
+
+			jAllNodesKeyFrames->arrPush(jNodeKeyFrames);
 		}
 	}
-
-	return;
 }
 
-void ModelWriter::GenerateNodes() {
+void ModelWriter::writeNodes() {
 	JsonValue* jNodes = root->setMember("nodes", jvb(JID_ARRAY));
+	root->setMember("rootNodeIndex", jvb(model->getRootNodeIndex()));
 
-	for (const auto& node : model->m_nodes) {
+	for (int iNode : range_int(model->numNodes())) {
+		const ModelNode* node = model->nodeAt(iNode);
+
 		JsonValue* jNode = jNodes->arrPush(jvb(JID_MAP));
 
-		// Node id and name.
-		jNode->setMember("id", jvb(node->id));
-		jNode->setMember("name", jvb(node->name.c_str()));
+		jNode->setMember("name", jvb(node->name));
 
-		// Parameter block.
-		jNode->setMember("paramBlock", WriteParamBlock(node->paramBlock));
+		if (node->staticLocalTransform.p != vec3f(0.f)) {
+			jNode->setMember("translation", jvb(node->staticLocalTransform.p.data, 3)); // An array of 3 floats.
+		}
+
+		if (node->staticLocalTransform.r != quatf::getIdentity()) {
+			jNode->setMember("rotation", jvb(node->staticLocalTransform.r.data, 4)); // An array of 4 floats.
+		}
+
+		if (node->staticLocalTransform.s != vec3f(1.f)) {
+			jNode->setMember("scaling", jvb(node->staticLocalTransform.s.data, 3)); // An array of 3 floats.
+		}
+
+		if (node->limbLength > 0.f) {
+				jNode->setMember("limbLength", jvb(node->limbLength));
+		}
 
 		// Attached meshes.
 		if (!node->meshAttachments.empty()) {
 			auto jMeshes = jNode->setMember("meshes", jvb(JID_ARRAY));
 
-			for (const Model::MeshAttachment attachmentMesh : node->meshAttachments) {
+			for (const MeshAttachment attachmentMesh : node->meshAttachments) {
 				JsonValue* const jAttachmentMesh = jvb(JID_MAP);
-				jAttachmentMesh->setMember("mesh_id", jvb(attachmentMesh.mesh->id));
-				if (attachmentMesh.material != nullptr) {
-					jAttachmentMesh->setMember("material_id", jvb(attachmentMesh.material->id));
-				}
+				jAttachmentMesh->setMember("meshIndex", jvb(attachmentMesh.attachedMeshIndex));
+				jAttachmentMesh->setMember("materialIndex", jvb(attachmentMesh.attachedMaterialIndex));
 
 				jMeshes->arrPush(jAttachmentMesh);
+			}
+		}
+
+		// Child indices.
+		if (!node->childNodes.empty()) {
+			JsonValue* const jChildNode = jNode->setMember("childNodes", jvb(JID_ARRAY));
+			for (int childIndex : node->childNodes) {
+				jChildNode->arrPush(jvb(childIndex));
 			}
 		}
 	}
 }
 
-void ModelWriter::GenerateMaterials() {
+void ModelWriter::writeMaterials() {
 	JsonValue* const jMaterials = root->setMember("materials", jvb(JID_ARRAY));
 
-	for (auto& mtl : model->m_materials) {
+	for (const int iMtl : range_int(model->numMaterials())) {
 		JsonValue* const jMaterial = jMaterials->arrPush(jvb(JID_MAP));
 
-		jMaterial->setMember("id", jvb(mtl->id));
+		const ModelMaterial* mtl = model->materialAt(iMtl);
+
 		jMaterial->setMember("name", jvb(mtl->name));
-		jMaterial->setMember("paramBlock", WriteParamBlock(mtl->paramBlock));
+
+		static_assert(sizeof(mtl->diffuseColor) == sizeof(vec4f));
+		jMaterial->setMember("diffuseColor", jvb(mtl->diffuseColor.data, 4)); // An array of 4 floats rgba.
+		static_assert(sizeof(mtl->emissionColor) == sizeof(vec4f));
+		jMaterial->setMember("emissionColor", jvb(mtl->emissionColor.data, 4)); // An array of 4 floats rgba.
+		jMaterial->setMember("metallic", jvb(mtl->metallic));
+		jMaterial->setMember("roughness", jvb(mtl->roughness));
+
+		if (mtl->diffuseTextureName.empty() == false)
+			jMaterial->setMember("diffuseTextureName", jvb(mtl->diffuseTextureName));
+
+		if (mtl->emissionTextureName.empty() == false)
+			jMaterial->setMember("emissionTextureName", jvb(mtl->emissionTextureName));
+
+		if (mtl->metallicTextureName.empty() == false)
+			jMaterial->setMember("metallicTextureName", jvb(mtl->metallicTextureName));
+
+		if (mtl->roughnessTextureName.empty() == false)
+			jMaterial->setMember("roughnessTextureName", jvb(mtl->roughnessTextureName));
 	}
 
 	return;
 }
 
-void ModelWriter::GenerateMeshesData() {
+void ModelWriter::writeMeshes() {
 	auto UnformType2String = [](const UniformType::Enum ut) -> const char* {
 		switch (ut) {
 			case UniformType::Uint16:
@@ -202,6 +221,8 @@ void ModelWriter::GenerateMeshesData() {
 				return "float3";
 			case UniformType::Float4:
 				return "float4";
+			case UniformType::Int4:
+				return "int4";
 		}
 
 		sgeAssert(false);
@@ -218,84 +239,68 @@ void ModelWriter::GenerateMeshesData() {
 		return nullptr;
 	};
 
-	JsonValue* jMeshesData = root->setMember("meshesData", jvb(JID_ARRAY));
+	JsonValue* const jMeshes = root->setMember("meshes", jvb(JID_ARRAY));
 
-	for (auto const& meshData : model->m_meshesData) {
-		JsonValue* jMeshData = jMeshesData->arrPush(jvb(JID_MAP));
+	for (const int iMesh : range_int(model->numMeshes())) {
+		JsonValue* jMesh = jMeshes->arrPush(jvb(JID_MAP));
+
+		const ModelMesh* mesh = model->meshAt(iMesh);
 
 		// Write the vertex/index buffers chunks.
-		if (meshData->vertexBufferRaw.size()) {
-			const int vertexBufferChunkId = NewChunkFromStdVector(meshData->vertexBufferRaw);
-			jMeshData->setMember("vertexDataChunkId", jvb(vertexBufferChunkId));
+		if (mesh->vertexBufferRaw.size()) {
+			const int vertexBufferChunkId = newChunkFromStdVector(mesh->vertexBufferRaw);
+			jMesh->setMember("vertexDataChunkId", jvb(vertexBufferChunkId));
 		}
 
-		if (meshData->indexBufferRaw.size()) {
-			const int indexBufferChunkId = NewChunkFromStdVector(meshData->indexBufferRaw);
-			jMeshData->setMember("indexDataChunkId", jvb(indexBufferChunkId));
+		if (mesh->indexBufferRaw.size()) {
+			const int indexBufferChunkId = newChunkFromStdVector(mesh->indexBufferRaw);
+			jMesh->setMember("indexDataChunkId", jvb(indexBufferChunkId));
 		}
 
 		// Write the meshes that are described in this mesh data.
-		auto jMeshes = jMeshData->setMember("meshes", jvb(JID_ARRAY));
-		for (int t = 0; t < meshData->meshes.size(); ++t) {
-			JsonValue* jMesh = jMeshes->arrPush(jvb(JID_MAP));
 
-			// Draw call settings.
-			const Model::Mesh* const mesh = meshData->meshes[t];
-			jMesh->setMember("type", jvb("mesh"));
-			jMesh->setMember("id", jvb(mesh->id));
-			jMesh->setMember("name", jvb(mesh->name));
-			jMesh->setMember("primitiveTopology", jvb(PrimitiveTopology2String(mesh->primTopo)));
-			jMesh->setMember("vbByteOffset", jvb((int)mesh->vbByteOffset));
+		// Draw call settings.
+		jMesh->setMember("name", jvb(mesh->name));
+		jMesh->setMember("primitiveTopology", jvb(PrimitiveTopology2String(mesh->primitiveTopology)));
+		jMesh->setMember("vbByteOffset", jvb((int)mesh->vbByteOffset));
+		jMesh->setMember("numElements", jvb((int)mesh->numElements));
+		jMesh->setMember("numVertices", jvb((int)mesh->numVertices));
 
-			jMesh->setMember("numElements", jvb((int)mesh->numElements));
-			jMesh->setMember("numVertices", jvb((int)mesh->numVertices));
-
-			if (mesh->ibFmt != UniformType::Unknown) {
-				jMesh->setMember("ibByteOffset", jvb((int)mesh->ibByteOffset));
-				jMesh->setMember("ibFormat", jvb(UnformType2String(mesh->ibFmt)));
-			}
-
-			// Material.
-			if (mesh->pMaterial != NULL) {
-				jMesh->setMember("material_id", jvb(mesh->pMaterial->id));
-			}
-
-			// Vertex declaration.
-			JsonValue* jVertexDecl = jMesh->setMember("vertexDecl", jvb(JID_ARRAY));
-			for (auto& v : mesh->vertexDecl) {
-				JsonValue* jDecl = jVertexDecl->arrPush(jvb(JID_MAP));
-				jDecl->setMember("semantic", jvb(v.semantic.c_str()));
-				jDecl->setMember("byteOffset", jvb((int)v.byteOffset));
-				jDecl->setMember("format", jvb(UnformType2String(v.format)));
-			}
-
-			// Bones(if any).
-			if (mesh->bones.size() != 0) {
-				auto jBones = jMesh->setMember("bones", jvb(JID_ARRAY_BEGIN));
-				for (const auto& bone : mesh->bones) {
-					const int weightsDataChunkId = NewChunkFromStdVector(bone.weights);
-					const int vertexIdsChunkId = NewChunkFromStdVector(bone.vertexIds);
-					const int boneOffsetChunkId = NewChunkFromPtr(&bone.offsetMatrix, sizeof(bone.offsetMatrix));
-
-					auto jBone = jBones->arrPush(jvb(JID_MAP_BEGIN));
-					jBone->setMember("node_id", jvb(bone.node->id));
-					jBone->setMember("debug_node_name", jvb(bone.node->name));
-					jBone->setMember("weightsChunkId", jvb(weightsDataChunkId));
-					jBone->setMember("vertIdsChunkId", jvb(vertexIdsChunkId));
-					jBone->setMember("offsetMatrixChunkId", jvb(boneOffsetChunkId));
-				}
-			}
-
-			// Axis aligned bounding box.
-			jMesh->setMember("AABoxMin", jvb((float*)&mesh->aabox.min.x, 3));
-			jMesh->setMember("AABoxMax", jvb((float*)&mesh->aabox.max.x, 3));
+		if (mesh->ibFmt != UniformType::Unknown) {
+			jMesh->setMember("ibByteOffset", jvb((int)mesh->ibByteOffset));
+			jMesh->setMember("ibFormat", jvb(UnformType2String(mesh->ibFmt)));
 		}
+
+		// Vertex declaration.
+		JsonValue* jVertexDecl = jMesh->setMember("vertexDecl", jvb(JID_ARRAY));
+		for (auto& v : mesh->vertexDecl) {
+			JsonValue* jDecl = jVertexDecl->arrPush(jvb(JID_MAP));
+			jDecl->setMember("semantic", jvb(v.semantic.c_str()));
+			jDecl->setMember("byteOffset", jvb((int)v.byteOffset));
+			jDecl->setMember("format", jvb(UnformType2String(v.format)));
+		}
+
+		// Bones(if any).
+		if (mesh->bones.size() != 0) {
+			auto jBones = jMesh->setMember("bones", jvb(JID_ARRAY_BEGIN));
+			for (const auto& bone : mesh->bones) {
+				const int boneOffsetChunkId = newDataChunkFromPtr(&bone.offsetMatrix, sizeof(bone.offsetMatrix));
+
+				auto jBone = jBones->arrPush(jvb(JID_MAP_BEGIN));
+				jBone->setMember("boneIndex", jvb(bone.nodeIdx));
+				jBone->setMember("offsetMatrixChunkId", jvb(boneOffsetChunkId));
+			}
+		}
+
+		// Axis aligned bounding box.
+		jMesh->setMember("AABoxMin", jvb((float*)&mesh->aabox.min.x, 3));
+		jMesh->setMember("AABoxMax", jvb((float*)&mesh->aabox.max.x, 3));
 	}
 
 	return;
 }
 
-void ModelWriter::GenerateCollisionData() {
+void ModelWriter::writeCollisionData() {
 	const auto transf3dToJson = [&](const transf3d& tr) -> JsonValue* {
 		JsonValue* j = jvb(JID_MAP);
 		j->setMember("p", jvb(tr.p.data, 3));
@@ -311,8 +316,8 @@ void ModelWriter::GenerateCollisionData() {
 
 		for (int t = 0; t < model->m_convexHulls.size(); ++t) {
 			JsonValue* const jHull = jStaticConvecHulls->arrPush(jvb(JID_MAP));
-			const int hullVertsChunkId = NewChunkFromStdVector(model->m_convexHulls[t].vertices);
-			const int hullIndsChunkId = NewChunkFromStdVector(model->m_convexHulls[t].indices);
+			const int hullVertsChunkId = newChunkFromStdVector(model->m_convexHulls[t].vertices);
+			const int hullIndsChunkId = newChunkFromStdVector(model->m_convexHulls[t].indices);
 			jHull->setMember("vertsChunkId", jvb(hullVertsChunkId));
 			jHull->setMember("indicesChunkId", jvb(hullIndsChunkId));
 		}
@@ -324,8 +329,8 @@ void ModelWriter::GenerateCollisionData() {
 
 		for (int t = 0; t < model->m_concaveHulls.size(); ++t) {
 			JsonValue* const jHull = jStaticConvecHulls->arrPush(jvb(JID_MAP));
-			const int hullVertsChunkId = NewChunkFromStdVector(model->m_concaveHulls[t].vertices);
-			const int hullIndsChunkId = NewChunkFromStdVector(model->m_concaveHulls[t].indices);
+			const int hullVertsChunkId = newChunkFromStdVector(model->m_concaveHulls[t].vertices);
+			const int hullIndsChunkId = newChunkFromStdVector(model->m_concaveHulls[t].indices);
 			jHull->setMember("vertsChunkId", jvb(hullVertsChunkId));
 			jHull->setMember("indicesChunkId", jvb(hullIndsChunkId));
 		}
@@ -385,20 +390,24 @@ void ModelWriter::GenerateCollisionData() {
 	}
 }
 
-bool ModelWriter::write(const Model::Model& modelToWrite, IWriteStream* iws) {
+bool ModelWriter::write(const Model& modelToWrite, IWriteStream* iws) {
 	if (iws == nullptr) {
 		return false;
 	}
 
-	root = jvb(JID_MAP);
 	this->model = &modelToWrite;
 
-	GenerateAnimations();
-	GenerateNodeHierarchy();
-	GenerateNodes();
-	GenerateMaterials();
-	GenerateMeshesData();
-	GenerateCollisionData();
+	root = jvb(JID_MAP);
+
+	// The version of the file format.
+	// 0 is the starting version.
+	root->setMember("version", jvb(0));
+
+	writeNodes();
+	writeMaterials();
+	writeMeshes();
+	writeAnimations();
+	writeCollisionData();
 
 	// Generate the json that describes the data chunks.
 	JsonValue* const jDataChunkDesc = root->setMember("dataChunksDesc", jvb(JID_ARRAY));
@@ -425,7 +434,7 @@ bool ModelWriter::write(const Model::Model& modelToWrite, IWriteStream* iws) {
 	return true;
 }
 
-bool ModelWriter::write(const Model::Model& modelToWrite, const char* const filename) {
+bool ModelWriter::write(const Model& modelToWrite, const char* const filename) {
 	if (filename == nullptr) {
 		return false;
 	}

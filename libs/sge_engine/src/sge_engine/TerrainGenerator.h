@@ -80,14 +80,14 @@ struct SGE_ENGINE_API TerrainGenerator {
 
 	static bool generateSlope(std::vector<Vertex>& vertices,
 	                          std::vector<int>& indices,
-	                          Model::CollisionMesh& outCollisionMesh,
+	                          ModelCollisionMesh& outCollisionMesh,
 	                          const SlopeDesc& desc,
 	                          int* pNumVertsAdded = nullptr,
 	                          int* pNumIndicesAdded = nullptr);
 
 	static bool generateSlantedBlock(std::vector<Vertex>& vertices,
 	                                 std::vector<int>& indices,
-	                                 Model::CollisionMesh& outCollisionMesh,
+	                                 ModelCollisionMesh& outCollisionMesh,
 	                                 const SlantedBlockDesc& desc,
 	                                 int* pNumVertsAdded = nullptr,
 	                                 int* pNumIndicesAdded = nullptr);

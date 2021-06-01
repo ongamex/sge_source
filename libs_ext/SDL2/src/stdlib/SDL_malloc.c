@@ -2145,7 +2145,7 @@ static struct malloc_state _gm_;
 #define is_global(M)       ((M) == &_gm_)
 #define is_initialized(M)  ((M)->top != 0)
 
-/* -------------------------- system alloc setup ------------------------- */
+/* -------------------------- system m_allocator setup ------------------------- */
 
 /* Operations on mflags */
 
@@ -4293,7 +4293,7 @@ dlmalloc(size_t bytes)
                 }
             }
         } else if (bytes >= MAX_REQUEST)
-            nb = MAX_SIZE_T;    /* Too big to allocate. Force failure (in sys alloc) */
+            nb = MAX_SIZE_T;    /* Too big to allocate. Force failure (in sys m_allocator) */
         else {
             nb = pad_request(bytes);
             if (gm->treemap != 0 && (mem = tmalloc_large(gm, nb)) != 0) {
@@ -4733,7 +4733,7 @@ mspace_malloc(mspace msp, size_t bytes)
                 }
             }
         } else if (bytes >= MAX_REQUEST)
-            nb = MAX_SIZE_T;    /* Too big to allocate. Force failure (in sys alloc) */
+            nb = MAX_SIZE_T;    /* Too big to allocate. Force failure (in sys m_allocator) */
         else {
             nb = pad_request(bytes);
             if (ms->treemap != 0 && (mem = tmalloc_large(ms, nb)) != 0) {

@@ -28,10 +28,10 @@
 #include "sge_engine/actors/ACRSpline.h"
 #include "sge_engine/actors/ALight.h"
 #include "sge_engine/actors/ALine.h"
+#include "sge_utils/stl_algorithm_ex.h"
 #include "sge_utils/tiny/FileOpenDialog.h"
 #include "sge_utils/utils/FileStream.h"
 #include "sge_utils/utils/Path.h"
-#include "sge_utils/utils/common.h"
 #include "sge_utils/utils/json.h"
 #include "sge_utils/utils/strings.h"
 
@@ -40,33 +40,30 @@
 namespace sge {
 
 void EditorWindow::Assets::load() {
-	m_assetPlayIcon = getCore()->getAssetLib()->getAsset(AssetType::TextureView, "assets/editor/textures/icons/play.png", true);
-	m_assetForkPlayIcon = getCore()->getAssetLib()->getAsset(AssetType::TextureView, "assets/editor/textures/icons/forkplay.png", true);
-	m_assetPauseIcon = getCore()->getAssetLib()->getAsset(AssetType::TextureView, "assets/editor/textures/icons/pause.png", true);
-	m_assetOpenIcon = getCore()->getAssetLib()->getAsset(AssetType::TextureView, "assets/editor/textures/icons/open.png", true);
-	m_assetSaveIcon = getCore()->getAssetLib()->getAsset(AssetType::TextureView, "assets/editor/textures/icons/save.png", true);
-	m_assetRefreshIcon = getCore()->getAssetLib()->getAsset(AssetType::TextureView, "assets/editor/textures/icons/refresh.png", true);
-	m_assetRebuildIcon = getCore()->getAssetLib()->getAsset(AssetType::TextureView, "assets/editor/textures/icons/rebuild.png", true);
-	m_assetPickingIcon = getCore()->getAssetLib()->getAsset(AssetType::TextureView, "assets/editor/textures/icons/pick.png", true);
-	m_assetTranslationIcon =
-	    getCore()->getAssetLib()->getAsset(AssetType::TextureView, "assets/editor/textures/icons/translation.png", true);
-	m_assetRotationIcon = getCore()->getAssetLib()->getAsset(AssetType::TextureView, "assets/editor/textures/icons/rotation.png", true);
-	m_assetScalingIcon = getCore()->getAssetLib()->getAsset(AssetType::TextureView, "assets/editor/textures/icons/scale.png", true);
-	m_assetVolumeScaleIcon =
-	    getCore()->getAssetLib()->getAsset(AssetType::TextureView, "assets/editor/textures/icons/volumeScale.png", true);
-	m_assetSnapToGridOffIcon =
-	    getCore()->getAssetLib()->getAsset(AssetType::TextureView, "assets/editor/textures/icons/snapToGridOff.png", true);
-	m_assetSnapToGridOnIcon =
-	    getCore()->getAssetLib()->getAsset(AssetType::TextureView, "assets/editor/textures/icons/snapToGridOn.png", true);
+	AssetLibrary* assetLib = getCore()->getAssetLib();
 
-	m_showGameUIOnIcon = getCore()->getAssetLib()->getAsset(AssetType::TextureView, "assets/editor/textures/icons/showGameUIOn.png", true);
-	m_showGameUIOffIcon =
-	    getCore()->getAssetLib()->getAsset(AssetType::TextureView, "assets/editor/textures/icons/showGameUIOff.png", true);
+	m_assetPlayIcon = assetLib->getAsset(AssetType::Texture2D, "assets/editor/textures/icons/play.png", true);
+	m_assetForkPlayIcon = assetLib->getAsset(AssetType::Texture2D, "assets/editor/textures/icons/forkplay.png", true);
+	m_assetPauseIcon = assetLib->getAsset(AssetType::Texture2D, "assets/editor/textures/icons/pause.png", true);
+	m_assetOpenIcon = assetLib->getAsset(AssetType::Texture2D, "assets/editor/textures/icons/open.png", true);
+	m_assetSaveIcon = assetLib->getAsset(AssetType::Texture2D, "assets/editor/textures/icons/save.png", true);
+	m_assetRefreshIcon = assetLib->getAsset(AssetType::Texture2D, "assets/editor/textures/icons/refresh.png", true);
+	m_assetRebuildIcon = assetLib->getAsset(AssetType::Texture2D, "assets/editor/textures/icons/rebuild.png", true);
+	m_assetPickingIcon = assetLib->getAsset(AssetType::Texture2D, "assets/editor/textures/icons/pick.png", true);
+	m_assetTranslationIcon = assetLib->getAsset(AssetType::Texture2D, "assets/editor/textures/icons/translation.png", true);
+	m_assetRotationIcon = assetLib->getAsset(AssetType::Texture2D, "assets/editor/textures/icons/rotation.png", true);
+	m_assetScalingIcon = assetLib->getAsset(AssetType::Texture2D, "assets/editor/textures/icons/scale.png", true);
+	m_assetVolumeScaleIcon = assetLib->getAsset(AssetType::Texture2D, "assets/editor/textures/icons/volumeScale.png", true);
+	m_assetSnapToGridOffIcon = assetLib->getAsset(AssetType::Texture2D, "assets/editor/textures/icons/snapToGridOff.png", true);
+	m_assetSnapToGridOnIcon = assetLib->getAsset(AssetType::Texture2D, "assets/editor/textures/icons/snapToGridOn.png", true);
 
-	m_orthoIcon = getCore()->getAssetLib()->getAsset(AssetType::TextureView, "assets/editor/textures/icons/ortho.png", true);
-	m_xIcon = getCore()->getAssetLib()->getAsset(AssetType::TextureView, "assets/editor/textures/icons/x.png", true);
-	m_yIcon = getCore()->getAssetLib()->getAsset(AssetType::TextureView, "assets/editor/textures/icons/y.png", true);
-	m_zIcon = getCore()->getAssetLib()->getAsset(AssetType::TextureView, "assets/editor/textures/icons/z.png", true);
+	m_showGameUIOnIcon = assetLib->getAsset(AssetType::Texture2D, "assets/editor/textures/icons/showGameUIOn.png", true);
+	m_showGameUIOffIcon = assetLib->getAsset(AssetType::Texture2D, "assets/editor/textures/icons/showGameUIOff.png", true);
+
+	m_orthoIcon = assetLib->getAsset(AssetType::Texture2D, "assets/editor/textures/icons/ortho.png", true);
+	m_xIcon = assetLib->getAsset(AssetType::Texture2D, "assets/editor/textures/icons/x.png", true);
+	m_yIcon = assetLib->getAsset(AssetType::Texture2D, "assets/editor/textures/icons/y.png", true);
+	m_zIcon = assetLib->getAsset(AssetType::Texture2D, "assets/editor/textures/icons/z.png", true);
 }
 
 void EditorWindow::onGamePluginPreUnload() {

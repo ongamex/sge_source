@@ -51,7 +51,7 @@ bool AssetsWindow::importAsset(AssetImportData& aid) {
 	std::string fullAssetPath = aid.outputDir + "/" + aid.outputFilename;
 
 	if (aid.assetType == AssetType::Model && aid.importModelsAsMultipleFiles == false) {
-		Model::Model importedModel;
+		Model importedModel;
 
 		if (m_sgeImportFBXFile == nullptr) {
 			SGE_DEBUG_ERR("mdlconvlib dynamic library is not loaded. We cannot import FBX files without it!");
@@ -84,7 +84,7 @@ bool AssetsWindow::importAsset(AssetImportData& aid) {
 				createDirectory(textureDestDir.c_str());
 				copyFile(textureSrcPath.c_str(), textureDstPath.c_str());
 
-				PAsset assetTexture = assetLib->getAsset(AssetType::TextureView, textureDstPath.c_str(), true);
+				PAsset assetTexture = assetLib->getAsset(AssetType::Texture2D, textureDstPath.c_str(), true);
 				assetLib->reloadAssetModified(assetTexture.get());
 			}
 
@@ -104,7 +104,8 @@ bool AssetsWindow::importAsset(AssetImportData& aid) {
 		std::vector<std::string> referencedTextures;
 		std::vector<MultiModelImportResult> importedModels;
 
-		if (m_sgeImportFBXFileAsMultiple && m_sgeImportFBXFileAsMultiple(importedModels, aid.fileToImportPath.c_str(), &referencedTextures)) {
+		if (m_sgeImportFBXFileAsMultiple &&
+		    m_sgeImportFBXFileAsMultiple(importedModels, aid.fileToImportPath.c_str(), &referencedTextures)) {
 			createDirectory(extractFileDir(aid.outputDir.c_str(), false).c_str());
 
 			for (MultiModelImportResult& model : importedModels) {
@@ -137,7 +138,7 @@ bool AssetsWindow::importAsset(AssetImportData& aid) {
 				createDirectory(textureDestDir.c_str());
 				copyFile(textureSrcPath.c_str(), textureDstPath.c_str());
 
-				PAsset assetTexture = assetLib->getAsset(AssetType::TextureView, textureDstPath.c_str(), true);
+				PAsset assetTexture = assetLib->getAsset(AssetType::Texture2D, textureDstPath.c_str(), true);
 				assetLib->reloadAssetModified(assetTexture.get());
 			}
 
@@ -149,12 +150,12 @@ bool AssetsWindow::importAsset(AssetImportData& aid) {
 
 			return false;
 		}
-	} else if (aid.assetType == AssetType::TextureView) {
+	} else if (aid.assetType == AssetType::Texture2D) {
 		// TODO: DDS conversion.
 		createDirectory(extractFileDir(aid.outputDir.c_str(), false).c_str());
 		copyFile(aid.fileToImportPath.c_str(), fullAssetPath.c_str());
 
-		PAsset assetTexture = assetLib->getAsset(AssetType::TextureView, fullAssetPath.c_str(), true);
+		PAsset assetTexture = assetLib->getAsset(AssetType::Texture2D, fullAssetPath.c_str(), true);
 		assetLib->reloadAssetModified(assetTexture.get());
 
 		return true;
@@ -350,7 +351,7 @@ void AssetsWindow::update(SGEContext* const sgecon, const InputState& is) {
 						    assetType_guessFromExtension(extractFileExtension(entry.path().string().c_str()).c_str(), false);
 						if (assetType == AssetType::Model) {
 							string_format(label, "%s %s", ICON_FK_CUBE, entry.path().filename().string().c_str());
-						} else if (assetType == AssetType::TextureView) {
+						} else if (assetType == AssetType::Texture2D) {
 							string_format(label, "%s %s", ICON_FK_PICTURE_O, entry.path().filename().string().c_str());
 						} else if (assetType == AssetType::Text) {
 							string_format(label, "%s %s", ICON_FK_FILE, entry.path().filename().string().c_str());
@@ -433,7 +434,8 @@ void AssetsWindow::update(SGEContext* const sgecon, const InputState& is) {
 						// If openAssetImport_filename is specified then we must use it, it means that the popup was somehow forced
 						// externally like a drag-and-drop.
 						if (openAssetImport_filename.empty()) {
-							m_importAssetToImportInPopup.fileToImportPath = FileOpenDialog("Pick a file to import", true, "*.*\0*.*\0", nullptr);
+							m_importAssetToImportInPopup.fileToImportPath =
+							    FileOpenDialog("Pick a file to import", true, "*.*\0*.*\0", nullptr);
 						} else {
 							m_importAssetToImportInPopup.fileToImportPath = openAssetImport_filename;
 							openAssetImport_filename.clear();
@@ -461,8 +463,8 @@ void AssetsWindow::update(SGEContext* const sgecon, const InputState& is) {
 						if (m_importAssetToImportInPopup.assetType == AssetType::None) {
 							if (inputExtension == "json") {
 								SpriteAnimation tempSpriteAnimation;
-								if (SpriteAnimation::importFromAsepriteSpriteSheetJsonFile(tempSpriteAnimation,
-								                                                           m_importAssetToImportInPopup.fileToImportPath.c_str())) {
+								if (SpriteAnimation::importFromAsepriteSpriteSheetJsonFile(
+								        tempSpriteAnimation, m_importAssetToImportInPopup.fileToImportPath.c_str())) {
 									m_importAssetToImportInPopup.assetType = AssetType::Sprite;
 								}
 							}
@@ -492,7 +494,7 @@ void AssetsWindow::update(SGEContext* const sgecon, const InputState& is) {
 						ImGuiEx::TextTooltip(
 						    "When multiple game objects are defined in one 3D model file. You can import them as a separate 3D "
 						    "models using this option!");
-					} else if (m_importAssetToImportInPopup.assetType == AssetType::TextureView) {
+					} else if (m_importAssetToImportInPopup.assetType == AssetType::Texture2D) {
 						ImGui::Text(ICON_FK_PICTURE_O " Texture");
 					} else if (m_importAssetToImportInPopup.assetType == AssetType::Text) {
 						ImGui::Text(ICON_FK_FILE " Text");
@@ -505,7 +507,7 @@ void AssetsWindow::update(SGEContext* const sgecon, const InputState& is) {
 						const char* assetTypeNames[int(AssetType::Count)] = {nullptr};
 						assetTypeNames[int(AssetType::None)] = ICON_FK_FILE_TEXT_O " Unknown";
 						assetTypeNames[int(AssetType::Model)] = ICON_FK_CUBE " 3D Model";
-						assetTypeNames[int(AssetType::TextureView)] = ICON_FK_PICTURE_O " Texture";
+						assetTypeNames[int(AssetType::Texture2D)] = ICON_FK_PICTURE_O " Texture";
 						assetTypeNames[int(AssetType::Text)] = ICON_FK_FILE " Text";
 						assetTypeNames[int(AssetType::Sprite)] = ICON_FK_FILM " Sprite";
 
@@ -604,7 +606,25 @@ void AssetsWindow::update(SGEContext* const sgecon, const InputState& is) {
 				}
 
 				m_exploreModelPreviewWidget.doWidget(sgecon, is, explorePreviewAsset->asModel()->staticEval);
-			} else if (explorePreviewAsset->getType() == AssetType::TextureView) {
+
+				ImGui::Text("Animation Count: %d", explorePreviewAsset->asModel()->model.numAnimations());
+				for (int iAnim = 0; iAnim < explorePreviewAsset->asModel()->model.numAnimations(); ++iAnim) {
+					ImGui::Text("\t%s", explorePreviewAsset->asModel()->model.animationAt(iAnim)->animationName.c_str());
+				}
+
+				ImGui::Text("Node Count: %d", explorePreviewAsset->asModel()->model.numNodes());
+				ImGui::Text("Mesh Count: %d", explorePreviewAsset->asModel()->model.numMeshes());
+
+				for (int iMesh = 0; iMesh < explorePreviewAsset->asModel()->model.numMeshes(); ++iMesh) {
+					ImGui::Text("\t%s", explorePreviewAsset->asModel()->model.meshAt(iMesh)->name.c_str());
+				}
+
+				ImGui::Text("Material Count: %d", explorePreviewAsset->asModel()->model.numMaterials());
+				for (int iMtl = 0; iMtl < explorePreviewAsset->asModel()->model.numMaterials(); ++iMtl) {
+					ImGui::Text("\t%s", explorePreviewAsset->asModel()->model.materialAt(iMtl)->name.c_str());
+				}
+
+			} else if (explorePreviewAsset->getType() == AssetType::Texture2D) {
 				const Texture2DDesc desc = explorePreviewAsset->asTextureView()->tex->getDesc().texture2D;
 				const ImVec2 availableContentSize = ImGui::GetContentRegionAvail();
 
@@ -612,7 +632,6 @@ void AssetsWindow::update(SGEContext* const sgecon, const InputState& is) {
 				const float imageSizeY = desc.height * availableContentSize.x / float(desc.width);
 
 				ImGui::Image(explorePreviewAsset->asTextureView()->tex.GetPtr(), ImVec2(imageSizeX, imageSizeY));
-				ImGui::EndTabItem();
 
 				AssetTexture* const texAsset = explorePreviewAsset->asTextureView();
 

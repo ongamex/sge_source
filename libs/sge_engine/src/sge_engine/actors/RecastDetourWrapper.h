@@ -13,7 +13,7 @@
 namespace sge {
 
 /// As Recast is build in C it is quite tedous and error-prone to do the memory management manually.
-/// So, to workaround this class should be used instead. It automatically calls alloc/free by default.
+/// So, to workaround this class should be used instead. It automatically calls m_allocator/free by default.
 template <typename T, T* (*TAlloc)(), void (*TFree)(T*)>
 struct RecastObject : public Noncopyable {
 	RecastObject() { createNew(); }

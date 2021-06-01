@@ -1,7 +1,10 @@
 #pragma once
 
 #include <memory>
+#include <vector>
 
+#include "sge_core/Geometry.h"
+#include "sge_core/model/Model.h"
 #include "sge_core/sgecore_api.h"
 #include "sge_renderer/renderer/renderer.h"
 #include "sge_utils/math/Box.h"
@@ -9,18 +12,12 @@
 #include "sge_utils/math/primitives.h"
 #include "sge_utils/utils/vector_map.h"
 
-#include "Model.h"
-#include "sge_core/Geometry.h"
-
 namespace sge {
 
 struct AssetLibrary;
 struct Asset;
 
-struct EvaluatedMesh;
-
 struct EvaluatedMaterial {
-	std::string name;
 	std::shared_ptr<Asset> diffuseTexture;
 	std::shared_ptr<Asset> texNormalMap;
 	std::shared_ptr<Asset> texMetallic;
@@ -31,103 +28,118 @@ struct EvaluatedMaterial {
 	float roughness = 1.f;
 };
 
-struct EvaluatedMeshAttachment {
-	EvaluatedMesh* pMesh = nullptr;
-	EvaluatedMaterial* pMaterial = nullptr;
-};
-
 struct EvaluatedNode {
 	mat4f evalLocalTransform = mat4f::getZero();
 	mat4f evalGlobalTransform = mat4f::getIdentity();
-	AABox3f aabb; // untransformed contents bounding box.
-	std::vector<EvaluatedMeshAttachment> attachedMeshes;
-	const char* name = nullptr;
+	AABox3f aabbGlobalSpace; // untransformed contents bounding box.
 };
 
 struct EvaluatedMesh {
-	GpuHandle<Buffer> vertexBuffer;
-	GpuHandle<Buffer> indexBuffer;
-	VertexDeclIndex vertexDeclIndex = VertexDeclIndex_Null;
-	Model::Mesh* pReferenceMesh = nullptr;
-	Geometry geom;
+	GpuHandle<Texture> skinningBoneTransfsTex;
+	//std::vector<mat4f> boneTransformMatrices;
+
+	Geometry geometry;
 };
 
 struct EvalMomentSets {
-	EvalMomentSets() = default;
-	EvalMomentSets(Model::Model* model, std::string animationName, float time = 0.f, float weight = 1.f)
-	    : model(model)
-	    , animationName(std::move(animationName))
+	EvalMomentSets(int donorIndex = -1, int animationIndex = -1, float time = 0.f, float weight = 1.f)
+	    : donorIndex(donorIndex)
+	    , animationIndex(animationIndex)
 	    , time(time)
 	    , weight(weight) {}
 
-	bool operator==(const EvalMomentSets& ref) const {
-		return model == ref.model && animationName == ref.animationName && time == ref.time && weight == ref.weight;
-	}
+	/// The donor index specified which animation donor should be used,
+	/// if -1 than then no model should be used and @animationIndex point to an animation in
+	/// @EvaluatedModel::m_model
+	int donorIndex = -1;
 
-	Model::Model* model = nullptr; // The model that proiveds the animation.
-	std::string animationName;     // The animation name for the evaluation. If none the static moment is used.
-	float time = 0.f;              // The time in the animation.
-	float weight = 1.f; // The weight of this "moment", if multiple moments are used their sum of weight component should be equal to 1.
+	/// The animation index to be played. The animation is taken from the donor model in @donorIndex.
+	int animationIndex = -1;
+
+	/// The evaluation time of the animation
+	float time = 0.f;
+
+	/// The weight to be used of this evaluation moment. Useful when we want to blend multiple animations
+	/// during transitions. For example if our character was idle and now it has just started running,
+	/// we want to smoothly blend for a few miliseconds between the idle animation and the run animation.
+	/// If we do not then the animation transition will not be smooth.
+	/// Usually, we want the sum of all weights for all EvalMomentSets passed to EvaluatedModel::evaluateFromMoments
+	/// to be 1, otherwise the whole animation will not look right.
+	float weight = 1.f;
 };
 
-//--------------------------------------------------------------------
-//
-//--------------------------------------------------------------------
 struct SGE_CORE_API EvaluatedModel {
 	EvaluatedModel()
 	    : m_assetLibrary(NULL)
 	    , m_model(NULL) {}
 
-	void initialize(AssetLibrary* const assetLibrary, Model::Model* model);
+	void initialize(AssetLibrary* const assetLibrary, Model* model);
 	bool isInitialized() const { return m_model && m_assetLibrary; }
 
-	bool evaluate(const char* const curveName, float const time);
+	/// Adds an animation that can be specified to the evaluate function.
+	/// Returns the index of the donor.
+	/// The asset will be taken form the assetLibrary specified to @initialize.
+	int addAnimationDonor(const std::shared_ptr<Asset>& donorAsset);
 
-	// Evaluates the model at the specified momemnt.
-	bool evaluate(const std::vector<EvalMomentSets>& evalSets);
-	bool evaluate(vector_map<const Model::Node*, mat4f>& boneGlobalTrasnformOverrides);
+	/// Evaluates the model at the specified momemnt.
+	bool evaluateStatic() { return evaluateFromMoments(nullptr, 0); }
 
-	// Returns true if an evaluation was performed.
-	float Raycast(const Ray& ray, Model::Node** ppNode = NULL, const char* const positionSemantic = "a_position") const;
+	/// @brief Evaluates the model with the specified animations at the specified time.
+	/// If you want to evaluate the model with no animation, just pass @evalMoments nullptr and numMoments 0.
+	bool evaluateFromMoments(const EvalMomentSets evalMoments[], int numMoments);
 
-	const EvaluatedNode* findNode(const char* name) const {
-		for (auto pair : m_nodes) {
-			if (pair.value().name == name) {
-				return &pair.value();
-			}
-		}
+	/// @brief Evaluates the models with the specified transforms for each node (in model global space, not local).
+	/// Useful for ragdolls or inverse kinematics.
+	/// @param boneGlobalTrasnformOverrides an array for each node matched by the index in the array specifying the global transformation to
+	/// be used.
+	bool evaluateFromNodesGlobalTransform(const std::vector<mat4f>& boneGlobalTrasnformOverrides);
 
-		return nullptr;
-	}
+	int getNumEvalMeshes() const { return int(m_evaluatedMeshes.size()); }
+	const EvaluatedMesh& getEvalMesh(const int iMesh) const { return m_evaluatedMeshes[iMesh]; }
+
+	int getNumEvalMaterial() const { return int(m_evaluatedMaterials.size()); }
+	const EvaluatedMaterial& getEvalMaterial(const int iMesh) const { return m_evaluatedMaterials[iMesh]; }
+
+	int getNumEvalNodes() const { return int(m_evaluatedNodes.size()); }
+	const EvaluatedNode& getEvalNode(const int iNode) const { return m_evaluatedNodes[iNode]; }
+
+	const ModelAnimation* findAnimation(const int idxDonor, const int animIndex) const;
 
   private:
 	bool evaluateNodes_common();
-	bool evaluateNodesFromMoments(const std::vector<EvalMomentSets>& evalSets);
-	bool evaluateNodesFromExternalBones(vector_map<const Model::Node*, mat4f>& boneGlobalTrasnformOverrides);
-	void buildNodeRemappingLUT(const Model::Model* otherModel);
+	bool evaluateFromMomentsInternal(const EvalMomentSets evalMoments[], int numMoments);
+	bool evaluateNodesFromExternalBones(const std::vector<mat4f>& boneGlobalTrasnformOverrides);
 	bool evaluateMaterials();
 	bool evaluateSkinning();
 
 
-  public:
-	// Evaluation settings used for the current state.
+  private:
+	struct AnimationDonor {
+		/// TODO: handle asset changeing. In that case the asset will still be valid,
+		/// but the data in it bill be different and @originalNodeId_to_donorNodeId will be wrong and we will crash.
+		std::shared_ptr<Asset> donorModel;
+		std::vector<int> originalNodeId_to_donorNodeId;
+	};
 
-	Model::Model* m_model = nullptr;
+  public:
+	Model* m_model = nullptr;
 	AssetLibrary* m_assetLibrary = nullptr;
 
-	// The evaluated state.
-	vector_map<const Model::Node*, EvaluatedNode> m_nodes;
-	vector_map<const Model::Mesh*, EvaluatedMesh> meshes;
-	vector_map<const Model::Material*, EvaluatedMaterial> m_materials;
+	/// Stores the state of each node, the index in this array corresponts to the index of the node in the @Model::m_nodes array.
+	std::vector<EvaluatedNode> m_evaluatedNodes;
 
-	vector_map<const Model::Model*, vector_map<const Model::Node*, const Model::Node*>> m_nodeRemapping;
+	/// @brief Since meshes can be animated only by bone transforms, which only modify their bones.
+	/// We can patically evalute them only once.
+	std::vector<EvaluatedMesh> m_evaluatedMeshes;
+
+	/// @brief Since materials cannot be animated in any way,
+	/// and we cannot "accept" them from a donor they can be evaluated only once.
+	bool areMaterialsAlreadyEvaluated = false;
+	std::vector<EvaluatedMaterial> m_evaluatedMaterials;
+
+	std::vector<AnimationDonor> m_donors; // Caution: ckind of assumes that the AnimationDonor is moveable.
 
 	AABox3f aabox;
 };
-
-//--------------------------------------------------------------------
-//
-//--------------------------------------------------------------------
-void Model_FindReferencedResources(std::vector<std::string>& referencedTextures, const Model::Model& model);
 
 } // namespace sge

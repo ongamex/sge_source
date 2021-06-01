@@ -9,71 +9,59 @@
 
 namespace sge {
 
-const char s_DiffuseTextureParamName[] = "texDiffuse";
-const char s_TexNormalMap[] = "texNormal";
+void EvaluatedModel::initialize(AssetLibrary* const assetLibrary, Model* model) {
+	sgeAssert(assetLibrary != nullptr);
+	sgeAssert(model != nullptr);
 
-void EvaluatedModel::initialize(AssetLibrary* const assetLibrary, Model::Model* model) {
-	sgeAssert(assetLibrary != NULL);
-	sgeAssert(model);
-
-	// Reset the object's state.
 	*this = EvaluatedModel();
-
 	m_assetLibrary = assetLibrary;
 	m_model = model;
 }
 
-void EvaluatedModel::buildNodeRemappingLUT(const Model::Model* otherModel) {
-	if (!otherModel) {
-		return;
+int EvaluatedModel::addAnimationDonor(const std::shared_ptr<Asset>& donorAsset) {
+	if (isAssetLoaded(donorAsset, AssetType::Model) == false || !isInitialized()) {
+		return -1;
 	}
 
-	// Skip if the remapping is already there.
-	if (m_nodeRemapping.find_element(otherModel) != nullptr) {
-		return;
-	}
-
-	vector_map<const Model::Node*, const Model::Node*>& nodeRemap = m_nodeRemapping[otherModel];
-
-	// Find the equvalent node in the otherModel node and cache it.
-	for (Model::Node* node : m_model->m_nodes) {
-		// CAUTION: Currently the retargeting is mapping node-to-node using names.
-		// This is highly unreliable as there may be multiple nodes with the same name in a single model.
-		// A possible fix is to search these nodes using the hierarchy
-		// for example if we are looking for a node named "hand":
-		// "upper_torso|left_arm|hand".
-		const Model::Node* const foundNode = otherModel->FindFirstNodeByName(node->name.c_str());
-
-		if (foundNode != nullptr) {
-			nodeRemap[node] = foundNode;
+	for (int iDonor = 0; iDonor < m_donors.size(); ++iDonor) {
+		if (donorAsset == m_donors[iDonor].donorModel) {
+			return iDonor;
 		}
 	}
-}
 
-bool EvaluatedModel::evaluate(const char* const curveName, float const time) {
-	std::vector<EvalMomentSets> evalSets;
-	evalSets.push_back(EvalMomentSets{m_model, std::string(curveName ? curveName : ""), time, 1.f});
+	AnimationDonor animDonor;
 
-	return evaluate(evalSets);
-}
+	animDonor.donorModel = donorAsset;
+	animDonor.originalNodeId_to_donorNodeId.resize(m_model->numNodes(), -1);
 
-bool EvaluatedModel::evaluate(const std::vector<EvalMomentSets>& evalSets) {
-	if (evalSets.size() == 0)
-		return false;
-
-	for (auto& moment : evalSets) {
-		buildNodeRemappingLUT(moment.model);
+	// Build the node-to-node remapping, Keep in mind that some nodes might not be present in the donor.
+	// in that case -1 should be written for that node index.
+	for (const int iOrigNode : range_int(m_model->numNodes())) {
+		const std::string& originalNodeName = m_model->nodeAt(iOrigNode)->name;
+		animDonor.originalNodeId_to_donorNodeId[iOrigNode] =
+		    animDonor.donorModel->asModel()->model.findFistNodeIndexWithName(originalNodeName);
 	}
 
-	evaluateNodesFromMoments(evalSets);
+	m_donors.emplace_back(std::move(animDonor));
+
+	return int(m_donors.size()) - 1;
+}
+
+bool EvaluatedModel::evaluateFromMoments(const EvalMomentSets evalMoments[], int numMoments) {
+	if (numMoments != 0 && evalMoments != nullptr) {
+		evaluateFromMomentsInternal(evalMoments, numMoments);
+	} else {
+		EvalMomentSets staticMoment;
+		evaluateFromMomentsInternal(&staticMoment, 1);
+	}
 	evaluateMaterials();
 	evaluateSkinning();
 
 	return true;
 }
 
-bool EvaluatedModel::evaluate(vector_map<const Model::Node*, mat4f>& boneOverrides) {
-	evaluateNodesFromExternalBones(boneOverrides);
+bool EvaluatedModel::evaluateFromNodesGlobalTransform(const std::vector<mat4f>& boneGlobalTrasnformOverrides) {
+	evaluateNodesFromExternalBones(boneGlobalTrasnformOverrides);
 	evaluateMaterials();
 	evaluateSkinning();
 	return true;
@@ -81,161 +69,139 @@ bool EvaluatedModel::evaluate(vector_map<const Model::Node*, mat4f>& boneOverrid
 
 bool EvaluatedModel::evaluateNodes_common() {
 	aabox.setEmpty();
-	m_nodes.clear();
+	m_evaluatedNodes.resize(m_model->numNodes());
 
 	// Initialize the attachments to the node.
-	for (const Model::Node* const originalNode : m_model->m_nodes) {
-		EvaluatedNode& evalNode = m_nodes[originalNode];
-		evalNode.name = originalNode->name.empty() ? "" : originalNode->name.c_str();
 
-		// Obtain the inital bounding box by getting the unevaluated attached meshes bounding boxes.
-		for (const Model::MeshAttachment& meshAttachment : originalNode->meshAttachments) {
-			evalNode.aabb.expand(meshAttachment.mesh->aabox);
-		}
+	for (int iNode : range_int(m_model->numNodes())) {
+		EvaluatedNode& evalNode = m_evaluatedNodes[iNode];
+		// [EVAL_MESH_NODE_DEFAULT_ZERO]
+		evalNode.evalLocalTransform = mat4f::getZero();
+		evalNode.evalGlobalTransform = mat4f::getZero();
 	}
 
 	return true;
 }
 
-bool EvaluatedModel::evaluateNodesFromMoments(const std::vector<EvalMomentSets>& evalSets) {
+bool EvaluatedModel::evaluateFromMomentsInternal(const EvalMomentSets evalMoments[], int numMoments) {
 	evaluateNodes_common();
 
 	// Evaluates the nodes. They may be effecte by multiple models (stealing animations and blending them)
-	for (int const iMoment : range_int(int(evalSets.size()))) {
-		const EvalMomentSets& moment = evalSets[iMoment];
-		auto& nodeRemap = m_nodeRemapping[moment.model];
+	for (int const iMoment : range_int(numMoments)) {
+		const EvalMomentSets& moment = evalMoments[iMoment];
 
-		const Model::AnimationInfo* const animInfo = moment.model->findAnimation(moment.animationName);
-		const float evalTime = animInfo ? moment.time + animInfo->startTime : moment.time;
+		// Find the animation donor.
+		const AnimationDonor* donor = nullptr;
+		if (moment.donorIndex >= 0) {
+			if (moment.donorIndex < int(m_donors.size())) {
+				donor = &m_donors[moment.donorIndex];
+			} else {
+				sgeAssert(false && "Animation donor with the specified index could not be found!");
+				continue;
+			}
+		}
 
-		for (const Model::Node* const originalNode : m_model->m_nodes) {
+		const Model& donorModel = (donor != nullptr) ? donor->donorModel->asModel()->model : *m_model;
+		const ModelAnimation* const donorAnimation = donorModel.animationAt(moment.animationIndex);
+
+		const float evalTime = moment.time;
+
+		for (int iOrigNode = 0; iOrigNode < m_model->numNodes(); ++iOrigNode) {
 			// Use the node form the specified Model in the node, if such node doesn't exists, fallback to the originalNode.
-			const Model::Node** ppFoundNode = nodeRemap.find_element(originalNode);
-			const Model::Node* nodeToUse = ppFoundNode ? *ppFoundNode : originalNode;
+			const int donorNodeIndex = (donor != nullptr) ? donor->originalNodeId_to_donorNodeId[iOrigNode] : iOrigNode;
 
-			const Parameter* const scalingPrm = nodeToUse->paramBlock.FindParameter("scaling");
-			const Parameter* const rotationPrm = nodeToUse->paramBlock.FindParameter("rotation");
-			const Parameter* const translationPrm = nodeToUse->paramBlock.FindParameter("translation");
+			// Find the node that is equvalent to the node in @m_model and evaluate its transform.
+			// If no such node was found use the default transformation from @m_model.
+			transf3d nodeLocalTransform;
+			if (donorNodeIndex >= 0) {
+				nodeLocalTransform = donorModel.nodeAt(donorNodeIndex)->staticLocalTransform;
+				if (donorAnimation != nullptr) {
+					donorAnimation->evaluateForNode(nodeLocalTransform, donorNodeIndex, evalTime);
+				}
+			} else {
+				nodeLocalTransform = m_model->nodeAt(iOrigNode)->staticLocalTransform;
+			}
 
-			EvaluatedNode& evalNode = m_nodes[originalNode];
-
-			transf3d transf;
-			scalingPrm->Evalute(&transf.s, moment.animationName.c_str(), evalTime);
-			rotationPrm->Evalute(&transf.r, moment.animationName.c_str(), evalTime);
-			translationPrm->Evalute(&transf.p, moment.animationName.c_str(), evalTime);
-
-			mat4f const transfMtx = transf.toMatrix();
-
-			// CAUTION: We assume that all transforms in evalNode are initialized to zero!
-			evalNode.evalLocalTransform += transfMtx * moment.weight; // Hmm... is this at least semi correct?
+			// Caution: [EVAL_MESH_NODE_DEFAULT_ZERO]
+			// It is assumed that all transforms in evalNode are initialized to zero!
+			m_evaluatedNodes[iOrigNode].evalLocalTransform += nodeLocalTransform.toMatrix() * moment.weight;
 		}
 	}
 
 	// Evaluate the node global transform by traversing the node hierarchy using the local transform computed above.
 	// Evaluate attached meshes to the evaluated nodes.
-	std::function<void(Model::Node*, mat4f)> traverseGlobalTransform;
-	traverseGlobalTransform = [&](Model::Node* node, const mat4f& parentTransfrom) -> void {
-		EvaluatedNode* evalNode = m_nodes.find_element(node);
-		evalNode->evalGlobalTransform = parentTransfrom * evalNode->evalLocalTransform;
+	std::function<void(int, mat4f)> traverseGlobalTransform;
+	traverseGlobalTransform = [&](int iNode, const mat4f& parentTransfrom) -> void {
+		EvaluatedNode& evalNode = m_evaluatedNodes[iNode];
+		evalNode.evalGlobalTransform = parentTransfrom * evalNode.evalLocalTransform;
+		evalNode.aabbGlobalSpace = evalNode.aabbGlobalSpace.getTransformed(evalNode.evalGlobalTransform);
 
-		for (auto& childNode : node->childNodes) {
-			traverseGlobalTransform(childNode, evalNode->evalGlobalTransform);
-		}
-
-		if (evalNode->aabb.IsEmpty() == false) {
-			aabox.expand(evalNode->aabb.getTransformed(evalNode->evalGlobalTransform));
+		for (const int childNodeIndex : m_model->nodeAt(iNode)->childNodes) {
+			traverseGlobalTransform(childNodeIndex, evalNode.evalGlobalTransform);
 		}
 	};
 
-	traverseGlobalTransform(m_model->m_rootNode, mat4f::getIdentity());
-
-
+	traverseGlobalTransform(m_model->getRootNodeIndex(), mat4f::getIdentity());
 	return true;
 }
 
-bool EvaluatedModel::evaluateNodesFromExternalBones(vector_map<const Model::Node*, mat4f>& boneGlobalTrasnformOverrides) {
+bool EvaluatedModel::evaluateNodesFromExternalBones(const std::vector<mat4f>& boneGlobalTrasnformOverrides) {
 	evaluateNodes_common();
 
-	for (const Model::Node* const originalNode : m_model->m_nodes) {
-		EvaluatedNode& evalNode = m_nodes[originalNode];
-		// evalNode.evalLocalTransform is not computed as it isn't needed by skinning.
-		evalNode.evalGlobalTransform = boneGlobalTrasnformOverrides[originalNode];
-		aabox.expand(evalNode.aabb.getTransformed(evalNode.evalGlobalTransform));
+	if (boneGlobalTrasnformOverrides.size() != m_model->numNodes()) {
+		sgeAssert(false && "It seems that the provided amount of node transforms isn't the one that we expect");
+		return false;
+	}
+
+	for (int iNode = 0; iNode < m_model->numNodes(); ++iNode) {
+		EvaluatedNode& evalNode = m_evaluatedNodes[iNode];
+		// evalNode.evalLocalTransform is not computed as it isn't needed by anything at the moment.
+		evalNode.evalGlobalTransform = boneGlobalTrasnformOverrides[iNode];
 	}
 
 	return true;
 }
 
 bool EvaluatedModel::evaluateMaterials() {
-	m_materials.clear();
-	m_materials.reserve(m_model->m_materials.size());
+	if (areMaterialsAlreadyEvaluated) {
+		return false;
+	}
 
+	areMaterialsAlreadyEvaluated = true;
+	m_evaluatedMaterials.resize(m_model->numMaterials());
 
-	// Evaluate the materials.
-	// TODO:
-	// The animation if the materials is now broken, as I was to lazy to fix it, as this isn't really that used.
-	{
-		std::string texPath;
+	std::string texPath;
 
-		for (Model::Material* mtl : m_model->m_materials) {
-			EvaluatedMaterial& evalMtl = m_materials[mtl];
+	for (int iMaterial = 0; iMaterial < m_model->numMaterials(); ++iMaterial) {
+		EvaluatedMaterial& evalMtl = m_evaluatedMaterials[iMaterial];
+		ModelMaterial* rawMaterial = m_model->materialAt(iMaterial);
 
-			evalMtl.name = mtl->name;
+		evalMtl.diffuseColor = rawMaterial->diffuseColor;
+		evalMtl.roughness = rawMaterial->roughness;
+		evalMtl.metallic = rawMaterial->metallic;
 
-			// Check if there is a diffuse color attached here.
+		// Check if there is a diffuse texture attached here.
+		if (rawMaterial->diffuseTextureName.empty() == false) {
+			texPath = m_model->getModelLoadSetting().assetDir + rawMaterial->diffuseTextureName;
+			evalMtl.diffuseTexture = m_assetLibrary->getAsset(AssetType::Texture2D, texPath.c_str(), true);
+		}
 
-			if (const Parameter* diffuseColorPrm = mtl->paramBlock.FindParameter("diffuseColor");
-			    diffuseColorPrm && diffuseColorPrm->GetType() == ParameterType::Float4) {
-				diffuseColorPrm->Evalute(&evalMtl.diffuseColor, "", 0.f);
-			}
+		// Normal map.
+		if (rawMaterial->normalTextureName.empty() == false) {
+			texPath = m_model->getModelLoadSetting().assetDir + rawMaterial->normalTextureName;
+			evalMtl.texNormalMap = m_assetLibrary->getAsset(AssetType::Texture2D, texPath.c_str(), true);
+		}
 
-			if (const Parameter* roughnessPrm = mtl->paramBlock.FindParameter("roughness");
-			    roughnessPrm && roughnessPrm->GetType() == ParameterType::Float) {
-				roughnessPrm->Evalute(&evalMtl.roughness, "", 0.f);
-			} else {
-				evalMtl.roughness = 1.f; // If not specified set to some sensible default;
-			}
+		// Metallic map.
+		if (rawMaterial->metallicTextureName.empty() == false) {
+			texPath = m_model->getModelLoadSetting().assetDir + rawMaterial->metallicTextureName;
+			evalMtl.texMetallic = m_assetLibrary->getAsset(AssetType::Texture2D, texPath.c_str(), true);
+		}
 
-			if (const Parameter* metallicPrm = mtl->paramBlock.FindParameter("metallic");
-			    metallicPrm && metallicPrm->GetType() == ParameterType::Float) {
-				metallicPrm->Evalute(&evalMtl.metallic, "", 0.f);
-			} else {
-				evalMtl.metallic = 0.f;
-			}
-
-			// Check if there is a diffuse texture attached here.
-			if (const Parameter* const tex = mtl->paramBlock.FindParameter(s_DiffuseTextureParamName);
-			    tex && tex->GetType() == ParameterType::String) {
-				tex->Evalute(&texPath, "", 0.f);
-				texPath = m_model->m_loadSets.assetDir + texPath;
-				evalMtl.diffuseTexture = m_assetLibrary->getAsset(AssetType::TextureView, texPath.c_str(), true);
-
-				// If there is a texture force the diffuse color to be 1, as Maya doesn't respet it when there is a texture involved.
-				evalMtl.diffuseColor = vec4f(1.f);
-			}
-
-			// Normal map.
-			if (const Parameter* const tex = mtl->paramBlock.FindParameter(s_TexNormalMap);
-			    tex && tex->GetType() == ParameterType::String) {
-				tex->Evalute(&texPath, "", 0.f);
-				texPath = m_model->m_loadSets.assetDir + texPath;
-				evalMtl.texNormalMap = m_assetLibrary->getAsset(AssetType::TextureView, texPath.c_str(), true);
-			}
-
-			// Metallic map.
-			if (const Parameter* const tex = mtl->paramBlock.FindParameter("texMetallic"); tex && tex->GetType() == ParameterType::String) {
-				tex->Evalute(&texPath, "", 0.f);
-				texPath = m_model->m_loadSets.assetDir + texPath;
-				evalMtl.texMetallic = m_assetLibrary->getAsset(AssetType::TextureView, texPath.c_str(), true);
-			}
-
-			// Roughness map.
-			if (const Parameter* const tex = mtl->paramBlock.FindParameter("texRoughness");
-			    tex && tex->GetType() == ParameterType::String) {
-				tex->Evalute(&texPath, "", 0.f);
-				texPath = m_model->m_loadSets.assetDir + texPath;
-				evalMtl.texRoughness = m_assetLibrary->getAsset(AssetType::TextureView, texPath.c_str(), true);
-			}
+		// Roughness map.
+		if (rawMaterial->roughnessTextureName.empty() == false) {
+			texPath = m_model->getModelLoadSetting().assetDir + rawMaterial->roughnessTextureName;
+			evalMtl.texRoughness = m_assetLibrary->getAsset(AssetType::Texture2D, texPath.c_str(), true);
 		}
 	}
 
@@ -245,195 +211,89 @@ bool EvaluatedModel::evaluateMaterials() {
 bool EvaluatedModel::evaluateSkinning() {
 	SGEContext* const context = m_assetLibrary->getDevice()->getContext();
 
+	m_evaluatedMeshes.resize(m_model->numMeshes());
+
 	// Evaluate the meshes.
-	for (Model::MeshData* const meshData : m_model->m_meshesData)
-		for (Model::Mesh* const mesh : meshData->meshes) {
-			EvaluatedMesh& evalMesh = meshes[mesh];
-			evalMesh.pReferenceMesh = mesh;
+	for (int iMesh = 0; iMesh < m_model->numMeshes(); ++iMesh) {
+		EvaluatedMesh& evalMesh = m_evaluatedMeshes[iMesh];
+		const ModelMesh& rawMesh = *m_model->meshAt(iMesh);
 
-			evalMesh.vertexDeclIndex = context->getDevice()->getVertexDeclIndex(mesh->vertexDecl.data(), int(mesh->vertexDecl.size()));
-			bool vertexDeclHasVertexColor = false;
-			bool vertexDeclHasUv = false;
-			bool vertexDeclHasNormals = false;
-			bool vertexDeclHasTangentSpace = false;
-			int tangetSpaceCounter = 0;
-			for (const VertexDecl& decl : mesh->vertexDecl) {
-				if (decl.semantic == "a_color") {
-					vertexDeclHasVertexColor = true;
-				}
+		if (rawMesh.bones.empty() == false) {
+			// Compute the tansform of the bone, it combines the binding offset matrix of the bone and
+			// the evaluated position of the node that represents the bone in the scene.
+			std::vector<mat4f> bonesTransformTexData(rawMesh.bones.size());
+			for (int iBone = 0; iBone < rawMesh.bones.size(); ++iBone) {
+				const ModelMeshBone& bone = rawMesh.bones[iBone];
 
-				if (decl.semantic == "a_uv") {
-					vertexDeclHasUv = true;
-					tangetSpaceCounter++;
-				}
+				const mat4f boneTransformWithOffsetModelObjectSpace =
+				    m_evaluatedNodes[bone.nodeIdx].evalGlobalTransform * bone.offsetMatrix;
 
-				if (decl.semantic == "a_normal") {
-					vertexDeclHasNormals = true;
-					tangetSpaceCounter++;
-				}
-
-				if (decl.semantic == "a_tangent") {
-					tangetSpaceCounter++;
-				}
-
-				if (decl.semantic == "a_binormal") {
-					tangetSpaceCounter++;
-				}
+				bonesTransformTexData[iBone] = boneTransformWithOffsetModelObjectSpace;
 			}
 
-			vertexDeclHasTangentSpace = (tangetSpaceCounter == 4);
+			// Compute the bones skinning matrix.
+			// TODO: this texture should be created by a shader if needed and maybe reused between draw calls.
+			{
+				int neededTexWidth = 4;
+				int neededTexHeight = int(rawMesh.bones.size());
 
-			evalMesh.indexBuffer = meshData->indexBuffer;
+				TextureData data = TextureData(bonesTransformTexData.data(), sizeof(vec4f) * 4);
 
-			if (mesh->bones.empty()) {
-				evalMesh.vertexBuffer = meshData->vertexBuffer;
-			} else {
-				// If the mesh has software skinning perform CPU skinning.
-				const int posByteOffset = mesh->vbPositionOffsetBytes;
-				const int normalByteOffset = mesh->vbNormalOffsetBytes;
+				const bool doesBigEnoughTextureExists = evalMesh.skinningBoneTransfsTex.HasResource() &&
+				                                        evalMesh.skinningBoneTransfsTex->getDesc().texture2D.height >= neededTexHeight;
 
-				// Duplicate the raw vertex buffer data and zero the vertex position.
-				std::vector<char> vbdata(meshData->vertexBufferRaw.size());
+				if (doesBigEnoughTextureExists == false) {
+					TextureDesc td;
+					td.textureType = UniformType::Texture2D;
+					td.usage = TextureUsage::DynamicResource;
+					td.format = TextureFormat::R32G32B32A32_FLOAT;
+					td.texture2D.arraySize = 1;
+					td.texture2D = Texture2DDesc(neededTexWidth, neededTexHeight);
 
-				sgeAssert((vbdata.size() % mesh->stride) == 0);
-				const int numVerts = int(vbdata.size() / mesh->stride);
-				for (size_t t = 0; t < numVerts; ++t) {
-					const char* const srcVertex = meshData->vertexBufferRaw.data() + mesh->stride * t;
-					char* const destVertex = vbdata.data() + mesh->stride * t;
+					SamplerDesc sd;
+					sd.filter = TextureFilter::Min_Mag_Mip_Point;
 
-					memcpy(destVertex, srcVertex, mesh->stride);
-
-					vec3f& pos_w = *(vec3f*)(destVertex + posByteOffset);
-					pos_w = vec3f(0);
-
-					if (normalByteOffset >= 0) {
-						vec3f& normal_w = *(vec3f*)(destVertex + normalByteOffset);
-						normal_w = vec3f(0);
-					}
+					evalMesh.skinningBoneTransfsTex = context->getDevice()->requestResource<Texture>();
+					evalMesh.skinningBoneTransfsTex->create(td, &data, sd);
+				} else {
+					context->updateTextureData(evalMesh.skinningBoneTransfsTex.GetPtr(), data);
 				}
-
-				for (const auto& bone : mesh->bones) {
-					const mat4f m = m_nodes.find_element(bone.node)->evalGlobalTransform * bone.offsetMatrix;
-
-					for (size_t t = 0; t < bone.vertexIds.size(); ++t) {
-						// CAUTION:
-						// With ASSIMP converted models this line was :
-						//
-						// bool const hasIndices = (mesh->ibFmt != UniformType::Unknown);
-						// const int vid = hasIndices ? ibd[bone.vertexIds[t]] : bone.vertexIds[t];
-						//
-						// However after implementing the index buffer generation in FBX SDK converter
-						// the index buffer here really did not make any sense.
-						const int vid = bone.vertexIds[t];
-
-						// Accumulate the transformed vertex.
-						const size_t posOffset = mesh->stride * vid + posByteOffset;
-						const vec3f pos_r = *(vec3f*)(mesh->pMeshData->vertexBufferRaw.data() + posOffset);
-						vec3f& pos_w = *(vec3f*)(vbdata.data() + mesh->vbByteOffset + posOffset);
-						pos_w += mat_mul_pos(m, pos_r) * bone.weights[t];
-
-						if (normalByteOffset >= 0) {
-							const size_t normalOffset = mesh->stride * vid + normalByteOffset;
-							const vec3f norm_r = *(vec3f*)(mesh->pMeshData->vertexBufferRaw.data() + normalOffset);
-							vec3f& normal_w = *(vec3f*)(vbdata.data() + mesh->vbByteOffset + normalOffset);
-							normal_w += mat_mul_dir(m, norm_r) * bone.weights[t];
-						}
-
-						// TODO: TBN in the future.
-					}
-				}
-
-				// Update the vertex buffers.
-				if (evalMesh.vertexBuffer.IsResourceValid() == false) {
-					evalMesh.vertexBuffer = context->getDevice()->requestResource<Buffer>();
-				}
-
-				if (evalMesh.vertexBuffer->isValid() == false || evalMesh.vertexBuffer->getDesc().sizeBytes < vbdata.size()) {
-					BufferDesc bd = BufferDesc::GetDefaultVertexBuffer((uint32)vbdata.size(), ResourceUsage::Dynamic);
-					evalMesh.vertexBuffer->create(bd, NULL);
-				}
-
-				void* const pMappedData = context->map(evalMesh.vertexBuffer, Map::WriteDiscard);
-				memcpy(pMappedData, vbdata.data(), vbdata.size());
-				context->unMap(evalMesh.vertexBuffer);
-			}
-
-			// Finally fill the geometry structure.
-			evalMesh.geom =
-			    Geometry(evalMesh.vertexBuffer.GetPtr(), evalMesh.indexBuffer.GetPtr(), evalMesh.vertexDeclIndex, vertexDeclHasVertexColor,
-			             vertexDeclHasUv, vertexDeclHasNormals, vertexDeclHasTangentSpace, evalMesh.pReferenceMesh->primTopo,
-			             evalMesh.pReferenceMesh->vbByteOffset, evalMesh.pReferenceMesh->ibByteOffset, evalMesh.pReferenceMesh->stride,
-			             evalMesh.pReferenceMesh->ibFmt, evalMesh.pReferenceMesh->numElements);
-		}
-
-	// Attach the meshes to the evaluated nodes.
-	std::function<void(Model::Node*)> meshTraverse = [&](Model::Node* node) -> void {
-		EvaluatedNode* evalNode = m_nodes.find_element(node);
-
-		if (evalNode->attachedMeshes.size() != node->meshAttachments.size()) {
-			evalNode->attachedMeshes.clear();
-			for (const Model::MeshAttachment& attachmentMesh : node->meshAttachments) {
-				EvaluatedMeshAttachment evalMeshAttachment;
-				evalMeshAttachment.pMesh = meshes.find_element(attachmentMesh.mesh);
-				evalMeshAttachment.pMaterial = (attachmentMesh.material) ? m_materials.find_element(attachmentMesh.material) : nullptr;
-
-				evalNode->attachedMeshes.push_back(evalMeshAttachment);
 			}
 		}
 
-		for (auto& childNode : node->childNodes) {
-			meshTraverse(childNode);
-		}
-	};
+		sgeAssert(!rawMesh.bones.empty() == evalMesh.skinningBoneTransfsTex.HasResource());
 
-	meshTraverse(m_model->m_rootNode);
+		// Finally fill the geometry structure.
+		evalMesh.geometry = Geometry(rawMesh.vertexBuffer.GetPtr(), rawMesh.indexBuffer.GetPtr(), evalMesh.skinningBoneTransfsTex.GetPtr(),
+		                             rawMesh.vertexDeclIndex, rawMesh.vbVertexColorOffsetBytes >= 0, rawMesh.vbUVOffsetBytes >= 0,
+		                             rawMesh.vbNormalOffsetBytes >= 0, rawMesh.hasUsableTangetSpace, rawMesh.primitiveTopology,
+		                             rawMesh.vbByteOffset, rawMesh.ibByteOffset, rawMesh.stride, rawMesh.ibFmt, rawMesh.numElements);
+	}
+
+	aabox.setEmpty();
+	for (int iNode = 0; iNode < this->getNumEvalNodes(); ++iNode) {
+		ModelNode* node = m_model->nodeAt(iNode);
+		m_evaluatedNodes[iNode].aabbGlobalSpace.setEmpty();
+		for (const MeshAttachment& att : node->meshAttachments) {
+			ModelMesh* mesh = m_model->meshAt(att.attachedMeshIndex);
+			m_evaluatedNodes[iNode].aabbGlobalSpace.expand(mesh->aabox.getTransformed(m_evaluatedNodes[iNode].evalGlobalTransform));
+			aabox.expand(m_evaluatedNodes[iNode].aabbGlobalSpace);
+		}
+	}
 
 	return true;
 }
 
-float EvaluatedModel::Raycast(const Ray& ray, Model::Node** ppNode, const char* const positionSemantic) const {
-	float mint = FLT_MAX;
-	Model::Node* minNode = NULL;
-
-	for (Model::Node* const node : m_model->m_nodes) {
-		mat4f const invTransf = inverse(m_nodes.find_element(node)->evalGlobalTransform);
-
-		Ray invRay;
-		invRay.pos = mat_mul_pos(invTransf, ray.pos);
-		invRay.dir = mat_mul_dir(invTransf, ray.dir);
-
-		for (const Model::MeshAttachment& meshAttachment : node->meshAttachments) {
-			const float t = meshAttachment.mesh->Raycast(invRay, positionSemantic);
-			if (t < mint) {
-				mint = t;
-				minNode = node;
-			}
-		}
+const ModelAnimation* EvaluatedModel::findAnimation(const int idxDonor, const int animIndex) const {
+	if (idxDonor == -1) {
+		return m_model->animationAt(animIndex);
 	}
 
-	if (ppNode != NULL) {
-		*ppNode = minNode;
+	if (idxDonor >= 0 && idxDonor < m_donors.size()) {
+		return m_donors[idxDonor].donorModel->asModel()->model.animationAt(animIndex);
 	}
 
-	return mint;
-}
-
-void Model_FindReferencedResources(std::vector<std::string>& referencedTextures, const Model::Model& model) {
-	for (const auto& mtl : model.m_materials) {
-		const Parameter* const prmTexDiffuse = mtl->paramBlock.FindParameter(s_DiffuseTextureParamName);
-		if ((prmTexDiffuse != nullptr) && (prmTexDiffuse->GetType() == ParameterType::String)) {
-			const std::string texture = (const char*)prmTexDiffuse->GetStaticValue();
-			referencedTextures.emplace_back(std::move(texture));
-		}
-
-		const Parameter* const prmTexNormal = mtl->paramBlock.FindParameter(s_TexNormalMap);
-		if ((prmTexNormal != nullptr) && (prmTexNormal->GetType() == ParameterType::String)) {
-			const std::string texture = (const char*)prmTexNormal->GetStaticValue();
-			referencedTextures.emplace_back(std::move(texture));
-		}
-	}
-
-	return;
+	return nullptr;
 }
 
 } // namespace sge

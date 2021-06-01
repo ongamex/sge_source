@@ -1,3 +1,4 @@
+
 #include "Animator.h"
 #include "sge_core/AssetLibrary.h"
 #include "sge_core/ICore.h"
@@ -5,158 +6,197 @@
 
 namespace sge {
 
-template <typename TStdMap>
-typename TStdMap::mapped_type* find_in_map(TStdMap& map, const typename TStdMap::key_type& key) {
-	auto itr = map.find(key);
-	if (itr == map.end())
-		return nullptr;
-	return &itr->second;
+void ModelAnimator::addTrack_begin(EvaluatedModel& modelToBeAnimated) {
+	m_modelToBeAnimated = &modelToBeAnimated;
 }
 
-template <typename TStdMap>
-const typename TStdMap::mapped_type* find_in_map(const TStdMap& map, const typename TStdMap::key_type& key) {
-	auto itr = map.find(key);
-	if (itr == map.end())
-		return nullptr;
-	return &itr->second;
+void ModelAnimator::addTrack(int newTrackId, float fadeInTime, TrackTransition transition) {
+	AnimatorTrack& track = m_tracks[newTrackId];
+	track.blendingTime = fadeInTime;
+	track.transition = transition;
 }
 
-void Animator::setModel(const char* const modelPath) {
-	clear();
+void ModelAnimator::addAnimationToTrack(int newTrackId, const char* const donorModelPath, const char* donorAnimationName) {
+	AnimatorTrack& track = m_tracks[newTrackId];
 
-	AssetLibrary* const assetLib = getCore()->getAssetLib();
-	m_model = assetLib->getAsset(AssetType::Model, modelPath, true);
-}
+	std::shared_ptr<Asset> donorModel = getCore()->getAssetLib()->getAsset(donorModelPath, true);
+	if (isAssetLoaded(donorModel, AssetType::Model)) {
+		AnimatorTrack::AnimationDonor donor;
+		donor.modelAnimationDonor = donorModel;
+		donor.donorIndex = m_modelToBeAnimated->addAnimationDonor(donorModel);
+		donor.animationIndexInDonor = donorModel->asModel()->model.getAnimationIndexByName(donorAnimationName);
 
-void Animator::addAnimation(int const animid, const char* const srcModel, const char* const animName) {
-	AssetLibrary* const assetLib = getCore()->getAssetLib();
-
-	AnimatorAnimation& anim = m_animations[animid];
-	anim.animationSources.emplace_back(AnimationSrc(srcModel, animName));
-	m_modelsLUT[srcModel] = assetLib->getAsset(AssetType::Model, srcModel, true);
-}
-
-void Animator::playAnimation(int const animid, bool dontBlend) {
-	if (m_playingAnimId == animid)
-		return;
-
-	m_playingAnimId = animid;
-
-	// Clean up the current state.
-	if (dontBlend) {
-		m_moments.clear();
+		track.animations.push_back(donor);
 	}
+}
 
-	EvalMomentSets newMoment;
-	pickAnimation(newMoment, animid, 0.f);
+void ModelAnimator::addTrack_finish() {
+}
 
-	push_front(m_moments, newMoment);
-
-	if (m_moments.size() == 1) {
-		m_moments[0].weight = 1.f;
+void ModelAnimator::playTrack(int const trackId, Optional<float> blendToSeconds) {
+	// If we are already playing the same track do nothing.
+	if (m_playingTrack == trackId) {
 		return;
 	}
 
-	m_moments[0].weight = 0.f;
+	const auto& itrTrackDesc = m_tracks.find(trackId);
+
+	if (itrTrackDesc == m_tracks.end()) {
+		sgeAssert(false && "Invalid track id.");
+		return;
+	}
+
+	fadeoutTimeTotal = blendToSeconds ? *blendToSeconds : itrTrackDesc->second.blendingTime;
+	if (fadeoutTimeTotal == 0.f) {
+		m_playbacks.clear();
+		fadeoutTimeTotal = 0.f;
+	}
+
+	TrackPlayback playback;
+
+	playback.trackId = trackId;
+	playback.timeInAnimation = 0.f;
+	playback.iAnimation = 0; // TODO: randomize this.
+	// If there is going to be a fadeout start form 0 weight growing to one, to smoothly transition.
+	// otherwise durectly use 100% weight.
+	playback.unormWeight = m_playbacks.empty() ? 1.f : 0.f;
+
+	m_playbacks.emplace_back(playback);
 }
 
-void Animator::pickAnimation(EvalMomentSets& moment, int const animid, float pevanimProgress) {
-	const auto itrAnimation = m_animations.find(animid);
-	if (itrAnimation == m_animations.end()) {
-		sgeAssert(false && "Expecting animation id to be vaild");
+void ModelAnimator::update(float const dt) {
+	if (m_playbacks.empty()) {
 		return;
 	}
 
-	const std::vector<AnimationSrc>& animationSources = itrAnimation->second.animationSources;
-	sgeAssert(animationSources.size() > 0);
+	int switchToPlayTrackId = -1;
 
-	// TODO: Pick a random number for the random animation source of the animation. To it in a deteministic way.
-	int const randomIndex = 0;
-	const AnimationSrc& animation = animationSources[randomIndex];
+	// Update the tracks progress.
+	for (int iPlayback = 0; iPlayback < m_playbacks.size(); ++iPlayback) {
+		TrackPlayback& playback = m_playbacks[iPlayback];
 
-	std::shared_ptr<Asset>* const pSrcModel = find_in_map(m_modelsLUT, animation.srcModel);
+		const AnimatorTrack& trackInfo = m_tracks[playback.trackId];
 
-	if (pSrcModel == nullptr) {
-		sgeAssert(false && "Unexpected null pointer in pickAnimation()");
-		return;
-	}
+		AnimatorTrack::AnimationDonor animationDonor = trackInfo.animations[playback.iAnimation];
+		const ModelAnimation* const animInfo = animationDonor.getAnimation();
 
-	if (isAssetLoaded(*pSrcModel) == false) {
-		sgeAssert(false && "pickAnimation expects the model asset to be loaded");
-		return;
-	}
-
-	moment = EvalMomentSets(&pSrcModel->get()->asModel()->model, animation.animationName, pevanimProgress, 1.f);
-}
-
-void Animator::update(float const dt) {
-	float totalNonFocusWeight = 0.f;
-
-	int animtoplay = -1;
-
-	for (int iMoment = 0; iMoment < m_moments.size(); ++iMoment) {
-		EvalMomentSets& moment = m_moments[iMoment];
-
-		if (moment.model == nullptr) {
+		if (animInfo == nullptr) {
+			// This should never happen, all the animations should be available.
+			// Handle this so we do not crash.
+			sgeAssert(false);
+			m_playbacks.erase(m_playbacks.begin() + iPlayback);
+			--iPlayback;
 			continue;
 		}
 
-		moment.time += dt;
+		// Advance the playback time.
+		playback.timeInAnimation += dt;
 
-		if (iMoment != 0) {
-			const float kTransitionTimeSeconds = 0.05f;
-			moment.weight -= dt * (1.f / kTransitionTimeSeconds);
+		int const signedRepeatCnt = (int)(playback.timeInAnimation / animInfo->durationSec);
+		int const repeatCnt = abs(signedRepeatCnt);
 
-			if (moment.weight <= 0.f) {
-				m_moments.erase(m_moments.begin() + iMoment);
-				iMoment--;
+		// In that case the animation has ended. Handle the track transitions.
+		if (repeatCnt != 0) {
+			bool trackNeedsRemoving = false;
+
+			switch (trackInfo.transition) {
+				case trackTransition_loop: {
+					playback.timeInAnimation = playback.timeInAnimation - animInfo->durationSec * (float)signedRepeatCnt;
+					playback.iAnimation = 0; // TODO: randomize the animation.
+				} break;
+				case trackTransition_stop: {
+					playback.timeInAnimation = animInfo->durationSec;
+				} break;
+				case trackTransition_switchTo: {
+					// In that case we need to switch to another track if we aren't already in it.
+					if (m_playingTrack != playback.trackId && trackInfo.switchToPlaybackTrackId != playback.trackId &&
+					    trackInfo.switchToPlaybackTrackId != -1) {
+						switchToPlayTrackId = trackInfo.switchToPlaybackTrackId;
+					}
+
+					// Finally remove that track it is no longer needed we assume that the new
+					// track that we've switched to blends perfectly.
+					trackNeedsRemoving = true;
+
+				} break;
+
+				default:
+					// Unimplemented transition, assert and make it stop.
+					sgeAssert(false && "Unimplemented transiton");
+					playback.timeInAnimation = animInfo->durationSec;
+					break;
+			}
+
+			if (trackNeedsRemoving) {
+				m_playbacks.erase(m_playbacks.begin() + iPlayback);
+				--iPlayback;
 				continue;
 			}
-
-			totalNonFocusWeight += moment.weight;
 		}
+	}
 
-		const Model::AnimationInfo* const animInfo = moment.model->findAnimation(moment.animationName);
+	if (switchToPlayTrackId != -1) {
+		playTrack(switchToPlayTrackId);
+	}
 
-		if (animInfo == nullptr)
-			continue;
+	// Update the track weights.
+	if (fadeoutTimeTotal > 1e-6f) {
+		const float fadePercentage = dt / fadeoutTimeTotal;
 
-		int const signedRepeatCnt = (int)(moment.time / animInfo->duration);
-		int const repeatCnt = abs(signedRepeatCnt);
-		moment.time = moment.time - animInfo->duration * (float)signedRepeatCnt;
+		for (int iPlayback = 0; iPlayback < m_playbacks.size(); ++iPlayback) {
+			TrackPlayback& playback = m_playbacks[iPlayback];
 
-		if (moment.time < 0.f) {
-			moment.time += animInfo->duration;
-		}
-
-		// The animation has ended. Find what animation should be played next.
-		if (repeatCnt != 0 && iMoment == 0) {
-			const AnimatorAnimation& animationThatJustEnded = m_animations[m_playingAnimId];
-
-			animtoplay = m_playingAnimId; // assume looping,
-			if (animationThatJustEnded.transition == animationTransition_loop) {
-				animtoplay = m_playingAnimId;
-			} else if (animationThatJustEnded.transition == animationTransition_switchTo) {
-				animtoplay = animationThatJustEnded.switchToAnimationId;
-			} else if (animationThatJustEnded.transition == animationTransition_stop) {
-				moment.time = animInfo->duration;
-				animtoplay = m_playingAnimId;
+			// The last element here is the primary track. It needs to fade in.
+			if (iPlayback != (int(m_playbacks.size()) - 1)) {
+				playback.unormWeight -= fadePercentage;
+				if (playback.unormWeight <= 0.f) {
+					m_playbacks.erase(m_playbacks.begin() + iPlayback);
+					--iPlayback;
+					continue;
+				}
+			} else {
+				playback.unormWeight += fadePercentage;
+				playback.unormWeight = clamp01(playback.unormWeight);
 			}
-
-			sgeAssert(m_animations.find(animtoplay) != m_animations.end() && "The switch-to animation doesn't exist");
 		}
 	}
-
-	if (m_moments.size() > 1) {
-		m_moments[0].weight = 1.f - totalNonFocusWeight;
-	}
-
-	if (m_moments.size() == 1) {
-		m_moments[0].weight = 1.f;
-	}
-
-	if (animtoplay >= 0)
-		playAnimation(animtoplay, false);
 }
 
+void ModelAnimator::computeEvalMoments(std::vector<EvalMomentSets>& outMoments) {
+	outMoments.clear();
+
+	if (m_playbacks.empty()) {
+		// In that case evaluate at static moment.
+		outMoments.push_back(EvalMomentSets());
+	}
+
+	const float maxUnormWeightTotal = float(m_playbacks.size());
+
+	float totalWeigth = 0.f;
+	for (int iPlayback = 0; iPlayback < m_playbacks.size(); ++iPlayback) {
+		TrackPlayback& playback = m_playbacks[iPlayback];
+		const AnimatorTrack& trackInfo = m_tracks[playback.trackId];
+
+		EvalMomentSets momentForTrack;
+		momentForTrack.weight = playback.unormWeight / maxUnormWeightTotal;
+		momentForTrack.time = playback.timeInAnimation;
+		momentForTrack.donorIndex = trackInfo.animations[playback.iAnimation].donorIndex;
+		momentForTrack.animationIndex = trackInfo.animations[playback.iAnimation].animationIndexInDonor;
+
+		totalWeigth += momentForTrack.weight;
+
+		outMoments.push_back(momentForTrack);
+	}
+
+	// Finally normalize the weigths to sum to 1.
+	if (totalWeigth > 1e-6f) {
+		for (EvalMomentSets& m : outMoments) {
+			m.weight = m.weight / totalWeigth;
+		}
+	} else {
+		sgeAssert(false);
+		outMoments.clear();
+		outMoments.push_back(EvalMomentSets());
+	}
+}
 } // namespace sge

@@ -295,7 +295,7 @@ protected:
 				else
 				{
 					//;
-					//Assign the value for alloc
+					//Assign the value for m_allocator
 					m_hash_table[index] = i;
 				}
 			}

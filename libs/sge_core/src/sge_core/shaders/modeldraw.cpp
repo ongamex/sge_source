@@ -45,24 +45,28 @@ void BasicModelDraw::drawGeometry_FWDBuildShadowMap(const RenderDestination& rde
                                                     const InstanceDrawMods& mods) {
 	enum {
 		OPT_LightType,
+		OPT_HasVertexSkinning,
+		kNumOptions,
 	};
 
-	enum : int { uWorld, uProjView, uPointLightPositionWs, uPointLightFarPlaneDistance };
+	enum : int { uWorld, uProjView, uPointLightPositionWs, uPointLightFarPlaneDistance, uSkinningBones };
 
 	if (shadingPermutFWDBuildShadowMaps.isValid() == false) {
 		shadingPermutFWDBuildShadowMaps = ShadingProgramPermuator();
 
-		static const std::vector<OptionPermuataor::OptionDesc> compileTimeOptions = {
+		const std::vector<OptionPermuataor::OptionDesc> compileTimeOptions = {
 		    {OPT_LightType,
 		     "OPT_LightType",
 		     {SGE_MACRO_STR(FWDDBSM_OPT_LightType_SpotOrDirectional), SGE_MACRO_STR(FWDDBSM_OPT_LightType_Point)}},
+		    {OPT_HasVertexSkinning, "OPT_HasVertexSkinning", {SGE_MACRO_STR(kHasVertexSkinning_No), SGE_MACRO_STR(kHasVertexSkinning_Yes)}},
 		};
 
-		static const std::vector<ShadingProgramPermuator::Unform> uniformsToCache = {
+		const std::vector<ShadingProgramPermuator::Unform> uniformsToCache = {
 		    {uWorld, "world"},
 		    {uProjView, "projView"},
 		    {uPointLightPositionWs, "uPointLightPositionWs"},
 		    {uPointLightFarPlaneDistance, "uPointLightFarPlaneDistance"},
+		    {uSkinningBones, "uSkinningBones"},
 		};
 
 		SGEDevice* const sgedev = rdest.getDevice();
@@ -70,8 +74,11 @@ void BasicModelDraw::drawGeometry_FWDBuildShadowMap(const RenderDestination& rde
 		                                                uniformsToCache);
 	}
 
-	const OptionPermuataor::OptionChoice optionChoice[] = {
+	const int optHasVertexSkinning = (geometry->skinningBoneTransforms != nullptr) ? kHasVertexSkinning_Yes : kHasVertexSkinning_No;
+
+	const OptionPermuataor::OptionChoice optionChoice[kNumOptions] = {
 	    {OPT_LightType, generalMods.isShadowMapForPointLight ? FWDDBSM_OPT_LightType_Point : FWDDBSM_OPT_LightType_SpotOrDirectional},
+	    {OPT_HasVertexSkinning, optHasVertexSkinning},
 	};
 
 	const int iShaderPerm =
@@ -87,6 +94,11 @@ void BasicModelDraw::drawGeometry_FWDBuildShadowMap(const RenderDestination& rde
 		vec3f pointLightPositionWs = camPos;
 		shaderPerm.bind<8>(uniforms, uPointLightPositionWs, (void*)&pointLightPositionWs);
 		shaderPerm.bind<8>(uniforms, uPointLightFarPlaneDistance, (void*)&generalMods.shadowMapPointLightDepthRange);
+	}
+
+	if (shaderPerm.uniformLUT[uSkinningBones].isNull() == false) {
+		uniforms.push_back(BoundUniform(shaderPerm.uniformLUT[uSkinningBones], (geometry->skinningBoneTransforms)));
+		sgeAssert(uniforms.back().bindLocation.isNull() == false && uniforms.back().bindLocation.uniformType != 0);
 	}
 
 	// Feed the draw call data to the state group.
@@ -149,6 +161,7 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 		OPT_UseNormalMap,
 		OPT_DiffuseColorSrc,
 		OPT_Lighting,
+		OPT_HasVertexSkinning,
 		kNumOptions,
 	};
 
@@ -190,21 +203,23 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 		uMetalness,
 		uRoughness,
 		uPBRMtlFlags,
+		uSkinningBones,
 	};
 
 	if (shadingPermutFWDShading.isValid() == false) {
 		shadingPermutFWDShading = ShadingProgramPermuator();
 
-		static const std::vector<OptionPermuataor::OptionDesc> compileTimeOptions = {
+		const std::vector<OptionPermuataor::OptionDesc> compileTimeOptions = {
 		    {OPT_UseNormalMap, "OPT_UseNormalMap", {"0", "1"}},
 		    {OPT_DiffuseColorSrc, "OPT_DiffuseColorSrc", {"0", "1", "2", "3", "4"}},
 		    {OPT_Lighting, "OPT_Lighting", {SGE_MACRO_STR(kLightingShaded), SGE_MACRO_STR(kLightingForceNoLighting)}},
+		    {OPT_HasVertexSkinning, "OPT_HasVertexSkinning", {SGE_MACRO_STR(kHasVertexSkinning_No), SGE_MACRO_STR(kHasVertexSkinning_Yes)}},
 		};
 
 		// clang-format off
 
 		// Caution: It is important that the order of the elements here MATCHES the order in the enum above.
-		static const std::vector<ShadingProgramPermuator::Unform> uniformsToCache = {
+		const std::vector<ShadingProgramPermuator::Unform> uniformsToCache = {
 		    {uiHighLightColor, "uiHighLightColor"},
 		    {uTexDiffuse, "texDiffuse"},
 		    {uTexDiffuseSampler, "texDiffuse_sampler"},
@@ -242,6 +257,7 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 		    {uMetalness, "uMetalness"},
 		    {uRoughness, "uRoughness"},
 		    {uPBRMtlFlags, "uPBRMtlFlags"},
+			{uSkinningBones, "uSkinningBones"},
 		};
 		// clang-format on
 
@@ -249,21 +265,10 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 		shadingPermutFWDShading->createFromFile(sgedev, "core_shaders/FWDDefault_shading.shader", compileTimeOptions, uniformsToCache);
 	}
 
-	SGEDevice* const sgedev = rdest.getDevice();
-
-	const std::vector<VertexDecl>& vertexDecl = sgedev->getVertexDeclFromIndex(geometry->vertexDeclIndex);
-
 	int optDiffuseColorSrc = kDiffuseColorSrcConstant;
-	if (material.special == Material::special_none) {
+	{
 		if (!material.diffuseTexture) {
-			bool hasVertexColor = false;
-			for (const VertexDecl& decl : vertexDecl) {
-				if (decl.semantic == "a_color") {
-					hasVertexColor = true;
-					break;
-				}
-			}
-			if (hasVertexColor) {
+			if (geometry->vertexDeclHasVertexColor) {
 				optDiffuseColorSrc = kDiffuseColorSrcVertex;
 			}
 		}
@@ -272,19 +277,17 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 		if (material.diffuseTextureX && material.diffuseTextureY && material.diffuseTextureZ) {
 			optDiffuseColorSrc = kDiffuseColorSrcTriplanarTex;
 		}
-	} else if (material.special == Material::special_fluid) {
-		optDiffuseColorSrc = kDiffuseColorSrcFluid;
 	}
 
 	const int optLighting = (mods.forceNoLighting ? kLightingForceNoLighting : kLightingShaded);
 
 	const int optUseNormalMap = !!(geometry->vertexDeclHasTangentSpace && material.texNormalMap);
+	const int optHasVertexSkinning = (geometry->skinningBoneTransforms != nullptr) ? kHasVertexSkinning_Yes : kHasVertexSkinning_No;
 
-	const OptionPermuataor::OptionChoice optionChoice[kNumOptions] = {
-	    {OPT_UseNormalMap, optUseNormalMap},
-	    {OPT_DiffuseColorSrc, optDiffuseColorSrc},
-	    {OPT_Lighting, optLighting},
-	};
+	const OptionPermuataor::OptionChoice optionChoice[kNumOptions] = {{OPT_UseNormalMap, optUseNormalMap},
+	                                                                  {OPT_DiffuseColorSrc, optDiffuseColorSrc},
+	                                                                  {OPT_Lighting, optLighting},
+	                                                                  {OPT_HasVertexSkinning, optHasVertexSkinning}};
 
 	const int iShaderPerm =
 	    shadingPermutFWDShading->getCompileTimeOptionsPerm().computePermutationIndex(optionChoice, SGE_ARRSZ(optionChoice));
@@ -354,10 +357,6 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 		shaderPerm.bind<64>(uniforms, uTexDiffuseZSampler, (void*)material.diffuseTextureZ->getSamplerState());
 #endif
 		shaderPerm.bind<64>(uniforms, uTexDiffuseXYZScaling, (void*)&material.diffuseTexXYZScaling);
-	} else if (optDiffuseColorSrc == kDiffuseColorSrcFluid) {
-		shaderPerm.bind<64>(uniforms, uGameTime, (void*)&mods.gameTime);
-		shaderPerm.bind<64>(uniforms, uFluidColor0, (void*)&material.fluidColor0.data);
-		shaderPerm.bind<64>(uniforms, uFluidColor1, (void*)&material.fluidColor1.data);
 	} else {
 		sgeAssert(false);
 	}
@@ -409,6 +408,11 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 
 	if (shaderPerm.uniformLUT[uPointLightShadowMap].isNull() == false) {
 		uniforms.push_back(BoundUniform(shaderPerm.uniformLUT[uPointLightShadowMap], (emptyCubeShadowMap.GetPtr())));
+		sgeAssert(uniforms.back().bindLocation.isNull() == false && uniforms.back().bindLocation.uniformType != 0);
+	}
+
+	if (shaderPerm.uniformLUT[uSkinningBones].isNull() == false) {
+		uniforms.push_back(BoundUniform(shaderPerm.uniformLUT[uSkinningBones], (geometry->skinningBoneTransforms)));
 		sgeAssert(uniforms.back().bindLocation.isNull() == false && uniforms.back().bindLocation.uniformType != 0);
 	}
 
@@ -507,56 +511,54 @@ void BasicModelDraw::draw(const RenderDestination& rdest,
                           const mat4f& projView,
                           const mat4f& preRoot,
                           const GeneralDrawMod& generalMods,
-                          const EvaluatedModel& model,
+                          const EvaluatedModel& evalModel,
                           const InstanceDrawMods& mods,
                           const std::vector<MaterialOverride>* mtlOverrides) {
-	for (int iNode = 0; iNode < model.m_nodes.size(); ++iNode) {
-		const EvaluatedNode& evalNode = model.m_nodes.valueAtIdx(iNode);
+	for (int iNode = 0; iNode < evalModel.getNumEvalNodes(); ++iNode) {
+		const EvaluatedNode& evalNode = evalModel.getEvalNode(iNode);
+		const ModelNode* rawNode = evalModel.m_model->nodeAt(iNode);
 
-		for (int iMesh = 0; iMesh < evalNode.attachedMeshes.size(); ++iMesh) {
-			const EvaluatedMeshAttachment& meshAttachment = evalNode.attachedMeshes[iMesh];
-			Model::Mesh* const mesh = evalNode.attachedMeshes[iMesh].pMesh->pReferenceMesh;
-			mat4f const finalTrasform = (mesh->bones.size() == 0) ? preRoot * evalNode.evalGlobalTransform : preRoot;
+		for (int iMesh = 0; iMesh < rawNode->meshAttachments.size(); ++iMesh) {
+			const MeshAttachment& meshAttachment = rawNode->meshAttachments[iMesh];
+			const EvaluatedMesh& mesh = evalModel.getEvalMesh(meshAttachment.attachedMeshIndex);
+			mat4f const finalTrasform = (!mesh.skinningBoneTransfsTex.IsResourceValid()) ? preRoot * evalNode.evalGlobalTransform : preRoot;
 
 			Material material;
 
-			if (meshAttachment.pMaterial) {
+			if (meshAttachment.attachedMaterialIndex >= 0) {
+				const EvaluatedMaterial& mtl = evalModel.getEvalMaterial(meshAttachment.attachedMaterialIndex);
+				const std::string mtlName = evalModel.m_model->materialAt(meshAttachment.attachedMaterialIndex)->name;
+
 				auto itr = mtlOverrides ? std::find_if(mtlOverrides->begin(), mtlOverrides->end(),
-				                                       [&meshAttachment](const MaterialOverride& v) -> bool {
-					                                       return v.name == meshAttachment.pMaterial->name;
-				                                       })
+				                                       [&mtlName](const MaterialOverride& v) -> bool { return v.name == mtlName; })
 				                        : std::vector<MaterialOverride>::iterator();
 
 				if (!mtlOverrides || itr == mtlOverrides->end()) {
-					material.diffuseColor = meshAttachment.pMaterial->diffuseColor;
-					material.metalness = meshAttachment.pMaterial->metallic;
-					material.roughness = meshAttachment.pMaterial->roughness;
+					material.diffuseColor = mtl.diffuseColor;
+					material.metalness = mtl.metallic;
+					material.roughness = mtl.roughness;
 
-					material.diffuseTexture =
-					    isAssetLoaded(meshAttachment.pMaterial->diffuseTexture) && meshAttachment.pMaterial->diffuseTexture->asTextureView()
-					        ? meshAttachment.pMaterial->diffuseTexture->asTextureView()->tex.GetPtr()
-					        : nullptr;
+					material.diffuseTexture = isAssetLoaded(mtl.diffuseTexture) && mtl.diffuseTexture->asTextureView()
+					                              ? mtl.diffuseTexture->asTextureView()->tex.GetPtr()
+					                              : nullptr;
 
-					material.texNormalMap =
-					    isAssetLoaded(meshAttachment.pMaterial->texNormalMap) && meshAttachment.pMaterial->texNormalMap->asTextureView()
-					        ? meshAttachment.pMaterial->texNormalMap->asTextureView()->tex.GetPtr()
-					        : nullptr;
+					material.texNormalMap = isAssetLoaded(mtl.texNormalMap) && mtl.texNormalMap->asTextureView()
+					                            ? mtl.texNormalMap->asTextureView()->tex.GetPtr()
+					                            : nullptr;
 
-					material.texMetalness =
-					    isAssetLoaded(meshAttachment.pMaterial->texMetallic) && meshAttachment.pMaterial->texMetallic->asTextureView()
-					        ? meshAttachment.pMaterial->texMetallic->asTextureView()->tex.GetPtr()
-					        : nullptr;
+					material.texMetalness = isAssetLoaded(mtl.texMetallic) && mtl.texMetallic->asTextureView()
+					                            ? mtl.texMetallic->asTextureView()->tex.GetPtr()
+					                            : nullptr;
 
-					material.texRoughness =
-					    isAssetLoaded(meshAttachment.pMaterial->texRoughness) && meshAttachment.pMaterial->texRoughness->asTextureView()
-					        ? meshAttachment.pMaterial->texRoughness->asTextureView()->tex.GetPtr()
-					        : nullptr;
+					material.texRoughness = isAssetLoaded(mtl.texRoughness) && mtl.texRoughness->asTextureView()
+					                            ? mtl.texRoughness->asTextureView()->tex.GetPtr()
+					                            : nullptr;
 				} else {
 					material = itr->mtl;
 				}
 			}
 
-			drawGeometry(rdest, camPos, camLookDir, projView, finalTrasform, generalMods, &meshAttachment.pMesh->geom, material, mods);
+			drawGeometry(rdest, camPos, camLookDir, projView, finalTrasform, generalMods, &mesh.geometry, material, mods);
 		}
 	}
 }

@@ -2,14 +2,12 @@
 
 #include "sge_core/sgecore_api.h"
 #include "sge_utils/utils/json.h"
+#include <memory>
 
 namespace sge {
 
-class ParameterBlock;
-
-namespace Model {
-	struct Model;
-}
+struct Model;
+struct KeyFrames;
 
 class SGE_CORE_API ModelWriter {
   public:
@@ -26,37 +24,42 @@ class SGE_CORE_API ModelWriter {
 		size_t sizeBytes;
 	};
 
-	ModelWriter() {}
+	ModelWriter() = default;
 	~ModelWriter() {}
 
-	bool write(const Model::Model& modelToWrite, IWriteStream* iws);
-	bool write(const Model::Model& modelToWrite, const char* const filename);
+	bool write(const Model& modelToWrite, IWriteStream* iws);
+	bool write(const Model& modelToWrite, const char* const filename);
+
 
   private:
 	// Returns the chunk id.
-	int NewChunkFromPtr(const void* const ptr, const size_t sizeBytes);
+	int newDataChunkFromPtr(const void* const ptr, const size_t sizeBytes);
+	char* newDataChunkWithSize(size_t sizeBytes, int& outChunkId);
 
 	// This function assumes that the vector wont be resized(aka. the data pointer won't change).
 	template <typename T>
-	int NewChunkFromStdVector(const std::vector<T>& data) {
-		return NewChunkFromPtr(data.data(), data.size() * sizeof(T));
+	int newChunkFromStdVector(const std::vector<T>& data) {
+		return newDataChunkFromPtr(data.data(), data.size() * sizeof(T));
 	}
 
-	// Genrates (and returns) the json needed, and add the data chunks.
-	JsonValue* WriteParamBlock(const ParameterBlock& paramBlock);
-
 	// The actiual writer is implemented in those functions.
-	void GenerateAnimations();
-	void GenerateNodeHierarchy(); // Adds the "nodeHierarchy" to the root.
-	void GenerateNodes();         // Add the "nodes" to the root.
-	void GenerateMaterials();     // Add the "materials" to the root.
-	void GenerateMeshesData();
-	void GenerateCollisionData();
+	void writeAnimations();
+	void writeNodes();     // Add the "nodes" to the root.
+	void writeMaterials(); // Add the "materials" to the root.
+	void writeMeshes();
+	void writeCollisionData();
+
+	/// @brief Generates the json and allocated a data chunks for the specified keyframes.
+	JsonValue* generateKeyFrames(const KeyFrames& keyfames);
 
 	JsonValueBuffer jvb;
 	std::vector<DataChunk> dataChunks; // A list of the data chunks that will end up written to the file.
 	JsonValue* root;                   // The file header json element.
-	const Model::Model* model;         // The working model
+	const Model* model;                // The working model
+
+	/// Ultra ugly, we assume that these elements are going to get moved.
+	/// [MODERL_WRITER_MOVE_ASSUME]
+	std::vector<std::vector<char>> m_dynamicallyAlocatedPointersToDelete;
 };
 
 } // namespace sge

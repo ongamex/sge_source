@@ -27,7 +27,7 @@ AABox3f AStaticObstacle::getBBoxOS() const {
 void AStaticObstacle::create() {
 	registerTrait(m_traitRB);
 	registerTrait(m_traitModel);
-	m_traitModel.getAssetProperty().setTargetAsset("assets/editor/models/roundedCube.mdl");
+	//m_traitModel.getAssetProperty().setTargetAsset("assets/editor/models/roundedCube.mdl");
 }
 
 void AStaticObstacle::postUpdate(const GameUpdateSets& UNUSED(updateSets)) {

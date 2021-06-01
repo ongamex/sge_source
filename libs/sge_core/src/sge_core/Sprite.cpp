@@ -167,7 +167,7 @@ const SpriteAnimation::Frame* SpriteAnimation::getFrameForTime(float time) const
 
 bool SpriteAnimationAsset::importSprite(SpriteAnimationAsset& outSprite, const char* const filename, AssetLibrary& assetLib) {
 	if (SpriteAnimation::importSprite(outSprite.spriteAnimation, filename)) {
-		outSprite.textureAsset = assetLib.getAsset(AssetType::TextureView, outSprite.spriteAnimation.texturePath.c_str(), true);
+		outSprite.textureAsset = assetLib.getAsset(AssetType::Texture2D, outSprite.spriteAnimation.texturePath.c_str(), true);
 		return isAssetLoaded(outSprite.textureAsset);
 	}
 	return false;
@@ -177,7 +177,7 @@ bool SpriteAnimationAsset::importFromAsepriteSpriteSheetJsonFile(SpriteAnimation
                                                                  const char* const filename,
                                                                  AssetLibrary& assetLib) {
 	if (SpriteAnimation::importFromAsepriteSpriteSheetJsonFile(outSprite.spriteAnimation, filename)) {
-		outSprite.textureAsset = assetLib.getAsset(AssetType::TextureView, outSprite.spriteAnimation.texturePath.c_str(), true);
+		outSprite.textureAsset = assetLib.getAsset(AssetType::Texture2D, outSprite.spriteAnimation.texturePath.c_str(), true);
 		return isAssetLoaded(outSprite.textureAsset);
 	}
 	return false;

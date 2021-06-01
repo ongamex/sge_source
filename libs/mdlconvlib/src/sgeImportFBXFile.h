@@ -25,11 +25,11 @@ extern "C" {
 /// @param [in] fbxFilename is the filename to be loaded.
 /// @param [out] pOutReferencedTextures A list of referenced textures in the specified filename (used for dependancy tracking).
 /// @return true if the import was successful.
-typedef bool (*sgeImportFBXFileFn)(sge::Model::Model& result, const char* fbxFilename, std::vector<std::string>* pOutReferencedTextures);
+typedef bool (*sgeImportFBXFileFn)(sge::Model& result, const char* fbxFilename, std::vector<std::string>* pOutReferencedTextures);
 
 
 struct MultiModelImportResult {
-	sge::Model::Model importedModel;
+	sge::Model importedModel;
 	std::string propsedFilename;
 	std::set<std::string> referencedTextures;
 };

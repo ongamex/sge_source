@@ -35,7 +35,7 @@ const AssetModel* AssetProperty::getAssetModel() const {
 }
 
 AssetTexture* AssetProperty::getAssetTexture() {
-	if (!isAssetLoaded(m_asset, AssetType::TextureView)) {
+	if (!isAssetLoaded(m_asset, AssetType::Texture2D)) {
 		return nullptr;
 	}
 
@@ -43,7 +43,7 @@ AssetTexture* AssetProperty::getAssetTexture() {
 }
 
 const AssetTexture* AssetProperty::getAssetTexture() const {
-	if (!isAssetLoaded(m_asset, AssetType::TextureView)) {
+	if (!isAssetLoaded(m_asset, AssetType::Texture2D)) {
 		return nullptr;
 	}
 	return m_asset->asTextureView();

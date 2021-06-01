@@ -45,7 +45,7 @@ struct ParticleGroupDesc {
 	// Model and sprites.
 	Visualization m_visMethod = vis_model3D;
 	AssetProperty m_particleModel = AssetProperty(AssetType::Model);
-	AssetProperty m_particlesSprite = AssetProperty(AssetType::TextureView);
+	AssetProperty m_particlesSprite = AssetProperty(AssetType::Texture2D);
 	vec2i m_spriteGrid = vec2i(1); // The number of sub images in the specified texture by x and y. They go row-wise left to right.
 	float m_spritePixelsPerUnit = 32.f;
 	float m_spriteFPS = 30.f;

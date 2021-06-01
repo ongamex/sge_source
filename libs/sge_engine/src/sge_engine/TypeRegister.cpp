@@ -1,5 +1,5 @@
 #include "TypeRegister.h"
-#include "sge_utils/utils/common.h"
+#include "sge_utils/stl_algorithm_ex.h"
 #include <cctype>
 #include <functional>
 

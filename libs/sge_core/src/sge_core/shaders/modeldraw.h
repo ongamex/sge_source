@@ -10,9 +10,7 @@
 namespace sge {
 
 struct EvaluatedModel;
-namespace Model {
-	struct Mesh;
-}
+struct ModelMesh;
 
 struct MaterialOverride {
 	std::string name;

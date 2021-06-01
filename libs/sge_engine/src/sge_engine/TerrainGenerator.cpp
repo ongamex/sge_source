@@ -224,7 +224,7 @@ bool TerrainGenerator::generateStairs(std::vector<Vertex>& vertices,
 
 bool TerrainGenerator::generateSlope(std::vector<Vertex>& vertices,
                                      std::vector<int>& indices,
-                                     Model::CollisionMesh& outCollisionMesh,
+                                     ModelCollisionMesh& outCollisionMesh,
                                      const SlopeDesc& desc,
                                      int* pNumVertsAdded,
                                      int* pNumIndicesAdded) {
@@ -351,7 +351,7 @@ bool TerrainGenerator::generateSlope(std::vector<Vertex>& vertices,
 
 bool TerrainGenerator::generateSlantedBlock(std::vector<Vertex>& vertices,
                                             std::vector<int>& indices,
-                                            Model::CollisionMesh& outCollisionMesh,
+                                            ModelCollisionMesh& outCollisionMesh,
                                             const SlantedBlockDesc& desc,
                                             int* pNumVertsAdded,
                                             int* pNumIndicesAdded) {

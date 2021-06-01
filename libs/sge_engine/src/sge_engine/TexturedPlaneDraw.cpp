@@ -125,7 +125,7 @@ void TexturedPlaneDraw::initialize(SGEDevice* sgedev) {
 Geometry TexturedPlaneDraw::getGeometry(SGEDevice* sgedev) {
 	initialize(sgedev);
 
-	Geometry geom(m_vertexBuffer.GetPtr(), nullptr, m_vertexDecl, false, true, true, false, PrimitiveTopology::TriangleList, 0, 0,
+	Geometry geom(m_vertexBuffer.GetPtr(), nullptr, nullptr, m_vertexDecl, false, true, true, false, PrimitiveTopology::TriangleList, 0, 0,
 	              sizeof(Vertex), UniformType::Unknown, 6);
 
 	return geom;

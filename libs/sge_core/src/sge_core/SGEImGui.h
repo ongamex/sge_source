@@ -146,9 +146,9 @@ inline vec4f fromImGui(const ImVec4& v) {
 namespace ImGuiEx {
 
 struct IDGuard {
-	explicit IDGuard(ImGuiID id) { ImGui::PushID(id); }
-	explicit IDGuard(const void* ptr) { ImGui::PushID(ptr); }
-	explicit IDGuard(const char* const cString) { ImGui::PushID(cString); }
+	[[nodiscard]] explicit IDGuard(ImGuiID id) { ImGui::PushID(id); }
+	[[nodiscard]] explicit IDGuard(const void* ptr) { ImGui::PushID(ptr); }
+	[[nodiscard]] explicit IDGuard(const char* const cString) { ImGui::PushID(cString); }
 
 	~IDGuard() { ImGui::PopID(); }
 
