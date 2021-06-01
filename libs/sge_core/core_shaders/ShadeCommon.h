@@ -18,7 +18,6 @@
 #define kDiffuseColorSrcVertex 1
 #define kDiffuseColorSrcTexture 2
 #define kDiffuseColorSrcTriplanarTex 3
-#define kDiffuseColorSrcFluid 4
 
 // Settings for OPT_Lighting
 #define kLightingShaded 0

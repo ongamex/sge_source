@@ -253,21 +253,10 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 		shadingPermutFWDShading->createFromFile(sgedev, "core_shaders/FWDDefault_shading.shader", compileTimeOptions, uniformsToCache);
 	}
 
-	SGEDevice* const sgedev = rdest.getDevice();
-
-	const std::vector<VertexDecl>& vertexDecl = sgedev->getVertexDeclFromIndex(geometry->vertexDeclIndex);
-
 	int optDiffuseColorSrc = kDiffuseColorSrcConstant;
-	if (material.special == Material::special_none) {
+	{
 		if (!material.diffuseTexture) {
-			bool hasVertexColor = false;
-			for (const VertexDecl& decl : vertexDecl) {
-				if (decl.semantic == "a_color") {
-					hasVertexColor = true;
-					break;
-				}
-			}
-			if (hasVertexColor) {
+			if (geometry->vertexDeclHasVertexColor) {
 				optDiffuseColorSrc = kDiffuseColorSrcVertex;
 			}
 		}
@@ -276,8 +265,6 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 		if (material.diffuseTextureX && material.diffuseTextureY && material.diffuseTextureZ) {
 			optDiffuseColorSrc = kDiffuseColorSrcTriplanarTex;
 		}
-	} else if (material.special == Material::special_fluid) {
-		optDiffuseColorSrc = kDiffuseColorSrcFluid;
 	}
 
 	const int optLighting = (mods.forceNoLighting ? kLightingForceNoLighting : kLightingShaded);
@@ -358,10 +345,6 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 		shaderPerm.bind<64>(uniforms, uTexDiffuseZSampler, (void*)material.diffuseTextureZ->getSamplerState());
 #endif
 		shaderPerm.bind<64>(uniforms, uTexDiffuseXYZScaling, (void*)&material.diffuseTexXYZScaling);
-	} else if (optDiffuseColorSrc == kDiffuseColorSrcFluid) {
-		shaderPerm.bind<64>(uniforms, uGameTime, (void*)&mods.gameTime);
-		shaderPerm.bind<64>(uniforms, uFluidColor0, (void*)&material.fluidColor0.data);
-		shaderPerm.bind<64>(uniforms, uFluidColor1, (void*)&material.fluidColor1.data);
 	} else {
 		sgeAssert(false);
 	}

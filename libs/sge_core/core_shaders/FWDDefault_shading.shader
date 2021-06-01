@@ -1,11 +1,13 @@
-
 #include "ShadeCommon.h"
 
-//
 #define PI 3.14159265f
 
+#if OPT_HasVertexSkinning == kHasVertexSkinning_Yes
+	#include "lib_skinning.shader"
+#endif
+
 #if OPT_Lighting != kLightingForceNoLighting
-#include "ggx.shader"
+	#include "lib_pbr.shader"
 #endif
 
 //--------------------------------------------------------------------
@@ -32,10 +34,6 @@ uniform sampler2D texDiffuseX;
 uniform sampler2D texDiffuseY;
 uniform sampler2D texDiffuseZ;
 uniform float3 texDiffuseXYZScaling;
-#elif OPT_DiffuseColorSrc == kDiffuseColorSrcFluid
-uniform float gameTime;
-uniform float4 uFluidColor0;
-uniform float4 uFluidColor1;
 #endif
 
 uniform sampler2D uTexMetalness;
@@ -62,7 +60,9 @@ uniform float4 lightShadowRange;
 
 uniform samplerCUBE uPointLightShadowMap;
 
-uniform sampler2D uSkinningBones;
+#if OPT_HasVertexSkinning == kHasVertexSkinning_Yes
+	uniform sampler2D uSkinningBones;
+#endif
 
 //--------------------------------------------------------------------
 // Vertex Shader
@@ -108,101 +108,35 @@ struct VS_OUTPUT {
 #endif
 };
 
-#if OPT_DiffuseColorSrc == kDiffuseColorSrcFluid
-
-float hash(float n) {
-	return frac(sin(n) * 43758.5453);
-}
-
-float noise(float3 x) {
-	// The noise function returns a value in the range -1.0f -> 1.0f
-
-	float3 p = floor(x);
-	float3 f = frac(x);
-
-	f = f * f * (3.0 - 2.0 * f);
-	float n = p.x + p.y * 57.0 + 113.0 * p.z;
-
-	return lerp(lerp(lerp(hash(n + 0.0), hash(n + 1.0), f.x), lerp(hash(n + 57.0), hash(n + 58.0), f.x), f.y),
-	            lerp(lerp(hash(n + 113.0), hash(n + 114.0), f.x), lerp(hash(n + 170.0), hash(n + 171.0), f.x), f.y), f.z);
-}
-
-float lavafn(float x, float y) {
-	return noise(float3(x / 2.f + sin(y + gameTime), gameTime * 0.25f, y / 2.f + cos(x + gameTime)));
-}
-#endif
-
-float4x4 getBoneTransform(int iBone, int2 texSize) {
-	#define ROW0_U ((0.5 + 0.0) / 4.0)
-	#define ROW1_U ((0.5 + 1.0) / 4.0)
-	#define ROW2_U ((0.5 + 2.0) / 4.0)
-	#define ROW3_U ((0.5 + 3.0) / 4.0)	
-
-	float v = ((float)iBone + 0.5f) / (float)texSize.y;
-
-	float4 c0 = tex2Dlod(uSkinningBones, float4(ROW0_U, v, 0.f, 0.f));
-	float4 c1 = tex2Dlod(uSkinningBones, float4(ROW1_U, v, 0.f, 0.f));
-	float4 c2 = tex2Dlod(uSkinningBones, float4(ROW2_U, v, 0.f, 0.f));
-	float4 c3 = tex2Dlod(uSkinningBones, float4(ROW3_U, v, 0.f, 0.f));
-
-	float4x4 mtx = float4x4(
-		c0.x, c1.x, c2.x, c3.x,
-		c0.y, c1.y, c2.y, c3.y,
-		c0.z, c1.z, c2.z, c3.z,
-		c0.w, c1.w, c2.w, c3.w
-	);
-		
-	return mtx;
-}
-
 VS_OUTPUT vsMain(VS_INPUT vsin) {
 	VS_OUTPUT res;
 	
 	float3 vertexPosOs = vsin.a_position;
 	float3 normalOs = vsin.a_normal;
-#if OPT_HasVertexSkinning == kHasVertexSkinning_Yes
-	int2 boneTexSize = tex2Dsize(uSkinningBones);
-	
-	// these offsets assume the texture is 4 pixels across
-	#define ROW0_U ((0.5 + 0.0) / 4.)
-	#define ROW1_U ((0.5 + 1.0) / 4.)
-	#define ROW2_U ((0.5 + 2.0) / 4.)
-	#define ROW3_U ((0.5 + 3.0) / 4.)
-	
-	float4x4 skinMtx = 
-		  getBoneTransform(vsin.a_bonesIds.x, boneTexSize) * vsin.a_bonesWeights.x
-		+ getBoneTransform(vsin.a_bonesIds.y, boneTexSize) * vsin.a_bonesWeights.y
-		+ getBoneTransform(vsin.a_bonesIds.z, boneTexSize) * vsin.a_bonesWeights.z
-		+ getBoneTransform(vsin.a_bonesIds.w, boneTexSize) * vsin.a_bonesWeights.w
-	;
 
+	// If there is a skinning avilable apply it to the vertex in object space.
+#if OPT_HasVertexSkinning == kHasVertexSkinning_Yes
+	float4x4 skinMtx = libSkining_getSkinningTransform(vsin.a_bonesIds, vsin.a_bonesWeights, uSkinningBones);
 	vertexPosOs = mul(skinMtx, float4(vertexPosOs, 1.0)).xyz;
 	normalOs = mul(skinMtx, float4(normalOs, 0.0)).xyz; // TODO: Proper normal transfrom by inverse transpose.
-	
 #endif
 	
+	// Pass the varyings to the next shader.
+	const float4 worldPos = mul(world, float4(vertexPosOs, 1.0));
+	const float4 worldNormal = mul(world, float4(normalOs, 0.0)); // TODO: Proper normal transfrom by inverse transpose.
 
-	float4 worldPos = mul(world, float4(vertexPosOs, 1.0));
-#if OPT_DiffuseColorSrc == kDiffuseColorSrcFluid
-	worldPos.y += lavafn(worldPos.x, worldPos.z);
-#endif
-
-	const float4 worldNormal = mul(world, float4(normalOs, 0.0));
-	const float4 posProjSpace = mul(projView, worldPos);
+	res.v_normal = worldNormal.xyz;
+	res.v_posWS = worldPos.xyz;
+	res.SV_Position = mul(projView, worldPos);
 
 #if OPT_UseNormalMap == 1
 	res.v_tangent = mul(world, float4(vsin.a_tangent, 0.0)).xyz;
 	res.v_binormal = mul(world, float4(vsin.a_binormal, 0.0)).xyz;
 #endif
 
-	res.v_normal = worldNormal.xyz;
-	res.v_posWS = worldPos.xyz;
-	res.SV_Position = posProjSpace;
-
 #if (OPT_UseNormalMap == 1) || (OPT_DiffuseColorSrc == kDiffuseColorSrcTexture)
 	res.v_uv = mul(uvwTransform, float4(vsin.a_uv, 0.0, 1.0)).xy;
 #endif
-	// res.v_uv = vsin.a_uv;
 
 #if OPT_DiffuseColorSrc == kDiffuseColorSrcVertex
 	res.v_vertexDiffuse = vsin.a_color;
@@ -215,8 +149,7 @@ VS_OUTPUT vsMain(VS_INPUT vsin) {
 // Pixel Shader
 //--------------------------------------------------------------------
 #ifdef SGE_PIXEL_SHADER
-float4 psMain(VS_OUTPUT IN)
-    : SV_Target0 {
+float4 psMain(VS_OUTPUT IN) : SV_Target0 {
 	float4 diffuseColor = pow(uDiffuseColorTint, 2.2f);
 
 #if OPT_DiffuseColorSrc == kDiffuseColorSrcVertex
@@ -243,13 +176,8 @@ float4 psMain(VS_OUTPUT IN)
 
 	diffuseColor *= (colorTexX * blendWeights.xxxx + colorTexY * blendWeights.yyyy + colorTexZ * blendWeights.zzzz);
 	diffuseColor.xyz = pow(diffuseColor.xyz, 2.2f);
-#elif OPT_DiffuseColorSrc == kDiffuseColorSrcFluid
-	const float4 lavaC0 = float4(11, 55, 225, 255.f * 0.7f) / 255.f;
-	const float4 lavaC1 = float4(100, 163, 245, 255.f * 0.9f) / 255.f; // orange
-	const float lavaT = max(0.5f * (lavafn(IN.v_posWS.x, IN.v_posWS.z) + 1.f), 0.2f);
-	diffuseColor *= lerp(uFluidColor0, uFluidColor1, lavaT);
 #else
-#error Not implemented
+	#error Not implemented.
 #endif
 
 	if (diffuseColor.w <= 0.0f) {
@@ -413,7 +341,6 @@ float4 psMain(VS_OUTPUT IN)
 			const float3 numerator = NDF * G * F;
 			const float denominator = 4.f * max(dot(N, V), 0.f) * max(dot(N, L), 0.f);
 			const float3 specular = numerator / max(denominator, 0.001f);
-
 
 			lighting += shadowScale * (kD * diffuseColor.xyz / PI + specular) * lightRadiance * NdotL;
 #else

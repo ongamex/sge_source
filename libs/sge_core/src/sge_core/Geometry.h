@@ -55,14 +55,9 @@ struct Geometry {
 };
 
 struct Material {
-	enum Special {
-		special_none,
-		special_fluid,
-	};
 
 	mat4f uvwTransform = mat4f::getIdentity();
 
-	Special special = special_none;
 	vec4f diffuseColor = vec4f(1.f, 1.f, 1.f, 1.f);
 	Texture* texNormalMap = nullptr;
 	Texture* diffuseTexture = nullptr;

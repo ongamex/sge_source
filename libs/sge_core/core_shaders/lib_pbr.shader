@@ -1,5 +1,5 @@
-#ifndef GGX_SHADER
-#define GGX_SHADER
+#ifndef SGE_LIB_PBR
+#define SGE_LIB_PBR
 
 //--------------------------------------------------------------------
 // GGX
@@ -87,4 +87,4 @@ float3 ImportanceSampleGGX(float2 Xi, float3 N, float roughness) {
 	return normalize(sampleVec);
 }
 
-#endif
+#endif // SGE_LIB_PBR
