@@ -3,21 +3,25 @@
 
 namespace sge {
 
-int GeomGen::ndcQuadUV(Buffer* resultVertBuffer) {
+int GeomGen::ndcQuad3DUV(Buffer* resultVertBuffer) {
 	if (resultVertBuffer == nullptr) {
 		sgeAssert(false);
 		return 0;
 	}
 
 	struct Vertex {
-		vec2f p;
+		vec3f p;
 		vec2f uv;
 	};
 
 	Vertex verts[6] = {
-	    {vec2f(-1.f, -1.f), vec2f(0.f, 0.f)}, {vec2f(1.f, -1.f), vec2f(1.f, 0.f)}, {vec2f(1.f, 1.f), vec2f(1.f, 1.f)},
+	    {vec3f(-1.f, -1.f, 0.f), vec2f(0.f, 0.f)}, 
+		{vec3f(1.f, -1.f, 0.f), vec2f(1.f, 0.f)}, 
+		{vec3f(1.f, 1.f, 0.f), vec2f(1.f, 1.f)},
 
-	    {vec2f(1.f, 1.f), vec2f(1.f, 1.f)},   {vec2f(-1.f, 1.f), vec2f(0.f, 1.f)}, {vec2f(-1.f, -1.f), vec2f(0.f, 0.f)},
+	    {vec3f(1.f, 1.f, 0.f), vec2f(1.f, 1.f)},
+		{vec3f(-1.f, 1.f, 0.f), vec2f(0.f, 1.f)},
+		{vec3f(-1.f, -1.f, 0.f), vec2f(0.f, 0.f)},
 	};
 
 	BufferDesc bd = BufferDesc::GetDefaultVertexBuffer(sizeof(verts));

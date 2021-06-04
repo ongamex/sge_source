@@ -66,6 +66,18 @@ uniform samplerCUBE uPointLightShadowMap;
 #endif
 
 //--------------------------------------------------------------------
+//
+//--------------------------------------------------------------------
+float2 directionToUV_Spherical(float3 dir)
+{
+	const float2 invAtan = float2(0.1591, 0.3183);
+    float2 uv = float2(atan2(dir.z, dir.x), asin(-dir.y));
+    uv *= invAtan;
+    uv += float2(0.5, 0.5);
+    return uv;
+}
+
+//--------------------------------------------------------------------
 // Vertex Shader
 //--------------------------------------------------------------------
 struct VS_INPUT {

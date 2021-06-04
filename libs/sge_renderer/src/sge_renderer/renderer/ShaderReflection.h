@@ -167,7 +167,7 @@ struct SamplerRefl {
   public:
 	unsigned nameStrIdx = 0; // A runtime mapping string->int for the "name" string.
 	std::string name;
-	int arraySize = 0; // 0 means not an array
+	int arraySize = 0; // 0 means not an array.
 
 #ifdef SGE_RENDERER_D3D11
 	ShaderType::Enum d3d11_shaderType = ShaderType::VertexShader;

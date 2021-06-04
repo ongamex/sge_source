@@ -374,11 +374,14 @@ void DefaultGameDrawer::drawWorld(const GameDrawSets& drawSets, const DrawReason
 		BindLocation uProjLoc = m_skyGradientShader->getReflection().findUniform("uProj");
 		BindLocation uColorBottomLoc = m_skyGradientShader->getReflection().findUniform("uColorBottom");
 		BindLocation uColorTomLoc = m_skyGradientShader->getReflection().findUniform("uColorTop");
-
+		BindLocation uProjViewInverseLoc = m_skyGradientShader->getReflection().findUniform("uProjViewInverse");
+		BindLocation uSkyTextureLoc = m_skyGradientShader->getReflection().findUniform("uSkyTexture");
+		BindLocation uCamPosWSLoc = m_skyGradientShader->getReflection().findUniform("uCamPosWS");
+		 
 		mat4f view = drawSets.drawCamera->getView();
 		mat4f proj = drawSets.drawCamera->getProj();
 
-		// TODO: more optimal sky shading please.
+		// TODO: more optimal sky shading please.uProjViewInverse
 		[[maybe_unused]] Frustum f = Frustum::extractClippingPlanes(proj, kIsTexcoordStyleD3D);
 		[[maybe_unused]] float far = f.f.v4.w;
 		// HACK: use a separate variable.
@@ -387,11 +390,19 @@ void DefaultGameDrawer::drawWorld(const GameDrawSets& drawSets, const DrawReason
 		vec3f colorBottom = getWorld()->m_skyColorBottom;
 		vec3f colorTop = getWorld()->m_skyColorTop;
 
-		StaticArray<BoundUniform, 6> uniforms;
+		PAsset skyTex = getCore()->getAssetLib()->getAsset(AssetType::Texture2D, "assets/skybox_texture.jpg", true);
+
+		mat4f projViewInv = drawSets.drawCamera->getProjView().inverse();
+		vec3f camPos = drawSets.drawCamera->getCameraPosition();
+
+		StaticArray<BoundUniform, 12> uniforms;
 		uniforms.push_back(BoundUniform(uViewLoc, &view));
 		uniforms.push_back(BoundUniform(uProjLoc, &proj));
+		uniforms.push_back(BoundUniform(uProjViewInverseLoc, &projViewInv));
+		uniforms.push_back(BoundUniform(uCamPosWSLoc, camPos.data));
 		uniforms.push_back(BoundUniform(uColorBottomLoc, &colorBottom));
 		uniforms.push_back(BoundUniform(uColorTomLoc, &colorTop));
+		uniforms.push_back(BoundUniform(uSkyTextureLoc, skyTex->asTextureView()->tex.GetPtr()));
 
 		DrawCall dc;
 		dc.setStateGroup(&sg);

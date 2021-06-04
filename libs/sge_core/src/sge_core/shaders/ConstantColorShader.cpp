@@ -76,7 +76,7 @@ void ConstantColorShader::drawGeometry(
 
 	RasterizerState* const rasterState =
 	    flipCulling ? getCore()->getGraphicsResources().RS_wireframeBackfaceCCW : getCore()->getGraphicsResources().RS_defaultWireframe;
-	stateGroup.setRenderState(rasterState, getCore()->getGraphicsResources().DSS_default_lessEqual_noWrite);
+	stateGroup.setRenderState(rasterState, getCore()->getGraphicsResources().DSS_default_lessEqual);
 
 	StaticArray<BoundUniform, 24> uniforms;
 	shaderPerm.bind<24>(uniforms, uWorld, (void*)&world);

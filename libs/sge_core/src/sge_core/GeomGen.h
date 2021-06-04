@@ -14,9 +14,9 @@ struct SGE_CORE_API GeomGen {
 		Bottom,
 	};
 
-	// Generates full screen quat in NDC with UV.
-	// Vertices: Triangle List of [ float2 Position, float2 UV ]
-	static int ndcQuadUV(Buffer* const resultVertBuffer);
+	/// Generates a full screen quad in NDC with UV.
+	/// Vertices: Triangle List of [ float3 Position, float2 UV ], total 6 vertices.
+	static int ndcQuad3DUV(Buffer* const resultVertBuffer);
 
 	// Generates a sphere in RH Y-up.
 	// Returns the number of vertices
