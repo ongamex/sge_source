@@ -257,6 +257,26 @@ bool SGEContextImmediate::getQueryData(Query* const query, uint64& queryData) {
 #endif
 }
 
+
+void SGEContextImmediate::updateTextureData(Texture* texture, const TextureData& texData) {
+	if (texture && texture->getDesc().textureType == UniformType::Texture2D && texData.data) {
+		GLContextStateCache* const glcon = GL_GetContextStateCache();
+
+		TextureGL* textureGl = static_cast<TextureGL*>(texture);
+
+		glcon->BindTexture(GL_TEXTURE_2D, textureGl->GL_GetResource());
+
+		GLint glInternalFormat;
+		GLenum glFormat, glType;
+		TextureFormat_GetGLNative(textureGl->getDesc().format, glInternalFormat, glFormat, glType);
+		glPixelStorei(GL_PACK_ALIGNMENT, 1);
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+		glTexImage2D(GL_TEXTURE_2D, 0, glInternalFormat, textureGl->getDesc().texture2D.width, textureGl->getDesc().texture2D.height, 0,
+		             glFormat, glType, texData.data);
+		DumpAllGLErrors();
+	}
+}
+
 void SGEContextImmediate::clearColor(FrameTarget* target, int index, const float rgba[4]) {
 	if (target == NULL || !target->isValid()) {
 		// Called with initialized or invalid frame target.

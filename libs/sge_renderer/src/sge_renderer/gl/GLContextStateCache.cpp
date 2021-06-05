@@ -136,8 +136,19 @@ void GLContextStateCache::SetVertexAttribSlotState(const bool bEnabled,
 			currentState.stride = stride;
 			currentState.byteOffset = byteOffset;
 
-			glVertexAttribPointer(index, currentState.size, currentState.type, currentState.normalized, currentState.stride,
-			                      (GLvoid*)(std::ptrdiff_t(currentState.byteOffset)));
+			// Caution:
+			// Integer vertex attributes needs to be called
+			// with glVertexAttribIPointer and not with
+			// with glVertexAttribPointer
+			// Even if we specify GL_INT as a type. glGetError will not report any errors,
+			// but in shader we will not get the integers we've specified.
+			if (currentState.type == GL_INT || currentState.type == GL_UNSIGNED_INT) {
+				glVertexAttribIPointer(index, currentState.size, currentState.type, currentState.stride,
+				                       (GLvoid*)(std::ptrdiff_t(currentState.byteOffset)));
+			} else {
+				glVertexAttribPointer(index, currentState.size, currentState.type, currentState.normalized, currentState.stride,
+				                      (GLvoid*)(std::ptrdiff_t(currentState.byteOffset)));
+			}
 			DumpAllGLErrors();
 		}
 	}

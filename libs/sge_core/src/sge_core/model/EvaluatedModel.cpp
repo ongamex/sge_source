@@ -266,7 +266,7 @@ bool EvaluatedModel::evaluateSkinning() {
 			context->updateTextureData(m_skinningBoneTransfsTex.GetPtr(), data);
 		}
 
-		// If there are bones, then this texture must be created.
+		// Assert that if there are bones, then the bone texture must be created.
 		sgeAssert(m_skinningBoneTransfsTex.HasResource() == !bonesTransformTexDataForAllMeshes.empty());
 	}
 

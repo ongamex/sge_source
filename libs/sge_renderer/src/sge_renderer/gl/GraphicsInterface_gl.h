@@ -138,6 +138,8 @@ struct SGEContextImmediate : public SGEContextGL {
 	void endQuery(Query* const query) final;
 	bool isQueryReady(Query* const query) final;
 	bool getQueryData(Query* const query, uint64& queryData) final;
+
+	void updateTextureData(Texture* texture,  const TextureData& td) override;
 };
 
 //---------------------------------------------------------------------

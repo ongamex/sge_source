@@ -117,7 +117,7 @@ VS_OUTPUT vsMain(VS_INPUT vsin) {
 
 	// If there is a skinning avilable apply it to the vertex in object space.
 #if OPT_HasVertexSkinning == kHasVertexSkinning_Yes
-	float4x4 skinMtx = libSkining_getSkinningTransform(vsin.a_bonesIds + uSkinningFirstBoneOffsetInTex, vsin.a_bonesWeights, uSkinningBones);
+	float4x4 skinMtx = libSkining_getSkinningTransform(vsin.a_bonesIds, uSkinningFirstBoneOffsetInTex, vsin.a_bonesWeights, uSkinningBones);
 	vertexPosOs = mul(skinMtx, float4(vertexPosOs, 1.0)).xyz;
 	normalOs = mul(skinMtx, float4(normalOs, 0.0)).xyz; // TODO: Proper normal transfrom by inverse transpose.
 #endif

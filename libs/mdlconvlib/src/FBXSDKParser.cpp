@@ -653,7 +653,7 @@ void FBXSDKParser::importMeshes_singleMesh(FbxMesh* fbxMesh, int importedMeshInd
 	// Find if there is a skinning data and if so, load the bones for mesh skinning (skeletal animation).
 	if (importSkinningData) {
 		const int numDeformers = fbxMesh->GetDeformerCount();
-		sgeAssert(numDeformers == 1 && "We support only 1 deformer!");
+		sgeAssert(numDeformers <= 1 && "We support only 1 deformer!");
 		for (int const iDeformer : range_int(numDeformers)) {
 			fbxsdk::FbxDeformer* const fDeformer = fbxMesh->GetDeformer(iDeformer);
 			fbxsdk::FbxSkin* const fSkin = fbxsdk::FbxCast<fbxsdk::FbxSkin>(fDeformer);
