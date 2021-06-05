@@ -26,6 +26,7 @@ void ConstantColorShader::drawGeometry(
 		uWorld,
 		uProjView,
 		uSkinningBones,
+		uSkinningFirstBoneOffsetInTex,
 	};
 
 	if (shadingPermut.isValid() == false) {
@@ -41,17 +42,16 @@ void ConstantColorShader::drawGeometry(
 		    {uColor, "uColor"},
 		    {uWorld, "uWorld"},
 		    {uProjView, "uProjView"},
-			{uSkinningBones, "uSkinningBones"}
+			{uSkinningBones, "uSkinningBones"},
+			{uSkinningFirstBoneOffsetInTex, "uSkinningFirstBoneOffsetInTex"},
 		};
 		// clang-format on
-
-
 
 		SGEDevice* const sgedev = rdest.getDevice();
 		shadingPermut->createFromFile(sgedev, "core_shaders/ConstantColor.shader", compileTimeOptions, uniformsToCache);
 	}
 
-	const int optHasVertexSkinning = (geometry.skinningBoneTransforms != nullptr) ? kHasVertexSkinning_Yes : kHasVertexSkinning_No;
+	const int optHasVertexSkinning = (geometry.hasVertexSkinning()) ? kHasVertexSkinning_Yes : kHasVertexSkinning_No;
 
 	const OptionPermuataor::OptionChoice optionChoice[kNumOptions] = {
 	    {OPT_HasVertexSkinning, optHasVertexSkinning},
@@ -83,8 +83,10 @@ void ConstantColorShader::drawGeometry(
 	shaderPerm.bind<24>(uniforms, uProjView, (void*)&projView);
 	shaderPerm.bind<24>(uniforms, uColor, (void*)&shadingColor);
 
-	if (shaderPerm.uniformLUT[uSkinningBones].isNull() == false) {
+	if (optHasVertexSkinning == kHasVertexSkinning_Yes) {
 		uniforms.push_back(BoundUniform(shaderPerm.uniformLUT[uSkinningBones], (geometry.skinningBoneTransforms)));
+		sgeAssert(uniforms.back().bindLocation.isNull() == false && uniforms.back().bindLocation.uniformType != 0);
+		uniforms.push_back(BoundUniform(shaderPerm.uniformLUT[uSkinningFirstBoneOffsetInTex], (void*)&geometry.firstBoneOffset));
 		sgeAssert(uniforms.back().bindLocation.isNull() == false && uniforms.back().bindLocation.uniformType != 0);
 	}
 
@@ -112,11 +114,10 @@ void ConstantColorShader::draw(const RenderDestination& rdest,
 
 		for (int iMesh = 0; iMesh < rawNode->meshAttachments.size(); ++iMesh) {
 			const MeshAttachment& meshAttachment = rawNode->meshAttachments[iMesh];
-			const EvaluatedMesh& mesh = evalModel.getEvalMesh(meshAttachment.attachedMeshIndex);
-			mat4f const finalTrasform =
-			    (mesh.geometry.skinningBoneTransforms == nullptr) ? preRoot * evalNode.evalGlobalTransform : preRoot;
+			const EvaluatedMesh& evalMesh = evalModel.getEvalMesh(meshAttachment.attachedMeshIndex);
+			mat4f const finalTrasform = (evalMesh.geometry.hasVertexSkinning()) ? preRoot : preRoot * evalNode.evalGlobalTransform;
 
-			drawGeometry(rdest, projView, finalTrasform, mesh.geometry, shadingColor);
+			drawGeometry(rdest, projView, finalTrasform, evalMesh.geometry, shadingColor);
 		}
 	}
 }

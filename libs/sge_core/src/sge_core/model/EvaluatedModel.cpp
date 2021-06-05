@@ -212,13 +212,18 @@ bool EvaluatedModel::evaluateSkinning() {
 	SGEContext* const context = m_assetLibrary->getDevice()->getContext();
 
 	m_evaluatedMeshes.resize(m_model->numMeshes());
+	m_perMeshSkinningBonesTransformOFfsetInTex.resize(m_model->numMeshes(), -1);
+	bonesTransformTexDataForAllMeshes.clear();
 
 	// Evaluate the meshes.
 	for (int iMesh = 0; iMesh < m_model->numMeshes(); ++iMesh) {
-		EvaluatedMesh& evalMesh = m_evaluatedMeshes[iMesh];
 		const ModelMesh& rawMesh = *m_model->meshAt(iMesh);
 
+		m_perMeshSkinningBonesTransformOFfsetInTex[iMesh] = -1;
+
 		if (rawMesh.bones.empty() == false) {
+			m_perMeshSkinningBonesTransformOFfsetInTex[iMesh] = int(bonesTransformTexDataForAllMeshes.size());
+
 			// Compute the tansform of the bone, it combines the binding offset matrix of the bone and
 			// the evaluated position of the node that represents the bone in the scene.
 			std::vector<mat4f> bonesTransformTexData(rawMesh.bones.size());
@@ -228,47 +233,57 @@ bool EvaluatedModel::evaluateSkinning() {
 				const mat4f boneTransformWithOffsetModelObjectSpace =
 				    m_evaluatedNodes[bone.nodeIdx].evalGlobalTransform * bone.offsetMatrix;
 
-				bonesTransformTexData[iBone] = boneTransformWithOffsetModelObjectSpace;
-			}
-
-			// Compute the bones skinning matrix.
-			// TODO: this texture should be created by a shader if needed and maybe reused between draw calls.
-			{
-				int neededTexWidth = 4;
-				int neededTexHeight = int(rawMesh.bones.size());
-
-				TextureData data = TextureData(bonesTransformTexData.data(), sizeof(vec4f) * 4);
-
-				const bool doesBigEnoughTextureExists = evalMesh.skinningBoneTransfsTex.HasResource() &&
-				                                        evalMesh.skinningBoneTransfsTex->getDesc().texture2D.height >= neededTexHeight;
-
-				if (doesBigEnoughTextureExists == false) {
-					TextureDesc td;
-					td.textureType = UniformType::Texture2D;
-					td.usage = TextureUsage::DynamicResource;
-					td.format = TextureFormat::R32G32B32A32_FLOAT;
-					td.texture2D.arraySize = 1;
-					td.texture2D = Texture2DDesc(neededTexWidth, neededTexHeight);
-
-					SamplerDesc sd;
-					sd.filter = TextureFilter::Min_Mag_Mip_Point;
-
-					evalMesh.skinningBoneTransfsTex = context->getDevice()->requestResource<Texture>();
-					evalMesh.skinningBoneTransfsTex->create(td, &data, sd);
-				} else {
-					context->updateTextureData(evalMesh.skinningBoneTransfsTex.GetPtr(), data);
-				}
+				bonesTransformTexDataForAllMeshes.push_back(boneTransformWithOffsetModelObjectSpace);
 			}
 		}
-
-		sgeAssert(!rawMesh.bones.empty() == evalMesh.skinningBoneTransfsTex.HasResource());
-
-		// Finally fill the geometry structure.
-		evalMesh.geometry = Geometry(rawMesh.vertexBuffer.GetPtr(), rawMesh.indexBuffer.GetPtr(), evalMesh.skinningBoneTransfsTex.GetPtr(),
-		                             rawMesh.vertexDeclIndex, rawMesh.vbVertexColorOffsetBytes >= 0, rawMesh.vbUVOffsetBytes >= 0,
-		                             rawMesh.vbNormalOffsetBytes >= 0, rawMesh.hasUsableTangetSpace, rawMesh.primitiveTopology,
-		                             rawMesh.vbByteOffset, rawMesh.ibByteOffset, rawMesh.stride, rawMesh.ibFmt, rawMesh.numElements);
 	}
+
+	// Compute the bones skinning matrix texture for the whole model.
+	if (bonesTransformTexDataForAllMeshes.empty() == false) {
+		int neededTexWidth = 4;
+		int neededTexHeight = int(bonesTransformTexDataForAllMeshes.size());
+
+		TextureData data =
+		    TextureData(bonesTransformTexDataForAllMeshes.data(), sizeof(vec4f) * 4); // 4 pixel of 4 colors represent one matrix.
+
+		const bool doesBigEnoughTextureExists =
+		    m_skinningBoneTransfsTex.HasResource() && m_skinningBoneTransfsTex->getDesc().texture2D.height >= neededTexHeight;
+
+		if (doesBigEnoughTextureExists == false) {
+			TextureDesc td;
+			td.textureType = UniformType::Texture2D;
+			td.usage = TextureUsage::DynamicResource;
+			td.format = TextureFormat::R32G32B32A32_FLOAT;
+			td.texture2D.arraySize = 1;
+			td.texture2D = Texture2DDesc(neededTexWidth, neededTexHeight);
+
+			SamplerDesc sd;
+			sd.filter = TextureFilter::Min_Mag_Mip_Point;
+
+			m_skinningBoneTransfsTex = context->getDevice()->requestResource<Texture>();
+			m_skinningBoneTransfsTex->create(td, &data, sd);
+		} else {
+			context->updateTextureData(m_skinningBoneTransfsTex.GetPtr(), data);
+		}
+
+		// If there are bones, then this texture must be created.
+		sgeAssert(m_skinningBoneTransfsTex.HasResource() == !bonesTransformTexDataForAllMeshes.empty());
+	}
+
+	// Finally fill the geometry structure for every mesh that is going to be used for draw calls.
+	for (int iMesh = 0; iMesh < m_model->numMeshes(); ++iMesh) {
+		EvaluatedMesh& evalMesh = m_evaluatedMeshes[iMesh];
+		const ModelMesh& rawMesh = *m_model->meshAt(iMesh);
+
+		const int firstBoneOffset = m_perMeshSkinningBonesTransformOFfsetInTex[iMesh];
+
+		evalMesh.geometry =
+		    Geometry(rawMesh.vertexBuffer.GetPtr(), rawMesh.indexBuffer.GetPtr(), m_skinningBoneTransfsTex.GetPtr(), firstBoneOffset,
+		             rawMesh.vertexDeclIndex, rawMesh.vbVertexColorOffsetBytes >= 0, rawMesh.vbUVOffsetBytes >= 0,
+		             rawMesh.vbNormalOffsetBytes >= 0, rawMesh.hasUsableTangetSpace, rawMesh.primitiveTopology, rawMesh.vbByteOffset,
+		             rawMesh.ibByteOffset, rawMesh.stride, rawMesh.ibFmt, rawMesh.numElements);
+	}
+
 
 	aabox.setEmpty();
 	for (int iNode = 0; iNode < this->getNumEvalNodes(); ++iNode) {

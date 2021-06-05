@@ -415,8 +415,8 @@ ParticleGroupState::SpriteRendData*
 	VertexDeclIndex vertexDeclIdx = sgecon.getDevice()->getVertexDeclIndex(vertexDecl, SGE_ARRSZ(vertexDecl));
 
 	spriteRenderData->geometry =
-	    Geometry(spriteRenderData->vertexBuffer, nullptr, nullptr, vertexDeclIdx, false, true, true, false, PrimitiveTopology::TriangleList, 0, 0,
-	             strideSizeBytes, UniformType::Unknown, int(vertices.size()));
+	    Geometry(spriteRenderData->vertexBuffer, nullptr, nullptr, -1, vertexDeclIdx, false, true, true, false,
+	             PrimitiveTopology::TriangleList, 0, 0, strideSizeBytes, UniformType::Unknown, int(vertices.size()));
 
 	spriteRenderData->material.diffuseTexture = sprite;
 	return &spriteRenderData.get();
@@ -586,7 +586,7 @@ bool ParticleRenderDataGen::generate(const TraitParticles2::ParticleGroup& parti
 
 	VertexDeclIndex vertexDeclIdx = sgecon.getDevice()->getVertexDeclIndex(vertexDecl, SGE_ARRSZ(vertexDecl));
 
-	geometry = Geometry(vertexBuffer, nullptr, nullptr, vertexDeclIdx, false, true, true, false, PrimitiveTopology::TriangleList, 0, 0,
+	geometry = Geometry(vertexBuffer, nullptr, nullptr, -1, vertexDeclIdx, false, true, true, false, PrimitiveTopology::TriangleList, 0, 0,
 	                    strideSizeBytes, UniformType::Unknown, int(vertices.size()));
 
 	material.diffuseTexture = sprite;

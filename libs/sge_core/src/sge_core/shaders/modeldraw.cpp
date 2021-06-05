@@ -49,7 +49,7 @@ void BasicModelDraw::drawGeometry_FWDBuildShadowMap(const RenderDestination& rde
 		kNumOptions,
 	};
 
-	enum : int { uWorld, uProjView, uPointLightPositionWs, uPointLightFarPlaneDistance, uSkinningBones };
+	enum : int { uWorld, uProjView, uPointLightPositionWs, uPointLightFarPlaneDistance, uSkinningBones, uSkinningFirstBoneOffsetInTex };
 
 	if (shadingPermutFWDBuildShadowMaps.isValid() == false) {
 		shadingPermutFWDBuildShadowMaps = ShadingProgramPermuator();
@@ -67,14 +67,14 @@ void BasicModelDraw::drawGeometry_FWDBuildShadowMap(const RenderDestination& rde
 		    {uPointLightPositionWs, "uPointLightPositionWs"},
 		    {uPointLightFarPlaneDistance, "uPointLightFarPlaneDistance"},
 		    {uSkinningBones, "uSkinningBones"},
-		};
+		    {uSkinningFirstBoneOffsetInTex, "uSkinningFirstBoneOffsetInTex"}};
 
 		SGEDevice* const sgedev = rdest.getDevice();
 		shadingPermutFWDBuildShadowMaps->createFromFile(sgedev, "core_shaders/FWDDefault_buildShadowMaps.shader", compileTimeOptions,
 		                                                uniformsToCache);
 	}
 
-	const int optHasVertexSkinning = (geometry->skinningBoneTransforms != nullptr) ? kHasVertexSkinning_Yes : kHasVertexSkinning_No;
+	const int optHasVertexSkinning = (geometry->hasVertexSkinning()) ? kHasVertexSkinning_Yes : kHasVertexSkinning_No;
 
 	const OptionPermuataor::OptionChoice optionChoice[kNumOptions] = {
 	    {OPT_LightType, generalMods.isShadowMapForPointLight ? FWDDBSM_OPT_LightType_Point : FWDDBSM_OPT_LightType_SpotOrDirectional},
@@ -96,8 +96,10 @@ void BasicModelDraw::drawGeometry_FWDBuildShadowMap(const RenderDestination& rde
 		shaderPerm.bind<8>(uniforms, uPointLightFarPlaneDistance, (void*)&generalMods.shadowMapPointLightDepthRange);
 	}
 
-	if (shaderPerm.uniformLUT[uSkinningBones].isNull() == false) {
+	if (optHasVertexSkinning == kHasVertexSkinning_Yes) {
 		uniforms.push_back(BoundUniform(shaderPerm.uniformLUT[uSkinningBones], (geometry->skinningBoneTransforms)));
+		sgeAssert(uniforms.back().bindLocation.isNull() == false && uniforms.back().bindLocation.uniformType != 0);
+		uniforms.push_back(BoundUniform(shaderPerm.uniformLUT[uSkinningFirstBoneOffsetInTex], (void*)&geometry->firstBoneOffset));
 		sgeAssert(uniforms.back().bindLocation.isNull() == false && uniforms.back().bindLocation.uniformType != 0);
 	}
 
@@ -204,6 +206,7 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 		uRoughness,
 		uPBRMtlFlags,
 		uSkinningBones,
+		uSkinningFirstBoneOffsetInTex,
 	};
 
 	if (shadingPermutFWDShading.isValid() == false) {
@@ -258,6 +261,7 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 		    {uRoughness, "uRoughness"},
 		    {uPBRMtlFlags, "uPBRMtlFlags"},
 			{uSkinningBones, "uSkinningBones"},
+			{uSkinningFirstBoneOffsetInTex, "uSkinningFirstBoneOffsetInTex"},
 		};
 		// clang-format on
 
@@ -282,7 +286,7 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 	const int optLighting = (mods.forceNoLighting ? kLightingForceNoLighting : kLightingShaded);
 
 	const int optUseNormalMap = !!(geometry->vertexDeclHasTangentSpace && material.texNormalMap);
-	const int optHasVertexSkinning = (geometry->skinningBoneTransforms != nullptr) ? kHasVertexSkinning_Yes : kHasVertexSkinning_No;
+	const int optHasVertexSkinning = (geometry->hasVertexSkinning()) ? kHasVertexSkinning_Yes : kHasVertexSkinning_No;
 
 	const OptionPermuataor::OptionChoice optionChoice[kNumOptions] = {{OPT_UseNormalMap, optUseNormalMap},
 	                                                                  {OPT_DiffuseColorSrc, optDiffuseColorSrc},
@@ -411,8 +415,10 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 		sgeAssert(uniforms.back().bindLocation.isNull() == false && uniforms.back().bindLocation.uniformType != 0);
 	}
 
-	if (shaderPerm.uniformLUT[uSkinningBones].isNull() == false) {
+	if (optHasVertexSkinning == kHasVertexSkinning_Yes) {
 		uniforms.push_back(BoundUniform(shaderPerm.uniformLUT[uSkinningBones], (geometry->skinningBoneTransforms)));
+		sgeAssert(uniforms.back().bindLocation.isNull() == false && uniforms.back().bindLocation.uniformType != 0);
+		uniforms.push_back(BoundUniform(shaderPerm.uniformLUT[uSkinningFirstBoneOffsetInTex], (void*)&geometry->firstBoneOffset));
 		sgeAssert(uniforms.back().bindLocation.isNull() == false && uniforms.back().bindLocation.uniformType != 0);
 	}
 
@@ -520,8 +526,8 @@ void BasicModelDraw::draw(const RenderDestination& rdest,
 
 		for (int iMesh = 0; iMesh < rawNode->meshAttachments.size(); ++iMesh) {
 			const MeshAttachment& meshAttachment = rawNode->meshAttachments[iMesh];
-			const EvaluatedMesh& mesh = evalModel.getEvalMesh(meshAttachment.attachedMeshIndex);
-			mat4f const finalTrasform = (!mesh.skinningBoneTransfsTex.IsResourceValid()) ? preRoot * evalNode.evalGlobalTransform : preRoot;
+			const EvaluatedMesh& evalMesh = evalModel.getEvalMesh(meshAttachment.attachedMeshIndex);
+			mat4f const finalTrasform = (evalMesh.geometry.hasVertexSkinning()) ? preRoot : preRoot * evalNode.evalGlobalTransform;
 
 			Material material;
 
@@ -558,7 +564,7 @@ void BasicModelDraw::draw(const RenderDestination& rdest,
 				}
 			}
 
-			drawGeometry(rdest, camPos, camLookDir, projView, finalTrasform, generalMods, &mesh.geometry, material, mods);
+			drawGeometry(rdest, camPos, camLookDir, projView, finalTrasform, generalMods, &evalMesh.geometry, material, mods);
 		}
 	}
 }

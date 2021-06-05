@@ -35,9 +35,7 @@ struct EvaluatedNode {
 };
 
 struct EvaluatedMesh {
-	GpuHandle<Texture> skinningBoneTransfsTex;
 	//std::vector<mat4f> boneTransformMatrices;
-
 	Geometry geometry;
 };
 
@@ -105,13 +103,24 @@ struct SGE_CORE_API EvaluatedModel {
 
 	const ModelAnimation* findAnimation(const int idxDonor, const int animIndex) const;
 
+	Texture* getSkinningBonesTexture() const { return m_skinningBoneTransfsTex.GetPtr(); }
+
+	int getMeshBonesOffsetInSkinningBonesTexture(const int iMesh) const {
+		if (iMesh >= 0 && iMesh < m_perMeshSkinningBonesTransformOFfsetInTex.size()) {
+			return m_perMeshSkinningBonesTransformOFfsetInTex[iMesh];
+		}
+
+		sgeAssert(false && "it is expected that this array was allocated");
+		return -1;
+	}
+
   private:
+
 	bool evaluateNodes_common();
 	bool evaluateFromMomentsInternal(const EvalMomentSets evalMoments[], int numMoments);
 	bool evaluateNodesFromExternalBones(const std::vector<mat4f>& boneGlobalTrasnformOverrides);
 	bool evaluateMaterials();
 	bool evaluateSkinning();
-
 
   private:
 	struct AnimationDonor {
@@ -139,7 +148,22 @@ struct SGE_CORE_API EvaluatedModel {
 
 	std::vector<AnimationDonor> m_donors; // Caution: ckind of assumes that the AnimationDonor is moveable.
 
+	/// A texture holding the bones for every model.
+	/// The texture should be of size 4x<number-of-bones-in-all-meshes> and it must be
+	/// of type RGBA float32 with point sampler.
+	GpuHandle<Texture> m_skinningBoneTransfsTex;
+
+	/// @m_skinningBoneTransfsTex stores the bones transforms for all meshes.
+	/// Each mesh esh bones are placed sequentially in that matrix.
+	/// This vector hold the row index of the 1st bone for the specified mesh.
+	/// -1 if there are no bones for that mesh.
+	std::vector<int> m_perMeshSkinningBonesTransformOFfsetInTex;
+
 	AABox3f aabox;
+
+
+	// Temporaries used to avoid allocating memory again and again for each evaluation.
+	std::vector<mat4f> bonesTransformTexDataForAllMeshes;
 };
 
 } // namespace sge

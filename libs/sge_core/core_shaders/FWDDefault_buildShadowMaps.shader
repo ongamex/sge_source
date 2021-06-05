@@ -19,6 +19,7 @@ uniform float uPointLightFarPlaneDistance;
 
 #if OPT_HasVertexSkinning == kHasVertexSkinning_Yes
 	uniform sampler2D uSkinningBones;
+	uniform int uSkinningFirstBoneOffsetInTex; ///< The row (integer) in @uSkinningBones of the fist bone for the mesh that is being drawn.
 #endif
 
 //--------------------------------------------------------------------
@@ -47,7 +48,7 @@ VS_OUTPUT vsMain(VS_INPUT vsin)
 	
 	float3 vertexPosOs = vsin.a_position;
 #if OPT_HasVertexSkinning == kHasVertexSkinning_Yes	
-	float4x4 skinMtx = libSkining_getSkinningTransform(vsin.a_bonesIds, vsin.a_bonesWeights, uSkinningBones);
+	float4x4 skinMtx = libSkining_getSkinningTransform(vsin.a_bonesIds + uSkinningFirstBoneOffsetInTex, vsin.a_bonesWeights, uSkinningBones);
 	vertexPosOs = mul(skinMtx, float4(vertexPosOs, 1.0)).xyz;
 #endif
 	
