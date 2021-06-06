@@ -22,10 +22,3 @@ set_target_properties(sge_editor PROPERTIES
 	
 set_target_properties(sge_editor PROPERTIES 
     VS_DEBUGGER_COMMAND "${CMAKE_INSTALL_PREFIX}/$<CONFIG>/binaries/$<TARGET_FILE_NAME:sge_editor>")
-
-# Copy the file to install dir avoid installing every time (simplifying debugging).
-add_custom_command(TARGET sge_editor POST_BUILD
-                   COMMAND ${CMAKE_COMMAND} -E copy
-                       $<TARGET_FILE:sge_editor>
-                       ${CMAKE_INSTALL_PREFIX}/$<CONFIG>/binaries
-                   )
