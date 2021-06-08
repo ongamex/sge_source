@@ -124,7 +124,17 @@ void OutlinerWindow::update(SGEContext* const UNUSED(sgecon), const InputState& 
 				// that was used to initiate the dragging. When dropped these object are going to get parented to
 				// something depending on where the user dropped them.
 				if (ImGui::BeginDragDropSource()) {
-					DragDropPayloadActor::setPayload(currentEntity->getId());
+					vector_set<ObjectId> selectedObjects;
+					m_inspector.getAllSelectedObjects(selectedObjects);
+
+					// if the user dragged something that isn't currently selected, 
+					// concider that only that thing is dragged instead of th whole selection.
+					if (selectedObjects.count(currentEntity->getId()) == 0) {
+						selectedObjects.clear();
+						selectedObjects.insert(currentEntity->getId());
+					}
+
+					DragDropPayloadActor::setPayload(selectedObjects);
 
 					ImGui::Text(currentEntity->getDisplayNameCStr());
 					ImGui::EndDragDropSource();

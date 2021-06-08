@@ -217,6 +217,23 @@ std::string relativePathTo(const char* path, const char* base) {
 	}
 }
 
+std::string relativePathToCwd(const char* path) {
+	try {
+		std::error_code ec;
+		return std::filesystem::proximate(std::filesystem::path(path), std::filesystem::current_path()).string();
+	} catch (...) {
+		return std::string();
+	}
+}
+
+std::string relativePathToCwd(const std::string& path) {
+	return relativePathToCwd(path.c_str());
+}
+
+std::string relativePathToCwdCanoize(const std::string& path) {
+	return canonizePathRespectOS(relativePathToCwd(path));
+}
+
 std::string absoluteOf(const char* const path) {
 	try {
 		return std::filesystem::absolute(std::filesystem::path(path)).string();

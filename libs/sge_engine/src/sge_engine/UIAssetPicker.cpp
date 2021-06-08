@@ -36,6 +36,16 @@ bool assetPicker(
 	if (ImGuiEx::InputText("##Asset Picker Text", assetPath, ImGuiInputTextFlags_EnterReturnsTrue)) {
 		wasAssetPicked = true;
 	}
+
+	if (ImGui::BeginDragDropTarget()) {
+		if (Optional<std::string> droppedAssetPath = DragDropPayloadAsset::accept()) {
+			assetPath = *droppedAssetPath;
+			wasAssetPicked = true;
+		}
+
+		ImGui::EndDragDropTarget();
+	}
+
 	ImGui::PopItemWidth();
 
 	if (ImGui::BeginPopup("Asset Picker")) {
@@ -267,6 +277,7 @@ SGE_ENGINE_API bool gameObjectTypePicker(const char* label, TypeId& ioValue, con
 			SGE_DEBUG_ERR("The speicifed type cannot be found!");
 		}
 	}
+
 	ImGui::PopItemWidth();
 
 	if (ImGui::BeginPopup("Type Picker Popup")) {

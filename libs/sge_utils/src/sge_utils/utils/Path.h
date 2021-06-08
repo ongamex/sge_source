@@ -47,6 +47,11 @@ std::string currentWorkingDir();
 bool isPathAbsolute(const char* const path);
 
 std::string relativePathTo(const char* path, const char* base);
+std::string relativePathToCwd(const char* path);
+std::string relativePathToCwd(const std::string& path);
+
+std::string relativePathToCwdCanoize(const std::string& path);
+
 std::string absoluteOf(const char* const path);
 
 //

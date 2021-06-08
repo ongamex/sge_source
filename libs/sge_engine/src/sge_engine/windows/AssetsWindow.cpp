@@ -11,6 +11,7 @@
 #include "sge_engine/EngineGlobal.h"
 #include "sge_engine/GameInspector.h"
 #include "sge_engine/GameWorld.h"
+#include "sge_engine/ui/ImGuiDragDrop.h"
 #include "sge_utils/tiny/FileOpenDialog.h"
 #include "sge_utils/utils/Path.h"
 #include "sge_utils/utils/strings.h"
@@ -346,6 +347,9 @@ void AssetsWindow::update(SGEContext* const sgecon, const InputState& is) {
 
 				// Show every file in the current directory with an icon next to it.
 				for (const fs::directory_entry& entry : fs::directory_iterator(pathToAssets)) {
+
+					const std::string localAssetPath = relativePathToCwdCanoize(entry.path().string());
+
 					if (entry.is_regular_file() && m_exploreFilter.PassFilter(entry.path().filename().string().c_str())) {
 						AssetType assetType =
 						    assetType_guessFromExtension(extractFileExtension(entry.path().string().c_str()).c_str(), false);
@@ -363,10 +367,16 @@ void AssetsWindow::update(SGEContext* const sgecon, const InputState& is) {
 
 						if (ImGui::Selectable(label.c_str())) {
 							explorePreviewAssetChanged = true;
-							explorePreviewAsset = assetLib->getAsset(entry.path().string().c_str(), true);
+							explorePreviewAsset = assetLib->getAsset(localAssetPath.c_str(), true);
 						}
 						if (ImGui::IsItemClicked(1)) {
 							rightClickedPath = entry.path();
+						}
+
+						if (ImGui::BeginDragDropSource()) {
+							DragDropPayloadAsset::setPayload(localAssetPath);
+							ImGui::Text(localAssetPath.c_str());
+							ImGui::EndDragDropSource();
 						}
 					}
 				}
