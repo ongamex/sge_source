@@ -11,6 +11,7 @@
 #include "imgui/imgui_internal.h"
 
 #include "sge_core/SGEImGui.h"
+#include "sge_engine/ui/ImGuiDragDrop.h"
 
 namespace sge {
 
@@ -47,6 +48,7 @@ void OutlinerWindow::update(SGEContext* const UNUSED(sgecon), const InputState& 
 		GameWorld* const world = m_inspector.getWorld();
 
 		ObjectId dragAndDropTargetedActor;
+		std::set<ObjectId> droppedActorsOnTargetActor;
 
 		ImGui::BeginChild("SceneObjectsTreeWindow");
 
@@ -105,7 +107,7 @@ void OutlinerWindow::update(SGEContext* const UNUSED(sgecon), const InputState& 
 					ImGui::PopStyleColor(1);
 				}
 
-				if (ImGui::IsItemClicked(0)) {
+				if (ImGui::IsMouseReleased(0) && ImGui::IsItemHovered(ImGuiHoveredFlags_None)) {
 					if (ImGui::GetIO().KeyCtrl) {
 						m_inspector.deselect(currentEntity->getId());
 					} else if (ImGui::GetIO().KeyShift) {
@@ -122,22 +124,19 @@ void OutlinerWindow::update(SGEContext* const UNUSED(sgecon), const InputState& 
 				// that was used to initiate the dragging. When dropped these object are going to get parented to
 				// something depending on where the user dropped them.
 				if (ImGui::BeginDragDropSource()) {
-					ImGui::SetDragDropPayload("OUTLINER_DND", nullptr, 0, ImGuiCond_Once);
-					draggedObjects.clear();
-					draggedObjects.insert(currentEntity->getId());
-
-					for (auto& sel : m_inspector.getSelection()) {
-						draggedObjects.insert(sel.objectId);
-					}
-
+					DragDropPayloadActor::setPayload(currentEntity->getId());
 
 					ImGui::Text(currentEntity->getDisplayNameCStr());
 					ImGui::EndDragDropSource();
 				}
 
+				// Handle dropping actors over another actor to parent it.
+				// Do not do the parenting here as we are currently traversing the hierarchy and it will mess up the algorithm.
+				// Save the data and do it once we've done iterating.
 				if (ImGui::BeginDragDropTarget()) {
-					if (ImGui::AcceptDragDropPayload("OUTLINER_DND")) {
+					if (Optional<std::set<ObjectId>> dropedIds = DragDropPayloadActor::accept()) {
 						dragAndDropTargetedActor = currentEntity->getId();
+						droppedActorsOnTargetActor = *dropedIds;
 					}
 
 					ImGui::EndDragDropTarget();
@@ -179,20 +178,21 @@ void OutlinerWindow::update(SGEContext* const UNUSED(sgecon), const InputState& 
 		// Setting the window as a drag-and-drop target isn't currently supported in ImGui.
 		// This is workaround was propoused by the author of the library.
 		if (ImGui::BeginDragDropTargetCustom(dropTargetRectForWindow, 1234)) {
-			if (ImGui::AcceptDragDropPayload("OUTLINER_DND")) {
+			if (Optional<std::set<ObjectId>> dropedIds = DragDropPayloadActor::accept()) {
 				CmdActorGrouping* const cmd = new CmdActorGrouping;
-				cmd->setup(*m_inspector.getWorld(), ObjectId(), draggedObjects);
+				cmd->setup(*m_inspector.getWorld(), ObjectId(), dropedIds.get());
 				m_inspector.appendCommand(cmd, true);
 			}
+
 
 			ImGui::EndDragDropTarget();
 		}
 
 		// Drop over a ImGui::TreeNode means that the user wants to parent the dragged actors under
 		// the drop-target actor.
-		if (dragAndDropTargetedActor.isNull() == false && draggedObjects.count(dragAndDropTargetedActor) == 0) {
+		if (!droppedActorsOnTargetActor.empty() && droppedActorsOnTargetActor.count(dragAndDropTargetedActor) == 0) {
 			CmdActorGrouping* const cmd = new CmdActorGrouping;
-			cmd->setup(*m_inspector.getWorld(), dragAndDropTargetedActor, draggedObjects);
+			cmd->setup(*m_inspector.getWorld(), dragAndDropTargetedActor, droppedActorsOnTargetActor);
 			m_inspector.appendCommand(cmd, true);
 		}
 

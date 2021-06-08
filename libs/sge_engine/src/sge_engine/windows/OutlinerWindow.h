@@ -28,7 +28,6 @@ struct SGE_ENGINE_API OutlinerWindow : public IImGuiWindow {
 	std::string m_windowName;
 	ImGuiTextFilter nodeNamesFilter;
 	ObjectId m_rightClickedActor;
-	std::set<ObjectId> draggedObjects;
 
 	bool m_displayObjectIds = false;
 };

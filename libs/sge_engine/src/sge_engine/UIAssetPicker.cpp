@@ -1,6 +1,5 @@
 #define _CRT_SECURE_NO_WARNINGS
 
-
 #include "GameInspector.h"
 #include "GameWorld.h"
 #include "IconsForkAwesome/IconsForkAwesome.h"
@@ -8,6 +7,7 @@
 #include "sge_core/SGEImGui.h"
 #include "sge_core/shaders/modeldraw.h"
 #include "sge_engine/EngineGlobal.h"
+#include "sge_engine/ui/ImGuiDragDrop.h"
 #include "sge_utils/utils/strings.h"
 
 #include "UIAssetPicker.h"
@@ -221,6 +221,19 @@ bool actorPicker(
 			ioValue = ObjectId();
 		}
 		return true;
+	}
+
+	if (ImGui::BeginDragDropTarget()) {
+		bool accepted = false;
+		if (Optional<ObjectId> droppedObjid = DragDropPayloadActor::acceptSingle()) {
+			ioValue = *droppedObjid;
+			accepted = true;
+		}
+
+		ImGui::EndDragDropTarget();
+		if (accepted) {
+			return true;
+		}
 	}
 
 	return false;

@@ -1,12 +1,12 @@
 #pragma once
 
-#include "sge_renderer/renderer/renderer.h"
-#include "sgecore_api.h"
-
 #include "application/input.h"
 #include "imgui/imgui.h"
 #include "imgui/imgui_internal.h"
-#include <sge_utils/utils/timer.h>
+#include "sge_renderer/renderer/renderer.h"
+#include "sge_utils/utils/optional.h"
+#include "sge_utils/utils/timer.h"
+#include "sgecore_api.h"
 
 namespace sge {
 
@@ -179,4 +179,5 @@ SGE_CORE_API void TextTooltip(const char* const text);
 /// Caution: See https://github.com/ocornut/imgui/issues/1485
 /// This function works only on some items (like buttons).
 SGE_CORE_API void TextTooltipDelayed(const char* const text, float delay = 1.f);
+
 } // namespace ImGuiEx
