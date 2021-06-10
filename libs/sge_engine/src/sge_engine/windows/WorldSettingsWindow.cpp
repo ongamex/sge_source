@@ -1,6 +1,7 @@
 #include "WorldSettingsWindow.h"
 #include "IconsForkAwesome/IconsForkAwesome.h"
 #include "sge_core/SGEImGui.h"
+#include "sge_core/ICore.h"
 #include "sge_engine/EngineGlobal.h"
 #include "sge_engine/GameInspector.h"
 #include "sge_engine/GameWorld.h"
@@ -51,6 +52,10 @@ void WorldSettingsWindow::update(SGEContext* const UNUSED(sgecon), const InputSt
 		}
 
 		if (ImGui::CollapsingHeader(ICON_FK_SUN " Sky")) {
+			
+			AssetType type = AssetType::Texture2D;
+			assetPicker("Sky Texture", world->skyTexAsset, getCore()->getAssetLib(), &type, 1);
+
 			ImGui::ColorPicker3("Sky Top Color", m_inspector.getWorld()->m_skyColorTop.data);
 			ImGui::ColorPicker3("Sky Bottom Color", m_inspector.getWorld()->m_skyColorBottom.data);
 		}

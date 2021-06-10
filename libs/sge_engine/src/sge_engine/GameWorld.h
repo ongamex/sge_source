@@ -16,6 +16,7 @@
 
 namespace sge {
 
+struct Asset;
 struct QuickDraw;
 
 struct GameWorld;
@@ -284,6 +285,7 @@ struct SGE_ENGINE_API GameWorld {
 	vec3f m_rimLight = vec3f(0.1f);
 	vec3f m_skyColorBottom = vec3f(0.419f);
 	vec3f m_skyColorTop = vec3f(0.133f);
+	std::shared_ptr<Asset> skyTexAsset;
 	float m_rimCosineWidth = 0.3f;
 
 	/// A pointer to the attached inspector(if any).
