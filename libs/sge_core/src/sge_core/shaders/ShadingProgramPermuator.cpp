@@ -70,7 +70,7 @@ bool ShadingProgramPermuator::create(SGEDevice* sgedev,
 		const ShadingProgramRefl& refl = perPermutationShadingProg[iPerm].shadingProgram->getReflection();
 		perPermutationShadingProg[iPerm].uniformLUT.reserve(uniformsToCacheInLUT.size());
 		for (int t = 0; t < uniformsToCacheInLUT.size(); ++t) {
-			BindLocation bindLoc = refl.findUniform(uniformsToCacheInLUT[t].uniformName);
+			BindLocation bindLoc = refl.findUniform(uniformsToCacheInLUT[t].uniformName, uniformsToCacheInLUT[t].shaderStage);
 			perPermutationShadingProg[iPerm].uniformLUT.push_back(bindLoc);
 		}
 	}

@@ -122,10 +122,10 @@ struct SGE_CORE_API BasicModelDraw {
 	                                    const InstanceDrawMods& mods);
 
   private:
-	bool isInitialized = false;
 	Optional<ShadingProgramPermuator> shadingPermutFWDShading;
 	Optional<ShadingProgramPermuator> shadingPermutFWDBuildShadowMaps;
 	GpuHandle<Texture> emptyCubeShadowMap;
+	GpuHandle<Buffer> paramsBuffer;
 	StateGroup stateGroup;
 };
 

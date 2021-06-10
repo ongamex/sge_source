@@ -218,16 +218,6 @@ void DebugFont::Destroy() {
 bool QuickDraw::initialize(SGEContext* sgecon) {
 	sgeAssert(sgecon);
 
-	SGEDevice* device = sgecon->getDevice();
-
-	// Initialize the uniform string indices.
-	projViewWorld_strIdx = device->getStringIndex("projViewWorld");
-	colorTexture_strIdx = device->getStringIndex("colorTexture");
-	colorText_strIdx = device->getStringIndex("colorText");
-	uvRegion_strIdx = device->getStringIndex("uvRegion");
-	color_strIdx = device->getStringIndex("color");
-	alphaMult_strIdx = device->getStringIndex("alphaMult");
-
 	initalize2DDrawResources(sgecon);
 	initalize3DDrawResources(sgecon);
 
@@ -426,9 +416,9 @@ void QuickDraw::drawRect(
 
 	const ShadingProgramRefl& refl = stateGroup.m_shadingProg->getReflection();
 	BoundUniform uniforms[] = {
-	    BoundUniform(refl.numericUnforms.findUniform(projViewWorld_strIdx), (void*)&transf),
-	    BoundUniform(refl.numericUnforms.findUniform(color_strIdx), (void*)&rgba),
-	    BoundUniform(refl.numericUnforms.findUniform(alphaMult_strIdx), (void*)&alphaMult),
+	    BoundUniform(refl.numericUnforms.findUniform("projViewWorld", ShaderType::VertexShader), (void*)&transf),
+	    BoundUniform(refl.numericUnforms.findUniform("color", ShaderType::PixelShader), (void*)&rgba),
+	    BoundUniform(refl.numericUnforms.findUniform("alphaMult", ShaderType::PixelShader), (void*)&alphaMult),
 	};
 
 	DrawCall dc;
@@ -459,9 +449,9 @@ void QuickDraw::drawTriLeft(
 
 	const ShadingProgramRefl& refl = stateGroup.m_shadingProg->getReflection();
 	BoundUniform uniforms[] = {
-	    BoundUniform(refl.numericUnforms.findUniform(projViewWorld_strIdx), (void*)&transf),
-	    BoundUniform(refl.numericUnforms.findUniform(color_strIdx), (void*)&rgba),
-	    BoundUniform(refl.numericUnforms.findUniform(alphaMult_strIdx), (void*)&alphaMult),
+	    BoundUniform(refl.numericUnforms.findUniform("projViewWorld", ShaderType::VertexShader), (void*)&transf),
+	    BoundUniform(refl.numericUnforms.findUniform("color", ShaderType::PixelShader), (void*)&rgba),
+	    BoundUniform(refl.numericUnforms.findUniform("alphaMult", ShaderType::PixelShader), (void*)&alphaMult),
 	};
 
 	DrawCall dc;
@@ -505,10 +495,10 @@ void QuickDraw::drawRectTexture(const RenderDestination& rdest,
 	const ShadingProgramRefl& refl = stateGroup.m_shadingProg->getReflection();
 
 	BoundUniform uniforms[] = {
-	    BoundUniform(refl.numericUnforms.findUniform(projViewWorld_strIdx), (void*)&transf),
-	    BoundUniform(refl.numericUnforms.findUniform(uvRegion_strIdx), (void*)&region),
-	    BoundUniform(refl.numericUnforms.findUniform(alphaMult_strIdx), (void*)&alphaMult),
-	    BoundUniform(refl.textures.findUniform(colorTexture_strIdx), texture),
+	    BoundUniform(refl.numericUnforms.findUniform("projViewWorld", ShaderType::VertexShader), (void*)&transf),
+	    BoundUniform(refl.numericUnforms.findUniform("uvRegion", ShaderType::PixelShader), (void*)&region),
+	    BoundUniform(refl.numericUnforms.findUniform("alphaMult", ShaderType::PixelShader), (void*)&alphaMult),
+	    BoundUniform(refl.textures.findUniform("colorTexture", ShaderType::PixelShader), texture),
 	};
 
 	dc.setUniforms(uniforms, SGE_ARRSZ(uniforms));
@@ -617,11 +607,11 @@ void QuickDraw::drawTextLazy(const RenderDestination& rdest,
 
 			const ShadingProgramRefl& refl = stateGroup.m_shadingProg->getReflection();
 			BoundUniform uniforms[] = {
-			    BoundUniform(refl.numericUnforms.findUniform(projViewWorld_strIdx), (void*)&transf),
-			    BoundUniform(refl.numericUnforms.findUniform(uvRegion_strIdx), (void*)&uvRegion),
-			    BoundUniform(refl.numericUnforms.findUniform(colorText_strIdx), (void*)&rgba),
-			    BoundUniform(refl.numericUnforms.findUniform(alphaMult_strIdx), (void*)&alphaMult),
-			    BoundUniform(refl.textures.findUniform(colorTexture_strIdx), font.texture),
+			    BoundUniform(refl.numericUnforms.findUniform("projViewWorld", ShaderType::VertexShader), (void*)&transf),
+			    BoundUniform(refl.numericUnforms.findUniform("uvRegion", ShaderType::PixelShader), (void*)&uvRegion),
+			    BoundUniform(refl.numericUnforms.findUniform("colorText", ShaderType::PixelShader), (void*)&rgba),
+			    BoundUniform(refl.numericUnforms.findUniform("alphaMult", ShaderType::PixelShader), (void*)&alphaMult),
+			    BoundUniform(refl.textures.findUniform("colorTexture", ShaderType::PixelShader), font.texture),
 			};
 
 			DrawCall dc;
@@ -808,7 +798,7 @@ void QuickDraw::drawWired_Execute(const RenderDestination& rdest, const mat4f& p
 
 	const ShadingProgramRefl& refl = stateGroup.m_shadingProg->getReflection();
 	BoundUniform uniforms[] = {
-	    BoundUniform(refl.numericUnforms.findUniform(projViewWorld_strIdx), (void*)&projView),
+	    BoundUniform(refl.numericUnforms.findUniform("projViewWorld", ShaderType::VertexShader), (void*)&projView),
 	};
 
 	const uint32 vbSizeVerts = uint32(m_vbWiredGeometry->getDesc().sizeBytes) / (sizeof(GeomGen::PosColorVert));
@@ -868,7 +858,7 @@ void QuickDraw::drawSolid_Execute(const RenderDestination& rdest,
 
 	const ShadingProgramRefl& refl = stateGroup.m_shadingProg->getReflection();
 	BoundUniform uniforms[] = {
-	    BoundUniform(refl.numericUnforms.findUniform(projViewWorld_strIdx), (void*)&projViewWorld),
+	    BoundUniform(refl.numericUnforms.findUniform("projViewWorld", ShaderType::VertexShader), (void*)&projViewWorld),
 	};
 
 	// CAUTION: clamp the actual size to something multiple of 3

@@ -359,6 +359,7 @@ void DefaultGameDrawer::drawWorld(const GameDrawSets& drawSets, const DrawReason
 	}
 
 	// Draw the sky.
+	#if 0
 	if (drawReason_IsGameOrEditNoShadowPass(drawReason)) {
 		StateGroup sg;
 		sg.setProgram(m_skyGradientShader);
@@ -412,6 +413,7 @@ void DefaultGameDrawer::drawWorld(const GameDrawSets& drawSets, const DrawReason
 			drawSets.rdest.sgecon->executeDrawCall(dc, drawSets.rdest.frameTarget, &drawSets.rdest.viewport);
 		}
 	}
+	#endif
 }
 
 void DefaultGameDrawer::drawActor(

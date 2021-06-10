@@ -261,9 +261,9 @@ void SGEImGui::initialize(SGEContext* sgecon_arg, FrameTarget* frameTarget, cons
 		io.KeyMap[t] = t;
 	}
 
-	colorTexBindLoc = shadingProgram->getReflection().findUniform("colorTex");
-	colorTexSamplerBindLoc = shadingProgram->getReflection().findUniform("colorTex_sampler");
-	projViewWorldBindLoc = shadingProgram->getReflection().findUniform("projViewWorld");
+	colorTexBindLoc = shadingProgram->getReflection().findUniform("colorTex", ShaderType::PixelShader);
+	colorTexSamplerBindLoc = shadingProgram->getReflection().findUniform("colorTex_sampler", ShaderType::PixelShader);
+	projViewWorldBindLoc = shadingProgram->getReflection().findUniform("projViewWorld", ShaderType::VertexShader);
 
 	// ImGui::GetStyle().ScaleAllSizes(1.25f);s
 	Style();

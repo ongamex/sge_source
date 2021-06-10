@@ -13,17 +13,42 @@
 //--------------------------------------------------------------------
 // Uniforms
 //--------------------------------------------------------------------
-uniform float4x4 projView;
-uniform float4x4 world;
-uniform float4x4 uvwTransform;
-uniform float4 cameraPositionWs;
-uniform float4 uCameraLookDirWs;
 
-uniform float4 uiHighLightColor;
+// https://docs.microsoft.com/en-us/windows/win32/direct3dhlsl/dx-graphics-hlsl-packing-rules?redirectedfrom=MSDN
+cbuffer ParamsCbFWDDefaultShading {
+	float4x4 projView;
+	float4x4 world;
+	float4x4 uvwTransform;
+	float4 cameraPositionWs;
+	float4 uCameraLookDirWs;
 
+	float4 uiHighLightColor;
+	float4 uDiffuseColorTint;
+	float3 texDiffuseXYZScaling;
+	float uMetalness;
+	
+	float uRoughness;
+	int uPBRMtlFlags;
+
+	float4 uRimLightColorWWidth;
+	float3 ambientLightColor;
+
+	// Lights uniforms.
+	float4 lightPosition;           // Position, w encodes the type of the light.
+	float4 lightSpotDirAndCosAngle; // all Used in spot lights :( other lights do not use it
+	float4 lightColorWFlag;         // w used for flags.
+	
+	float4x4 lightShadowMapProjView;
+	float4 lightShadowRange;
+
+	// Skinning.
+	int uSkinningFirstBoneOffsetInTex; ///< The row (integer) in @uSkinningBones of the fist bone for the mesh that is being drawn.
+};
+
+// Material.
 uniform sampler2D uTexNormalMap;
-
-uniform float4 uDiffuseColorTint;
+uniform sampler2D uTexMetalness;
+uniform sampler2D uTexRoughness;
 
 #if OPT_DiffuseColorSrc == kDiffuseColorSrcTexture
 uniform sampler2D texDiffuse;
@@ -33,36 +58,15 @@ uniform sampler2D texDiffuse;
 uniform sampler2D texDiffuseX;
 uniform sampler2D texDiffuseY;
 uniform sampler2D texDiffuseZ;
-uniform float3 texDiffuseXYZScaling;
 #endif
 
-uniform sampler2D uTexMetalness;
-uniform sampler2D uTexRoughness;
-
-uniform float uMetalness;
-uniform float uRoughness;
-#ifdef SGE_PIXEL_SHADER
-uniform int uPBRMtlFlags;
-#endif
-
-uniform float4 uRimLightColorWWidth;
-
-uniform float3 ambientLightColor;
-
-// Lights uniforms.
-uniform float4 lightPosition;           // Position, w encodes the type of the light.
-uniform float4 lightSpotDirAndCosAngle; // all Used in spot lights :( other lights do not use it
-uniform float4 lightColorWFlag;         // w used for flags.
-// uniform float4 lightExtra2;
-uniform sampler2D lightShadowMap;
-uniform float4x4 lightShadowMapProjView;
-uniform float4 lightShadowRange;
-
+// Shadows.
+sampler2D lightShadowMap;
 uniform samplerCUBE uPointLightShadowMap;
 
+// Skinning.
 #if OPT_HasVertexSkinning == kHasVertexSkinning_Yes
 	uniform sampler2D uSkinningBones;
-	uniform int uSkinningFirstBoneOffsetInTex; ///< The row (integer) in @uSkinningBones of the fist bone for the mesh that is being drawn.
 #endif
 
 //--------------------------------------------------------------------

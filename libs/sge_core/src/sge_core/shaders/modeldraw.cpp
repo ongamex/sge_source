@@ -14,6 +14,40 @@
 
 using namespace sge;
 
+// https://docs.microsoft.com/en-us/windows/win32/direct3dhlsl/dx-graphics-hlsl-packing-rules?redirectedfrom=MSDN
+struct ParamsCbFWDDefaultShading {
+	mat4f projView;
+	mat4f world;
+	mat4f uvwTransform;
+	vec4f cameraPositionWs;
+	vec4f uCameraLookDirWs;
+
+	vec4f uiHighLightColor;
+	vec4f uDiffuseColorTint;
+	vec3f texDiffuseXYZScaling;
+	float uMetalness;
+	float uRoughness;
+
+	int uPBRMtlFlags;
+	float uPBRMtlFlags_padding[3];
+
+	vec4f uRimLightColorWWidth;
+	vec3f ambientLightColor;
+	float ambientLightColor_padding;
+
+	// Lights uniforms.
+	vec4f lightPosition;           // Position, w encodes the type of the light.
+	vec4f lightSpotDirAndCosAngle; // all Used in spot lights :( other lights do not use it
+	vec4f lightColorWFlag;         // w used for flags.
+
+	mat4f lightShadowMapProjView;
+	vec4f lightShadowRange;
+
+	// Skinning.
+	int uSkinningFirstBoneOffsetInTex; ///< The row (integer) in @uSkinningBones of the fist bone for the mesh that is being drawn.
+	float uSkinningFirstBoneOffsetInTex_padding[3];
+};
+
 //-----------------------------------------------------------------------------
 // BasicModelDraw
 //-----------------------------------------------------------------------------
@@ -159,6 +193,13 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
                                              const Geometry* geometry,
                                              const Material& material,
                                              const InstanceDrawMods& mods) {
+	SGEDevice* const sgedev = rdest.getDevice();
+	if (!paramsBuffer.IsResourceValid()) {
+		BufferDesc bd = BufferDesc::GetDefaultConstantBuffer(512, ResourceUsage::Dynamic);
+		paramsBuffer = sgedev->requestResource<Buffer>();
+		paramsBuffer->create(bd, nullptr);
+	}
+
 	enum : int {
 		OPT_UseNormalMap,
 		OPT_DiffuseColorSrc,
@@ -168,7 +209,6 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 	};
 
 	enum : int {
-		uiHighLightColor,
 		uTexDiffuse,
 		uTexDiffuseSampler,
 		uTexNormalMap,
@@ -180,34 +220,19 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 		uTexDiffuseZ,
 		uTexDiffuseZSampler,
 		uTexDiffuseXYZScaling,
-		uColor,
-		uCameraPositionWs,
-		uCameraLookDirWs,
-		uWorld,
-		uProjView,
-		uUVWTransform,
-		uGameTime,
-		uAmbientLightColor,
-		uRimLightColorWWidth,
-		uLightPosition,
-		uLightSpotDirAndCosAngle,
-		uLightColorWFlag,
 		uLightShadowMap,
-		uLightShadowMapProjView,
-		uLightShadowRange,
 		uPointLightShadowMap,
-		uFluidColor0,
-		uFluidColor1,
 		uTexMetalness,
 		uTexMetalnessSampler,
 		uTexRoughness,
 		uTexRoughnessSampler,
-		uMetalness,
-		uRoughness,
-		uPBRMtlFlags,
-		uSkinningBones,
-		uSkinningFirstBoneOffsetInTex,
+		uTexSkinningBones,
+		uParamsCbFWDDefaultShading_vertex,
+		uParamsCbFWDDefaultShading_pixel,
 	};
+
+	ParamsCbFWDDefaultShading paramsCb;
+	memset(&paramsCb, 0, sizeof(paramsCb));
 
 	if (shadingPermutFWDShading.isValid() == false) {
 		shadingPermutFWDShading = ShadingProgramPermuator();
@@ -219,53 +244,31 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 		    {OPT_HasVertexSkinning, "OPT_HasVertexSkinning", {SGE_MACRO_STR(kHasVertexSkinning_No), SGE_MACRO_STR(kHasVertexSkinning_Yes)}},
 		};
 
-		// clang-format off
-
 		// Caution: It is important that the order of the elements here MATCHES the order in the enum above.
 		const std::vector<ShadingProgramPermuator::Unform> uniformsToCache = {
-		    {uiHighLightColor, "uiHighLightColor"},
-		    {uTexDiffuse, "texDiffuse"},
-		    {uTexDiffuseSampler, "texDiffuse_sampler"},
-		    {uTexNormalMap, "uTexNormalMap"},
-		    {uTexNormalMapSampler, "uTexNormalMap_sampler"},
-		    {uTexDiffuseX, "texDiffuseX"},
-		    {uTexDiffuseXSampler, "texDiffuseX_sampler"},
-		    {uTexDiffuseY, "texDiffuseY"},
-		    {uTexDiffuseYSampler, "texDiffuseY_sampler"},
-		    {uTexDiffuseZ, "texDiffuseZ"},
-		    {uTexDiffuseZSampler, "texDiffuseZ_sampler"},
-		    {uTexDiffuseXYZScaling, "texDiffuseXYZScaling"},
-		    {uColor, "uDiffuseColorTint"},
-		    {uCameraPositionWs, "cameraPositionWs"},
-		    {uCameraLookDirWs, "uCameraLookDirWs"},
-		    {uWorld, "world"},
-		    {uProjView, "projView"},
-		    {uUVWTransform, "uvwTransform"},
-		    {uGameTime, "gameTime"},
-		    {uAmbientLightColor, "ambientLightColor"},
-		    {uRimLightColorWWidth, "uRimLightColorWWidth"},
-		    {uLightPosition, "lightPosition"},
-		    {uLightSpotDirAndCosAngle, "lightSpotDirAndCosAngle"},
-		    {uLightColorWFlag, "lightColorWFlag"},
-		    {uLightShadowMap, "lightShadowMap"},
-		    {uLightShadowMapProjView, "lightShadowMapProjView"},
-		    {uLightShadowRange, "lightShadowRange"},
-		    {uPointLightShadowMap, "uPointLightShadowMap"},
-		    {uFluidColor0, "uFluidColor0"},
-		    {uFluidColor1, "uFluidColor1"},
-		    {uTexMetalness, "uTexMetalness"},
-		    {uTexMetalnessSampler, "uTexMetalness_sampler"},
-		    {uTexRoughness, "uTexRoughness"},
-		    {uTexRoughnessSampler, "uTexRoughness_sampler"},
-		    {uMetalness, "uMetalness"},
-		    {uRoughness, "uRoughness"},
-		    {uPBRMtlFlags, "uPBRMtlFlags"},
-			{uSkinningBones, "uSkinningBones"},
-			{uSkinningFirstBoneOffsetInTex, "uSkinningFirstBoneOffsetInTex"},
+		    {uTexDiffuse, "texDiffuse", ShaderType::PixelShader},
+		    {uTexDiffuseSampler, "texDiffuse_sampler", ShaderType::PixelShader},
+		    {uTexNormalMap, "uTexNormalMap", ShaderType::PixelShader},
+		    {uTexNormalMapSampler, "uTexNormalMap_sampler", ShaderType::PixelShader},
+		    {uTexDiffuseX, "texDiffuseX", ShaderType::PixelShader},
+		    {uTexDiffuseXSampler, "texDiffuseX_sampler", ShaderType::PixelShader},
+		    {uTexDiffuseY, "texDiffuseY", ShaderType::PixelShader},
+		    {uTexDiffuseYSampler, "texDiffuseY_sampler", ShaderType::PixelShader},
+		    {uTexDiffuseZ, "texDiffuseZ", ShaderType::PixelShader},
+		    {uTexDiffuseZSampler, "texDiffuseZ_sampler", ShaderType::PixelShader},
+		    {uTexDiffuseXYZScaling, "texDiffuseXYZScaling", ShaderType::PixelShader},
+		    {uLightShadowMap, "lightShadowMap", ShaderType::PixelShader},
+		    {uPointLightShadowMap, "uPointLightShadowMap", ShaderType::PixelShader},
+		    {uTexMetalness, "uTexMetalness", ShaderType::PixelShader},
+		    {uTexMetalnessSampler, "uTexMetalness_sampler", ShaderType::PixelShader},
+		    {uTexRoughness, "uTexRoughness", ShaderType::PixelShader},
+		    {uTexRoughnessSampler, "uTexRoughness_sampler", ShaderType::PixelShader},
+		    {uTexSkinningBones, "uSkinningBones", ShaderType::VertexShader},
+		    {uParamsCbFWDDefaultShading_vertex, "ParamsCbFWDDefaultShading", ShaderType::VertexShader},
+		    {uParamsCbFWDDefaultShading_pixel, "ParamsCbFWDDefaultShading", ShaderType::PixelShader},
 		};
-		// clang-format on
 
-		SGEDevice* const sgedev = rdest.getDevice();
+
 		shadingPermutFWDShading->createFromFile(sgedev, "core_shaders/FWDDefault_shading.shader", compileTimeOptions, uniformsToCache);
 	}
 
@@ -330,17 +333,19 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 
 	StaticArray<BoundUniform, 64> uniforms;
 
-	shaderPerm.bind<64>(uniforms, uWorld, (void*)&world);
-	shaderPerm.bind<64>(uniforms, uCameraPositionWs, (void*)camPos.data);
-	shaderPerm.bind<64>(uniforms, uCameraLookDirWs, (void*)camLookDir.data);
-	shaderPerm.bind<64>(uniforms, uProjView, (void*)&projView);
-
-	shaderPerm.bind<64>(uniforms, uiHighLightColor, (void*)&generalMods.selectionTint);
-
-	shaderPerm.bind<64>(uniforms, uColor, (void*)&material.diffuseColor);
-
 	mat4f combinedUVWTransform = mods.uvwTransform * material.uvwTransform;
-	shaderPerm.bind<64>(uniforms, uUVWTransform, (void*)&combinedUVWTransform);
+
+	paramsCb.world = world;
+	paramsCb.cameraPositionWs = vec4f(camPos, 1.f);
+	paramsCb.uCameraLookDirWs = vec4f(camLookDir, 0.f);
+	paramsCb.projView = projView;
+	paramsCb.uiHighLightColor = generalMods.selectionTint;
+	paramsCb.uDiffuseColorTint = material.diffuseColor;
+	paramsCb.uvwTransform = combinedUVWTransform;
+	paramsCb.texDiffuseXYZScaling = material.diffuseTexXYZScaling;
+	paramsCb.uMetalness = material.metalness;
+	paramsCb.uRoughness = material.roughness;
+	paramsCb.uSkinningFirstBoneOffsetInTex = geometry->firstBoneOffset;
 
 	if (optDiffuseColorSrc == kDiffuseColorSrcConstant) {
 		// Nothing, uColor is used here.
@@ -367,7 +372,6 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 
 	int pbrFlags = 0;
 
-	shaderPerm.bind<64>(uniforms, uMetalness, (void*)&material.metalness);
 	if (material.texMetalness != nullptr) {
 		pbrFlags |= kPBRMtl_Flags_HasMetalnessMap;
 		shaderPerm.bind<64>(uniforms, uTexMetalness, (void*)material.texMetalness);
@@ -376,7 +380,6 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 #endif
 	}
 
-	shaderPerm.bind<64>(uniforms, uRoughness, (void*)&material.roughness);
 	if (material.texRoughness != nullptr) {
 		pbrFlags |= kPBRMtl_Flags_HasRoughnessMap;
 		shaderPerm.bind<64>(uniforms, uTexRoughness, (void*)material.texRoughness);
@@ -385,7 +388,7 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 #endif
 	}
 
-	shaderPerm.bind<64>(uniforms, uPBRMtlFlags, (void*)&pbrFlags);
+	paramsCb.uPBRMtlFlags = pbrFlags;
 
 	if (optUseNormalMap) {
 		shaderPerm.bind<64>(uniforms, uTexNormalMap, (void*)material.texNormalMap);
@@ -416,9 +419,7 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 	}
 
 	if (optHasVertexSkinning == kHasVertexSkinning_Yes) {
-		uniforms.push_back(BoundUniform(shaderPerm.uniformLUT[uSkinningBones], (geometry->skinningBoneTransforms)));
-		sgeAssert(uniforms.back().bindLocation.isNull() == false && uniforms.back().bindLocation.uniformType != 0);
-		uniforms.push_back(BoundUniform(shaderPerm.uniformLUT[uSkinningFirstBoneOffsetInTex], (void*)&geometry->firstBoneOffset));
+		uniforms.push_back(BoundUniform(shaderPerm.uniformLUT[uTexSkinningBones], (geometry->skinningBoneTransforms)));
 		sgeAssert(uniforms.back().bindLocation.isNull() == false && uniforms.back().bindLocation.uniformType != 0);
 	}
 
@@ -432,19 +433,19 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 		// Do the ambient lighting only with the 1st light.
 		if (optLighting == kLightingShaded) {
 			if (iLight == 0) {
-				shaderPerm.bind<64>(uniforms, uAmbientLightColor, (void*)&generalMods.ambientLightColor);
-				shaderPerm.bind<64>(uniforms, uRimLightColorWWidth, (void*)&generalMods.uRimLightColorWWidth);
+				paramsCb.ambientLightColor = generalMods.ambientLightColor;
+				paramsCb.uRimLightColorWWidth = generalMods.uRimLightColorWWidth;
 			} else {
 				vec4f zeroColor(0.f);
-				shaderPerm.bind<64>(uniforms, uAmbientLightColor, (void*)&zeroColor);
-				shaderPerm.bind<64>(uniforms, uRimLightColorWWidth, (void*)&zeroColor);
+				paramsCb.ambientLightColor = vec3f(0.f);
+				paramsCb.uRimLightColorWWidth = vec4f(0.f);
 			}
 		}
 
 		if (mods.forceNoLighting == false) {
-			shaderPerm.bind<64>(uniforms, (int)uLightPosition, (void*)&shadingLight.lightPositionAndType);
-			shaderPerm.bind<64>(uniforms, (int)uLightSpotDirAndCosAngle, (void*)&shadingLight.lightSpotDirAndCosAngle);
-			shaderPerm.bind<64>(uniforms, (int)uLightColorWFlag, (void*)&shadingLight.lightColorWFlags);
+			paramsCb.lightPosition = shadingLight.lightPositionAndType;
+			paramsCb.lightSpotDirAndCosAngle = shadingLight.lightSpotDirAndCosAngle;
+			paramsCb.lightColorWFlag = shadingLight.lightColorWFlags;
 
 			if (shadingLight.shadowMap != nullptr && shaderPerm.uniformLUT[uLightShadowMap].isNull() == false) {
 				if (shadingLight.lightPositionAndType.w == 0.f) {
@@ -456,8 +457,8 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 				}
 			}
 
-			shaderPerm.bind<64>(uniforms, uLightShadowMapProjView, (void*)&shadingLight.shadowMapProjView);
-			shaderPerm.bind<64>(uniforms, uLightShadowRange, (void*)&shadingLight.lightXShadowRange);
+			paramsCb.lightShadowMapProjView = shadingLight.shadowMapProjView;
+			paramsCb.lightShadowRange = shadingLight.lightXShadowRange;
 		}
 
 		if (mods.forceAdditiveBlending) {
@@ -469,7 +470,12 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 			                                        : getCore()->getGraphicsResources().BS_addativeColor);
 		}
 
+		void* paramsMappedData = sgedev->getContext()->map(paramsBuffer, Map::WriteDiscard);
+		memcpy(paramsMappedData, &paramsCb, sizeof(paramsCb));
+		sgedev->getContext()->unMap(paramsBuffer);
 
+		uniforms.push_back(BoundUniform(shaderPerm.uniformLUT[uParamsCbFWDDefaultShading_vertex], paramsBuffer.GetPtr()));
+		uniforms.push_back(BoundUniform(shaderPerm.uniformLUT[uParamsCbFWDDefaultShading_pixel], paramsBuffer.GetPtr()));
 
 		dc.setUniforms(uniforms.data(), uniforms.size());
 		dc.setStateGroup(&stateGroup);
@@ -487,12 +493,12 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 	// then there were no draw call created. However we need to draw the object
 	// in order for it to affect the z-depth or even get light by the ambient lighting.
 	if (generalMods.lightsCount == 0) {
-		shaderPerm.bind<64>(uniforms, uAmbientLightColor, (void*)&generalMods.ambientLightColor);
-		shaderPerm.bind<64>(uniforms, uRimLightColorWWidth, (void*)&generalMods.uRimLightColorWWidth);
+		paramsCb.ambientLightColor = generalMods.ambientLightColor;
+		paramsCb.uRimLightColorWWidth = generalMods.uRimLightColorWWidth;
 
 		vec4f colorWFlags(0.f);
 		colorWFlags.w = float(kLightFlt_DontLight);
-		shaderPerm.bind<64>(uniforms, uLightColorWFlag, (void*)&colorWFlags);
+		paramsCb.lightColorWFlag = colorWFlags;
 
 		stateGroup.setPrimitiveTopology(PrimitiveTopology::TriangleList);
 		stateGroup.setRenderState(rasterState, getCore()->getGraphicsResources().DSS_default_lessEqual,

@@ -12,8 +12,11 @@ namespace sge {
 //------------------------------------------------------------
 struct SGE_CORE_API ShadingProgramPermuator {
 	struct Unform {
-		int safetyIndex;
+		int safetyIndex; ///< The user specified to the ShadingProgramPermuator an array of uniforms to be found. In order to decrease
+		                 ///< debugging we want this index to be the same as the index in the array specified by the user, as they are going
+		                 ///< to access them by that index.
 		const char* uniformName;
+		ShaderType::Enum shaderStage;
 	};
 
 	struct Permutation {

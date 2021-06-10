@@ -186,7 +186,7 @@ void SceneWindow::updateRightClickMenu(bool canOpen) {
 	}
 
 	ImGui::SetNextWindowPos(ImGui::GetMousePos(), ImGuiCond_Appearing);
-	;
+
 	if (ImGui::BeginPopup(kRightClickMenuName)) {
 		static bool wasMenuShowPrevFrame = false;
 

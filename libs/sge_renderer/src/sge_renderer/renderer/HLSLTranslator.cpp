@@ -11,7 +11,7 @@
 #include <HLSLGenerator.h>
 #include <HLSLParser.h>
 
-constexpr const char* const SGE_FAKE_SHADER_SRC_FILE = "no_file.nope";
+constexpr const char* const SGE_FAKE_SHADER_SRC_FILE = "<NO-FILE>";
 
 namespace preprocessor {
 struct Args {
