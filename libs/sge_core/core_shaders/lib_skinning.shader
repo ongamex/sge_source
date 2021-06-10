@@ -12,11 +12,7 @@ float4x4 libSkining_getBoneTransform(int iBoneRow, sampler2D bonesTransfTex, flo
 	const float mtxColumn_2_U = ((0.5 + 2.0) / 4.f);
 	const float mtxColumn_3_U = ((0.5 + 3.0) / 4.f);	
 
-#if 1
-	const float v = ((float)iBoneRow + 0.5f) / (float)bonesTransfTexSizeYAsFloat;
-#else
-	const float v = ((float)(bonesTransfTexSizeYAsFloat - iBoneRow - 1) + 0.5f) / (float)bonesTransfTexSizeYAsFloat;
-#endif
+	const float v = ((float)iBoneRow + 0.5f) / bonesTransfTexSizeYAsFloat;
 
 	const float4 c0 = tex2Dlod(bonesTransfTex, float4(mtxColumn_0_U, v, 0.f, 0.f));
 	const float4 c1 = tex2Dlod(bonesTransfTex, float4(mtxColumn_1_U, v, 0.f, 0.f));
@@ -59,13 +55,13 @@ float4x4 libSkining_getBoneTransform(int iBoneRow, sampler2D bonesTransfTex, flo
 float4x4 libSkining_getSkinningTransform(int4 bonesIndices, int firstBoneRowOffset, float4 bonesWeights, sampler2D bonesTransfTex) {
 	const float fBonesTransfTexSizeY = (float)(tex2Dsize(bonesTransfTex).y);
 	
-	const int4 offsetedIndices = bonesIndices + int4(firstBoneRowOffset, firstBoneRowOffset, firstBoneRowOffset, firstBoneRowOffset);
+	const int4 offsetedIndices = bonesIndices + firstBoneRowOffset;
 	
 	const float4x4 skinMtx = 
-		  libSkining_getBoneTransform(offsetedIndices, bonesTransfTex, fBonesTransfTexSizeY) * bonesWeights.x
-		+ libSkining_getBoneTransform(offsetedIndices, bonesTransfTex, fBonesTransfTexSizeY) * bonesWeights.y
-		+ libSkining_getBoneTransform(offsetedIndices, bonesTransfTex, fBonesTransfTexSizeY) * bonesWeights.z
-		+ libSkining_getBoneTransform(offsetedIndices, bonesTransfTex, fBonesTransfTexSizeY) * bonesWeights.w;
+		  libSkining_getBoneTransform(offsetedIndices.x, bonesTransfTex, fBonesTransfTexSizeY) * bonesWeights.x
+		+ libSkining_getBoneTransform(offsetedIndices.y, bonesTransfTex, fBonesTransfTexSizeY) * bonesWeights.y
+		+ libSkining_getBoneTransform(offsetedIndices.z, bonesTransfTex, fBonesTransfTexSizeY) * bonesWeights.z
+		+ libSkining_getBoneTransform(offsetedIndices.w, bonesTransfTex, fBonesTransfTexSizeY) * bonesWeights.w;
 		
 	return skinMtx;
 }
