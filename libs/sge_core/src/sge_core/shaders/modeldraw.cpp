@@ -29,7 +29,8 @@ struct ParamsCbFWDDefaultShading {
 	float uRoughness;
 
 	int uPBRMtlFlags;
-	float uPBRMtlFlags_padding[3];
+	int uPBRMtlFlags_padding[2];
+
 
 	vec4f uRimLightColorWWidth;
 	vec3f ambientLightColor;
@@ -45,7 +46,7 @@ struct ParamsCbFWDDefaultShading {
 
 	// Skinning.
 	int uSkinningFirstBoneOffsetInTex; ///< The row (integer) in @uSkinningBones of the fist bone for the mesh that is being drawn.
-	float uSkinningFirstBoneOffsetInTex_padding[3];
+	int uSkinningFirstBoneOffsetInTex_padding[3];
 };
 
 //-----------------------------------------------------------------------------
@@ -195,7 +196,7 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
                                              const InstanceDrawMods& mods) {
 	SGEDevice* const sgedev = rdest.getDevice();
 	if (!paramsBuffer.IsResourceValid()) {
-		BufferDesc bd = BufferDesc::GetDefaultConstantBuffer(512, ResourceUsage::Dynamic);
+		BufferDesc bd = BufferDesc::GetDefaultConstantBuffer(1024, ResourceUsage::Dynamic);
 		paramsBuffer = sgedev->requestResource<Buffer>();
 		paramsBuffer->create(bd, nullptr);
 	}
@@ -499,6 +500,10 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 		vec4f colorWFlags(0.f);
 		colorWFlags.w = float(kLightFlt_DontLight);
 		paramsCb.lightColorWFlag = colorWFlags;
+
+		void* paramsMappedData = sgedev->getContext()->map(paramsBuffer, Map::WriteDiscard);
+		memcpy(paramsMappedData, &paramsCb, sizeof(paramsCb));
+		sgedev->getContext()->unMap(paramsBuffer);
 
 		stateGroup.setPrimitiveTopology(PrimitiveTopology::TriangleList);
 		stateGroup.setRenderState(rasterState, getCore()->getGraphicsResources().DSS_default_lessEqual,
