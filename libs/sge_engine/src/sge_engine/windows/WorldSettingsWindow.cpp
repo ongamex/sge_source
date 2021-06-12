@@ -61,7 +61,8 @@ void WorldSettingsWindow::update(SGEContext* const UNUSED(sgecon), const InputSt
 		}
 
 		if (ImGui::CollapsingHeader(ICON_FK_CAMERA " Gameplay")) {
-			ImGui::InputInt(ICON_FK_CAMERA " Gameplay Camera", &m_inspector.getWorld()->m_cameraPovider.id);
+			ImGuiEx::Label(ICON_FK_CAMERA " Gameplay Camera");
+			actorPicker("##CameraActorPicker", *m_inspector.getWorld(), m_inspector.getWorld()->m_cameraPovider, nullptr, true);
 
 			ImGui::SameLine();
 			if (ImGui::Button(ICON_FK_SHOPPING_CART)) {
