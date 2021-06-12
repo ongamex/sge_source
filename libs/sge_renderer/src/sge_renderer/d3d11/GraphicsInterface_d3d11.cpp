@@ -310,7 +310,7 @@ std::string SGEDeviceD3D11::D3D11_GetWorkingShaderModel(const ShaderType::Enum s
 	std::string shaderModel;
 
 	switch (shaderType) {
-		//case ShaderType::ComputeShader:
+		// case ShaderType::ComputeShader:
 		//	shaderModel += "cs_";
 		//	break;
 		case ShaderType::VertexShader:
@@ -529,7 +529,7 @@ void SGEContextImmediateD3D11::executeDrawCall(DrawCall& drawCall,
 					// uniform.texture and not an array with uniform.textures with 1 element specified.
 					if (bindLocation.texArraySize_or_numericUniformSizeBytes == 1) {
 						TextureD3D11* texture = reinterpret_cast<TextureD3D11*>(uniform.texture);
-						srvs[bindLocation.shaderFreq][bindLocation.bindLocation] = texture->D3D11_GetSRV();
+						srvs[bindLocation.shaderFreq][bindLocation.bindLocation] = texture ? texture->D3D11_GetSRV() : nullptr;
 					} else {
 						for (int t = 0; t < bindLocation.texArraySize_or_numericUniformSizeBytes; ++t) {
 							TextureD3D11* const d3d11Tex = static_cast<TextureD3D11*>(uniform.textures[t]);

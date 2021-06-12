@@ -32,13 +32,13 @@ void ConstantColorShader::drawGeometry(
 	if (shadingPermut.isValid() == false) {
 		shadingPermut = ShadingProgramPermuator();
 
-		static const std::vector<OptionPermuataor::OptionDesc> compileTimeOptions = {
+		const std::vector<OptionPermuataor::OptionDesc> compileTimeOptions = {
 		    {OPT_HasVertexSkinning, "OPT_HasVertexSkinning", {SGE_MACRO_STR(kHasVertexSkinning_No), SGE_MACRO_STR(kHasVertexSkinning_Yes)}},
 		};
 
 		// clang-format off
 		// Caution: It is important that the order of the elements here MATCHES the order in the enum above.
-		static const std::vector<ShadingProgramPermuator::Unform> uniformsToCache = {
+		const std::vector<ShadingProgramPermuator::Unform> uniformsToCache = {
 		    {uColor, "uColor", ShaderType::PixelShader},
 		    {uWorld, "uWorld", ShaderType::VertexShader},
 		    {uProjView, "uProjView", ShaderType::VertexShader},

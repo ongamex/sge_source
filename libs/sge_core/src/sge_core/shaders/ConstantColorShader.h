@@ -28,7 +28,6 @@ struct SGE_CORE_API ConstantColorShader {
 	    const RenderDestination& rdest, const mat4f& projView, const mat4f& world, const Geometry& geometry, const vec4f& shadingColor);
 
   private:
-	bool isInitialized = false;
 	Optional<ShadingProgramPermuator> shadingPermut;
 	StateGroup stateGroup;
 };

@@ -205,6 +205,10 @@ struct UniformContainer {
 
 	BindLocation findUniform(const char* const name, [[maybe_unused]] ShaderType::Enum shaderType) const {
 		for (const auto& itr : m_uniforms) {
+			// @shaderType is ignored on OpenGL as all shader reflection there cannot 
+			// tell us which shader stage needs them, they are all uniforms to the shading program.
+			// OpenGL manages to handle shader uniforms (those used by multiple shader stages at once)
+			// internally.
 #ifdef SGE_RENDERER_D3D11
 			if (itr.second.d3d11_shaderType == shaderType && itr.second.name == name) {
 				return itr.first;

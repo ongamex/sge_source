@@ -2,6 +2,7 @@
 
 #include "sge_core/shaders/ConstantColorShader.h"
 #include "sge_core/shaders/modeldraw.h"
+#include "sge_core/shaders/SkyShader.h"
 #include "sge_engine/GameDrawer.h"
 #include "sge_engine/GameObject.h"
 #include "sge_engine/TexturedPlaneDraw.h"
@@ -92,10 +93,7 @@ struct SGE_ENGINE_API DefaultGameDrawer : public IGameDrawer {
 	// TODO: find a proper place for this
 	std::map<ObjectId, LightShadowInfo> m_perLightShadowFrameTarget;
 
-	GpuHandle<Buffer> m_skySphereVB;
-	int m_skySphereNumVerts = 0;
-	VertexDeclIndex m_skySphereVBVertexDeclIdx;
-	GpuHandle<ShadingProgram> m_skyGradientShader;
+	SkyShader m_skyShader;
 };
 
 } // namespace sge

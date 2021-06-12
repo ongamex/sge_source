@@ -1,11 +1,13 @@
-uniform float4x4 uView;
-uniform float4x4 uProj;
-uniform float4x4 uProjViewInverse;
-uniform float3 uCamPosWS;
-uniform float3 uColorBottom;
-uniform float3 uColorTop;
+cbuffer SkyShaderCBufferParams {
+	float4x4 uView;
+	float4x4 uProj;
+	float4x4 uProjViewInverse;
+	float3 uCamPosWS;
+	float3 uColorBottom;
+	float3 uColorTop;
+};
 
-sampler2D uSkyTexture;
+uniform sampler2D uSkyTexture;
 
 /// Generates UV coordinates for sampling spherical mapped textures from a direction.
 /// Usually spherical mapped texture are used for hdri images form light probes.

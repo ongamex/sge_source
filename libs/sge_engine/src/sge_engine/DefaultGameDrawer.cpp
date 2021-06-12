@@ -41,23 +41,6 @@ struct AInvisibleRigidObstacle;
 
 void DefaultGameDrawer::prepareForNewFrame() {
 	m_shadingLights.clear();
-
-	if (m_skySphereVB.IsResourceValid() == false) {
-		m_skySphereVB = getCore()->getDevice()->requestResource<Buffer>();
-		m_skySphereNumVerts = GeomGen::sphere(m_skySphereVB.GetPtr(), 8, 8);
-
-		VertexDecl vdecl[] = {VertexDecl(0, "a_position", UniformType::Float3, 0)};
-
-		m_skySphereVBVertexDeclIdx = getCore()->getDevice()->getVertexDeclIndex(vdecl, SGE_ARRSZ(vdecl));
-	}
-
-	if (m_skyGradientShader.IsResourceValid() == false) {
-		m_skyGradientShader = getCore()->getDevice()->requestResource<ShadingProgram>();
-		std::string code;
-		if (FileReadStream::readTextFile("core_shaders/SkyGradient.shader", code)) {
-			m_skyGradientShader->create(code.c_str(), code.c_str());
-		}
-	}
 }
 
 void DefaultGameDrawer::updateShadowMaps(const GameDrawSets& drawSets) {
@@ -325,7 +308,15 @@ void DefaultGameDrawer::fillGeneralModsWithLights(Actor* actor, GeneralDrawMod& 
 void DefaultGameDrawer::drawWorld(const GameDrawSets& drawSets, const DrawReason drawReason) {
 	IGameDrawer::drawWorld(drawSets, drawReason);
 
-// Draw the sky.
+	// Draw the sky
+	mat4f view = drawSets.drawCamera->getView();
+	mat4f proj = drawSets.drawCamera->getProj();
+	vec3f camPosWs = drawSets.drawCamera->getCameraPosition();
+	Texture* skyTex =
+	    isAssetLoaded(getWorld()->skyTexAsset, AssetType::Texture2D) ? getWorld()->skyTexAsset->asTextureView()->tex.GetPtr() : nullptr;
+
+	m_skyShader.draw(drawSets.rdest, camPosWs, view, proj, skyTex);
+
 #if 0
 	if (drawReason_IsGameOrEditNoShadowPass(drawReason)) {
 		StateGroup sg;
@@ -338,7 +329,7 @@ void DefaultGameDrawer::drawWorld(const GameDrawSets& drawSets, const DrawReason
 
 		sg.setRenderState(rasterState, getCore()->getGraphicsResources().DSS_default_lessEqual);
 
-		BindLocation uViewLoc = m_skyGradientShader->getReflection().findUniform("uView");
+		BindLocation uViewLoc = m_skyGradientShader->getReflection().findUniform("uView", ShaderType::VertexShader);
 		BindLocation uProjLoc = m_skyGradientShader->getReflection().findUniform("uProj");
 		BindLocation uColorBottomLoc = m_skyGradientShader->getReflection().findUniform("uColorBottom");
 		BindLocation uColorTomLoc = m_skyGradientShader->getReflection().findUniform("uColorTop");

@@ -27,8 +27,6 @@ struct SGE_CORE_API ShadingProgramPermuator {
 		/// in in the @uniforms.
 		template <size_t N>
 		void bind(StaticArray<BoundUniform, N>& uniforms, const int uniformEnumId, void* const dataPointer) const {
-			sgeAssert(dataPointer != nullptr);
-
 			if (uniformLUT[uniformEnumId].isNull() == false) {
 				[[maybe_unused]] bool bindSucceeded = uniforms.push_back(BoundUniform(uniformLUT[uniformEnumId], (dataPointer)));
 				sgeAssert(bindSucceeded);
