@@ -505,6 +505,9 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 		memcpy(paramsMappedData, &paramsCb, sizeof(paramsCb));
 		sgedev->getContext()->unMap(paramsBuffer);
 
+		uniforms.push_back(BoundUniform(shaderPerm.uniformLUT[uParamsCbFWDDefaultShading_vertex], paramsBuffer.GetPtr()));
+		uniforms.push_back(BoundUniform(shaderPerm.uniformLUT[uParamsCbFWDDefaultShading_pixel], paramsBuffer.GetPtr()));
+
 		stateGroup.setPrimitiveTopology(PrimitiveTopology::TriangleList);
 		stateGroup.setRenderState(rasterState, getCore()->getGraphicsResources().DSS_default_lessEqual,
 		                          getCore()->getGraphicsResources().BS_backToFrontAlpha);

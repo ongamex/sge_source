@@ -325,41 +325,8 @@ void DefaultGameDrawer::fillGeneralModsWithLights(Actor* actor, GeneralDrawMod& 
 void DefaultGameDrawer::drawWorld(const GameDrawSets& drawSets, const DrawReason drawReason) {
 	IGameDrawer::drawWorld(drawSets, drawReason);
 
-	struct OrderedActor {
-		Actor* pActor;
-		float v = FLT_MAX;
-
-		bool operator<(const OrderedActor& r) const { return (v < r.v) || (v == r.v && pActor < r.pActor); }
-	};
-
-	const vec3f sortingPlanePos = drawSets.drawCamera->getCameraPosition();
-	const vec3f sortingPlaneNormal = drawSets.drawCamera->getCameraLookDir();
-	const Plane sortingPlane = Plane::FromPosAndDir(sortingPlanePos, sortingPlaneNormal);
-
-	std::vector<OrderedActor> actorsToRender;
-
-	getWorld()->iterateOverPlayingObjects(
-	    [&](GameObject* object) -> bool {
-		    // TODO: Skip this check for whole types. We know they are not actors...
-		    Actor* actor = object->getActor();
-		    if (actor) {
-			    const AABox3f bboxWs = actor->getBBoxOS().getTransformed(actor->getTransformMtx());
-			    const vec3f nearestPointSortingPlane = bboxWs.center() - sortingPlaneNormal * bboxWs.halfDiagonal().length();
-
-			    actorsToRender.push_back({actor, sortingPlane.Distance(nearestPointSortingPlane)});
-		    }
-
-		    return true;
-	    },
-	    false);
-
-	std::sort(actorsToRender.begin(), actorsToRender.end());
-	for (auto& p : actorsToRender) {
-		drawActor(drawSets, editMode_actors, p.pActor, 0, drawReason);
-	}
-
-	// Draw the sky.
-	#if 0
+// Draw the sky.
+#if 0
 	if (drawReason_IsGameOrEditNoShadowPass(drawReason)) {
 		StateGroup sg;
 		sg.setProgram(m_skyGradientShader);
@@ -413,7 +380,7 @@ void DefaultGameDrawer::drawWorld(const GameDrawSets& drawSets, const DrawReason
 			drawSets.rdest.sgecon->executeDrawCall(dc, drawSets.rdest.frameTarget, &drawSets.rdest.viewport);
 		}
 	}
-	#endif
+#endif
 }
 
 void DefaultGameDrawer::drawActor(

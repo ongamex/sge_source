@@ -119,14 +119,7 @@ bool ShadingProgramRefl::create(ShadingProgram* const shadingProgram) {
 					var.type = UniformType::PickType(typeFormat, lanes, registers);
 
 					// If this is the global CBuffer add this as a numeric uniform.
-
-					// Caution:
-					// Because having when one cbuffer bound to multiple slots we get a performance dorpdown,
-					// we use multiple uniform buffers for each stage.
-					// Because we are faking numeric unform(basically OpenGL D3D9 style uniforms) we enforce that the
-					// $Global unform buffer must be the same across all stages.
-					const bool hackEnforcer = shader->getShaderType() == ShaderType::VertexShader;
-					if (isGlobal && hackEnforcer) {
+					if (isGlobal) {
 						NumericUniformRefl numericRefl;
 
 						numericRefl.nameStrIdx = var.nameStrIdx;

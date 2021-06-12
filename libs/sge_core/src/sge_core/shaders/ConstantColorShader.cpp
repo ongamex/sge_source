@@ -39,11 +39,11 @@ void ConstantColorShader::drawGeometry(
 		// clang-format off
 		// Caution: It is important that the order of the elements here MATCHES the order in the enum above.
 		static const std::vector<ShadingProgramPermuator::Unform> uniformsToCache = {
-		    {uColor, "uColor"},
-		    {uWorld, "uWorld"},
-		    {uProjView, "uProjView"},
-			{uSkinningBones, "uSkinningBones"},
-			{uSkinningFirstBoneOffsetInTex, "uSkinningFirstBoneOffsetInTex"},
+		    {uColor, "uColor", ShaderType::PixelShader},
+		    {uWorld, "uWorld", ShaderType::VertexShader},
+		    {uProjView, "uProjView", ShaderType::VertexShader},
+			{uSkinningBones, "uSkinningBones", ShaderType::VertexShader},
+			{uSkinningFirstBoneOffsetInTex, "uSkinningFirstBoneOffsetInTex", ShaderType::VertexShader},
 		};
 		// clang-format on
 

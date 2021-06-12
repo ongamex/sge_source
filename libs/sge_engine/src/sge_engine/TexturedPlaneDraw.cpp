@@ -116,9 +116,9 @@ void TexturedPlaneDraw::initialize(SGEDevice* sgedev) {
 #ifdef SGE_RENDERER_D3D11
 		m_texDiffuseSampler_bindLoc = refl.samplers.findUniform("texDiffuse_sampler", ShaderType::PixelShader);
 #endif
-		m_projViewWorld_bindLoc = refl.numericUnforms.findUniform("projViewWorld", ShaderType::VertexShader);
-		m_tint_bindLoc = refl.numericUnforms.findUniform("tint", ShaderType::PixelShader);
-		m_uvRegion_bindLoc = refl.numericUnforms.findUniform("uvRegion", ShaderType::PixelShader);
+		m_projViewWorld_bindLoc = refl.findUniform("projViewWorld", ShaderType::VertexShader);
+		m_tint_bindLoc = refl.findUniform("tint", ShaderType::PixelShader);
+		m_uvRegion_bindLoc = refl.findUniform("uvRegion", ShaderType::PixelShader);
 	}
 }
 

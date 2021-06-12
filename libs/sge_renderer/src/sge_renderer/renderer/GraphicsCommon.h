@@ -641,7 +641,7 @@ struct ShaderType {
 	enum Enum {
 		VertexShader,
 		PixelShader,
-		ComputeShader,
+		//ComputeShader,
 
 		NumElems
 	};
