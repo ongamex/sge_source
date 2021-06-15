@@ -1,8 +1,7 @@
 cbuffer SkyShaderCBufferParams {
 	float4x4 uView;
 	float4x4 uProj;
-	float4x4 uProjViewInverse;
-	float3 uCamPosWS;
+	float4x4 uWorld;
 	float3 uColorBottom;
 	float3 uColorTop;
 };
@@ -170,9 +169,11 @@ struct VS_OUTPUT {
 VS_OUTPUT vsMain(VS_INPUT vsin)
 {
 	VS_OUTPUT res;
-	float3 pointViewSpace = mul(uView, float4(vsin.a_position, 0.0)).xyz;
+	float4 pointScaled = mul(uWorld, float4(vsin.a_position, 0.f));
+	float3 pointViewSpace = mul(uView, pointScaled).xyz;
 	float4 pointProj = mul(uProj, float4(pointViewSpace, 1.0));
 	res.SV_Position = pointProj;
+	
 	res.dirV = vsin.a_position;
 
 	return res;
@@ -189,8 +190,6 @@ PS_OUTPUT psMain(VS_OUTPUT IN)
 {
 	PS_OUTPUT psOut;
 	
-	const float4 posWS_h = mul(uProjViewInverse, IN.SV_Position);
-    const float3 rayWs = normalize(posWS_h.xyz / posWS_h.w - uCamPosWS);
 	const float2 uv = directionToUV_cubeMapping(normalize(IN.dirV), 4.f / float2(tex2Dsize(uSkyTexture)));
 	const float3 color = tex2D(uSkyTexture, uv);
 	

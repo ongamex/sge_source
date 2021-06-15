@@ -52,15 +52,15 @@ bool ShadingProgramGL::create(Shader* vertShdr, Shader* pixelShdr) {
 	return reflectonSucceeded;
 }
 
-bool ShadingProgramGL::create(const char* const pVSCode, const char* const pPSCode, const char* const preAppendedCode) {
+bool ShadingProgramGL::create(const char* const pVSCode, const char* const pPSCode, std::set<std::string>* outIncludedFiles = nullptr) {
 	GpuHandle<ShaderGL> vs = getDevice()->requestResource<Shader>();
-	bool r = vs->create(ShaderType::VertexShader, pVSCode, preAppendedCode);
+	bool r = vs->create(ShaderType::VertexShader, pVSCode, nullptr);
 	if (r == false) {
 		return r;
 	}
 
 	GpuHandle<ShaderGL> ps = getDevice()->requestResource<Shader>();
-	r = ps->create(ShaderType::PixelShader, pPSCode, preAppendedCode);
+	r = ps->create(ShaderType::PixelShader, pPSCode, nullptr);
 
 	if (r == false) {
 		return r;

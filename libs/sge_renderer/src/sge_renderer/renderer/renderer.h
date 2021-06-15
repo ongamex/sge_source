@@ -1,6 +1,7 @@
 #pragma once
 
 #include <map>
+#include <set>
 
 #include "GraphicsCommon.h"
 #include "ShaderReflection.h"
@@ -184,7 +185,7 @@ struct ShadingProgram : public RAIResource {
 	ResourceType::Enum getResourceType() const final { return ResourceType::ShadingProgram; }
 
 	virtual bool create(Shader* vertShdr, Shader* pixelShdr) = 0;
-	virtual bool create(const char* const pVSCode, const char* const pPSCode, const char* const preAppendedCode = NULL) = 0;
+	virtual bool create(const char* const pVSCode, const char* const pPSCode, std::set<std::string>* outIncludedFiles = nullptr) = 0;
 
 	virtual Shader* getVertexShader() const = 0;
 	virtual Shader* getPixelShader() const = 0;

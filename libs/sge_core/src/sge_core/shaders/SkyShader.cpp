@@ -1,22 +1,21 @@
 #include "SkyShader.h"
 #include "sge_core/GeomGen.h"
 #include "sge_core/ICore.h"
+#include "sge_utils/math/Frustum.h"
 
 namespace sge {
 
 struct SkyShaderCBufferParams {
 	mat4f uView;
 	mat4f uProj;
-	mat4f uProjViewInverse;
-	vec3f uCamPosWS;
-	float uCamPosWS_padding;
+	mat4f uWorld;
 	vec3f uColorBottom;
 	float uColorBottom_padding;
 	vec3f uColorTop;
 	float uColorTop_padding;
 };
 
-void SkyShader::draw(const RenderDestination& rdest, const vec3f& cameraPosition, const mat4f view, const mat4f proj, Texture* skyTexture) {
+void SkyShader::draw(const RenderDestination& rdest, const vec3f&, const mat4f view, const mat4f proj, Texture* skyTexture) {
 	SGEDevice* const sgedev = rdest.getDevice();
 
 	enum : int {
@@ -48,7 +47,7 @@ void SkyShader::draw(const RenderDestination& rdest, const vec3f& cameraPosition
 
 	if (m_skySphereVB.IsResourceValid() == false) {
 		m_skySphereVB = getCore()->getDevice()->requestResource<Buffer>();
-		m_skySphereNumVerts = GeomGen::sphere(m_skySphereVB.GetPtr(), 8, 8);
+		m_skySphereNumVerts = GeomGen::sphere(m_skySphereVB.GetPtr(), 16, 32);
 		VertexDecl vdecl[] = {VertexDecl(0, "a_position", UniformType::Float3, 0)};
 		m_skySphereVBVertexDeclIdx = getCore()->getDevice()->getVertexDeclIndex(vdecl, SGE_ARRSZ(vdecl));
 	}
@@ -56,14 +55,20 @@ void SkyShader::draw(const RenderDestination& rdest, const vec3f& cameraPosition
 	const int iShaderPerm = shadingPermut->getCompileTimeOptionsPerm().computePermutationIndex(nullptr, 0);
 	const ShadingProgramPermuator::Permutation& shaderPerm = shadingPermut->getShadersPerPerm()[iShaderPerm];
 
-	const mat4f projView = proj * view;
-	const mat4f projViewInv = projView.inverse();
+
+	mat4f prjInv = proj.inverse();
+	vec4f left = mat_mul_vec(prjInv, vec4f(-1.f, 0.f, 0.f, 1.f));
+	vec4f right = mat_mul_vec(prjInv, vec4f(1.f, 0.f, 0.f, 1.f));
+
+	left = left / left.w;
+	right = right / right.w;
+
+	float s = fabsf(right.x - left.x);
 
 	SkyShaderCBufferParams cbParamsData;
-	cbParamsData.uCamPosWS = cameraPosition;
 	cbParamsData.uView = view;
 	cbParamsData.uProj = proj;
-	cbParamsData.uProjViewInverse = projViewInv;
+	cbParamsData.uWorld = mat4f::getScaling(s);
 	cbParamsData.uColorTop = vec3f(0.75f);
 	cbParamsData.uColorBottom = vec3f(0.1f);
 

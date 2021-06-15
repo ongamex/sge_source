@@ -309,69 +309,15 @@ void DefaultGameDrawer::drawWorld(const GameDrawSets& drawSets, const DrawReason
 	IGameDrawer::drawWorld(drawSets, drawReason);
 
 	// Draw the sky
-	mat4f view = drawSets.drawCamera->getView();
-	mat4f proj = drawSets.drawCamera->getProj();
-	vec3f camPosWs = drawSets.drawCamera->getCameraPosition();
-	Texture* skyTex =
-	    isAssetLoaded(getWorld()->skyTexAsset, AssetType::Texture2D) ? getWorld()->skyTexAsset->asTextureView()->tex.GetPtr() : nullptr;
-
-	m_skyShader.draw(drawSets.rdest, camPosWs, view, proj, skyTex);
-
-#if 0
 	if (drawReason_IsGameOrEditNoShadowPass(drawReason)) {
-		StateGroup sg;
-		sg.setProgram(m_skyGradientShader);
-		sg.setPrimitiveTopology(PrimitiveTopology::TriangleList);
-		sg.setVBDeclIndex(m_skySphereVBVertexDeclIdx);
-		sg.setVB(0, m_skySphereVB, 0, sizeof(vec3f));
-
-		RasterizerState* const rasterState = getCore()->getGraphicsResources().RS_noCulling;
-
-		sg.setRenderState(rasterState, getCore()->getGraphicsResources().DSS_default_lessEqual);
-
-		BindLocation uViewLoc = m_skyGradientShader->getReflection().findUniform("uView", ShaderType::VertexShader);
-		BindLocation uProjLoc = m_skyGradientShader->getReflection().findUniform("uProj");
-		BindLocation uColorBottomLoc = m_skyGradientShader->getReflection().findUniform("uColorBottom");
-		BindLocation uColorTomLoc = m_skyGradientShader->getReflection().findUniform("uColorTop");
-		BindLocation uProjViewInverseLoc = m_skyGradientShader->getReflection().findUniform("uProjViewInverse");
-		BindLocation uSkyTextureLoc = m_skyGradientShader->getReflection().findUniform("uSkyTexture");
-		BindLocation uCamPosWSLoc = m_skyGradientShader->getReflection().findUniform("uCamPosWS");
-
 		mat4f view = drawSets.drawCamera->getView();
 		mat4f proj = drawSets.drawCamera->getProj();
+		vec3f camPosWs = drawSets.drawCamera->getCameraPosition();
+		Texture* skyTex =
+		    isAssetLoaded(getWorld()->skyTexAsset, AssetType::Texture2D) ? getWorld()->skyTexAsset->asTextureView()->tex.GetPtr() : nullptr;
 
-		// TODO: more optimal sky shading please.uProjViewInverse
-		[[maybe_unused]] Frustum f = Frustum::extractClippingPlanes(proj, kIsTexcoordStyleD3D);
-		[[maybe_unused]] float far = f.f.v4.w;
-		// HACK: use a separate variable.
-		view = drawSets.drawCamera->getView() * mat4f::getScaling(far - 1e-3f);
-
-		vec3f colorBottom = getWorld()->m_skyColorBottom;
-		vec3f colorTop = getWorld()->m_skyColorTop;
-
-		PAsset skyTex = getWorld()->skyTexAsset;
-		if (isAssetLoaded(skyTex)) {
-			mat4f projViewInv = drawSets.drawCamera->getProjView().inverse();
-			vec3f camPos = drawSets.drawCamera->getCameraPosition();
-
-			StaticArray<BoundUniform, 12> uniforms;
-			uniforms.push_back(BoundUniform(uViewLoc, &view));
-			uniforms.push_back(BoundUniform(uProjLoc, &proj));
-			uniforms.push_back(BoundUniform(uProjViewInverseLoc, &projViewInv));
-			uniforms.push_back(BoundUniform(uCamPosWSLoc, camPos.data));
-			uniforms.push_back(BoundUniform(uColorBottomLoc, &colorBottom));
-			uniforms.push_back(BoundUniform(uColorTomLoc, &colorTop));
-			uniforms.push_back(BoundUniform(uSkyTextureLoc, skyTex->asTextureView()->tex.GetPtr()));
-
-			DrawCall dc;
-			dc.setStateGroup(&sg);
-			dc.setUniforms(uniforms.data(), uniforms.size());
-			dc.draw(m_skySphereNumVerts, 0);
-
-			drawSets.rdest.sgecon->executeDrawCall(dc, drawSets.rdest.frameTarget, &drawSets.rdest.viewport);
-		}
+		m_skyShader.draw(drawSets.rdest, camPosWs, view, proj, skyTex);
 	}
-#endif
 }
 
 void DefaultGameDrawer::drawActor(

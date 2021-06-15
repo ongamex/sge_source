@@ -56,8 +56,8 @@ void WorldSettingsWindow::update(SGEContext* const UNUSED(sgecon), const InputSt
 			AssetType type = AssetType::Texture2D;
 			assetPicker("Sky Texture", world->skyTexAsset, getCore()->getAssetLib(), &type, 1);
 
-			ImGui::ColorPicker3("Sky Top Color", m_inspector.getWorld()->m_skyColorTop.data);
-			ImGui::ColorPicker3("Sky Bottom Color", m_inspector.getWorld()->m_skyColorBottom.data);
+			ImGui::ColorEdit3("Sky Top Color", m_inspector.getWorld()->m_skyColorTop.data);
+			ImGui::ColorEdit3("Sky Bottom Color", m_inspector.getWorld()->m_skyColorBottom.data);
 		}
 
 		if (ImGui::CollapsingHeader(ICON_FK_CAMERA " Gameplay")) {

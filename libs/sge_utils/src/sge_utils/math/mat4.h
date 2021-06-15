@@ -35,6 +35,32 @@ struct mat4 {
 
 #include "matrix_common.inl"
 
+	friend vec4<DATA_TYPE> mat_mul_vec(const SELF_TYPE& m, const vec4<DATA_TYPE>& v) {
+		vec4<DATA_TYPE> result;
+
+		result[0] = m.data[0][0] * v[0];
+		result[0] += m.data[1][0] * v[1];
+		result[0] += m.data[2][0] * v[2];
+		result[0] += m.data[3][0] * v[3];
+
+		result[1] = m.data[0][1] * v[0];
+		result[1] += m.data[1][1] * v[1];
+		result[1] += m.data[2][1] * v[2];
+		result[1] += m.data[3][1] * v[3];
+
+		result[2] = m.data[0][2] * v[0];
+		result[2] += m.data[1][2] * v[1];
+		result[2] += m.data[2][2] * v[2];
+		result[2] += m.data[3][2] * v[3];
+
+		result[3] = m.data[0][3] * v[0];
+		result[3] += m.data[1][3] * v[1];
+		result[3] += m.data[2][3] * v[2];
+		result[3] += m.data[3][3] * v[3];
+
+		return result;
+	}
+
 	friend vec3<DATA_TYPE> mat_mul_pos(const SELF_TYPE& m, const vec3<DATA_TYPE>& v) {
 		vec3<DATA_TYPE> result;
 
