@@ -1,6 +1,6 @@
-#include "sge_utils/utils/FileStream.h"
-
 #include "ShadingProgramPermuator.h"
+#include "sge_core/ICore.h"
+#include "sge_utils/utils/FileStream.h"
 
 namespace sge {
 
@@ -10,11 +10,16 @@ namespace sge {
 bool ShadingProgramPermuator::createFromFile(SGEDevice* sgedev,
                                              const char* const filename,
                                              const std::vector<OptionPermuataor::OptionDesc>& compileTimeOptions,
-                                             const std::vector<Unform>& uniformsToCacheInLUT) {
+                                             const std::vector<Unform>& uniformsToCacheInLUT,
+                                             std::set<std::string>* outIncludedFiles) {
 	std::vector<char> fileContents;
 	if (FileReadStream::readFile(filename, fileContents)) {
+		if (outIncludedFiles != nullptr) {
+			outIncludedFiles->insert(filename);
+		}
+
 		fileContents.push_back('\0');
-		return create(sgedev, fileContents.data(), compileTimeOptions, uniformsToCacheInLUT);
+		return create(sgedev, fileContents.data(), compileTimeOptions, uniformsToCacheInLUT, outIncludedFiles);
 	}
 
 	return false;
@@ -23,7 +28,8 @@ bool ShadingProgramPermuator::createFromFile(SGEDevice* sgedev,
 bool ShadingProgramPermuator::create(SGEDevice* sgedev,
                                      const char* const shaderCode,
                                      const std::vector<OptionPermuataor::OptionDesc>& compileTimeOptions,
-                                     const std::vector<Unform>& uniformsToCacheInLUT) {
+                                     const std::vector<Unform>& uniformsToCacheInLUT,
+                                     std::set<std::string>* outIncludedFiles) {
 	*this = ShadingProgramPermuator();
 
 	// Verify the safety indices.
@@ -59,10 +65,11 @@ bool ShadingProgramPermuator::create(SGEDevice* sgedev,
 		shaderCodeFull += macrosToPreapend;
 		shaderCodeFull += shaderCode;
 
-		bool const isProgCreated = perPermutationShadingProg[iPerm].shadingProgram->create(shaderCodeFull.c_str(), shaderCodeFull.c_str());
+		const CreateShaderResult programCreateResult = perPermutationShadingProg[iPerm].shadingProgram->createFromCustomHLSL(
+		    shaderCodeFull.c_str(), shaderCodeFull.c_str(), outIncludedFiles);
 
-		if (isProgCreated == false) {
-			sgeAssert(false);
+		if (programCreateResult.succeeded == false) {
+			SGE_DEBUG_ERR("Shader Compilation Failed:\n%s", programCreateResult.errors.c_str());
 			*this = ShadingProgramPermuator();
 			return false;
 		}

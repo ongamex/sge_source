@@ -102,11 +102,6 @@ void GameInspectorWindow::update(SGEContext* const UNUSED(sgecon), const InputSt
 			ImGui::DragFloat("Rim Width Cosine", &m_inspector.getWorld()->m_rimCosineWidth, 0.01f, 0.f, 1.f);
 		}
 
-		if (ImGui::CollapsingHeader("Sky")) {
-			ImGui::ColorPicker3("Sky Top Color", m_inspector.getWorld()->m_skyColorTop.data);
-			ImGui::ColorPicker3("Sky Bottom Color", m_inspector.getWorld()->m_skyColorBottom.data);
-		}
-
 		if (ImGui::CollapsingHeader("Game Camera")) {
 			ImGui::InputInt("Playing Camera", &m_inspector.getWorld()->m_cameraPovider.id);
 			ImGui::SameLine();

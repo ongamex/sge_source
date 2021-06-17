@@ -107,7 +107,7 @@ void DebugDraw::initialze(SGEDevice* sgedev) {
 
 	//
 	m_shaderSolidVertexColor = sgedev->requestResource<ShadingProgram>();
-	m_shaderSolidVertexColor->create(EFFECT_3D_VERTEX_COLOR, EFFECT_3D_VERTEX_COLOR);
+	m_shaderSolidVertexColor->createFromCustomHLSL(EFFECT_3D_VERTEX_COLOR, EFFECT_3D_VERTEX_COLOR);
 
 	//
 	m_vertexBuffer = sgedev->requestResource<Buffer>();

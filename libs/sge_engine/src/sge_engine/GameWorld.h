@@ -31,6 +31,19 @@ struct SGE_ENGINE_API IPostSceneUpdateTask {
 	virtual ~IPostSceneUpdateTask() = default;
 };
 
+struct WorldSkySettings {
+	enum Mode : int {
+		mode_topBottomColors,
+		mode_texture2D_sphericalMapping,
+		mode_texture2D_cubeMapping,
+	};
+
+	Mode mode;
+	vec3f colorTop = vec3f(0.419f);
+	vec3f colorBottom = vec3f(0.133f);
+	std::string textureAssetPath;
+};
+
 struct SGE_ENGINE_API PostSceneUpdateTaskSetWorldState final : public IPostSceneUpdateTask {
 	PostSceneUpdateTaskSetWorldState() = default;
 	PostSceneUpdateTaskSetWorldState(std::string json, bool noPauseNoEditorCamera)
@@ -283,10 +296,10 @@ struct SGE_ENGINE_API GameWorld {
 	// Scene default ambient lighting.
 	vec3f m_ambientLight = vec3f(0.25f);
 	vec3f m_rimLight = vec3f(0.1f);
-	vec3f m_skyColorBottom = vec3f(0.419f);
-	vec3f m_skyColorTop = vec3f(0.133f);
-	std::shared_ptr<Asset> skyTexAsset;
 	float m_rimCosineWidth = 0.3f;
+
+	// Sky.
+	WorldSkySettings skySettings;
 
 	/// A pointer to the attached inspector(if any).
 	GameInspector* inspector = nullptr;

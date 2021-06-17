@@ -541,7 +541,6 @@ std::shared_ptr<Asset> AssetLibrary::makeRuntimeAsset(AssetType type, const char
 
 std::shared_ptr<Asset> AssetLibrary::getAsset(AssetType type, const char* pPath, const bool loadIfMissing) {
 	if (!pPath || pPath[0] == '\0') {
-		sgeAssert(false);
 		return std::shared_ptr<Asset>();
 	}
 

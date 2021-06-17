@@ -108,7 +108,7 @@ void TexturedPlaneDraw::initialize(SGEDevice* sgedev) {
 		m_vertexBuffer->create(BufferDesc::GetDefaultVertexBuffer(sizeof(vertices)), vertices);
 
 		m_shadingProgram = sgedev->requestResource<ShadingProgram>();
-		m_shadingProgram->create(EFFECT_TEXTURED_PLANE, EFFECT_TEXTURED_PLANE);
+		m_shadingProgram->createFromCustomHLSL(EFFECT_TEXTURED_PLANE, EFFECT_TEXTURED_PLANE);
 
 		const ShadingProgramRefl& refl = m_shadingProgram->getReflection();
 

@@ -4,6 +4,7 @@ cbuffer SkyShaderCBufferParams {
 	float4x4 uWorld;
 	float3 uColorBottom;
 	float3 uColorTop;
+	int mode;
 };
 
 uniform sampler2D uSkyTexture;
@@ -190,8 +191,18 @@ PS_OUTPUT psMain(VS_OUTPUT IN)
 {
 	PS_OUTPUT psOut;
 	
-	const float2 uv = directionToUV_cubeMapping(normalize(IN.dirV), 4.f / float2(tex2Dsize(uSkyTexture)));
-	const float3 color = tex2D(uSkyTexture, uv);
+	const float3 normal = normalize(IN.dirV);
+	
+	float3 color = float3(1.f, 0.f, 1.f);
+	if(mode == 0) {
+		color = lerp(uColorBottom, uColorTop, normal.y * 0.5f + 0.5f);
+	} else  if(mode == 1) {
+		float2 uv = directionToUV_cubeMapping(normal, 4.f / float2(tex2Dsize(uSkyTexture)));
+		color = tex2D(uSkyTexture, uv);
+	} else  if(mode == 2) {
+		float2 uv = directionToUV_spherical(normal);
+		color = tex2D(uSkyTexture, uv);
+	}
 	
 	psOut.target0 = float4(color, 1.f);
 	psOut.depth = 1.0f;

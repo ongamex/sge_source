@@ -212,7 +212,7 @@ void SGEImGui::initialize(SGEContext* sgecon_arg, FrameTarget* frameTarget, cons
 	viewport = viewport_arg;
 
 	shadingProgram = sgecon->getDevice()->requestResource<ShadingProgram>();
-	shadingProgram->create(imDrawShaders, imDrawShaders);
+	shadingProgram->createFromCustomHLSL(imDrawShaders, imDrawShaders);
 
 	RasterDesc rasterDesc;
 	rasterDesc.cullMode = CullMode::None;

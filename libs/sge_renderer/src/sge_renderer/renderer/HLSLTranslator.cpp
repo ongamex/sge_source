@@ -147,7 +147,7 @@ bool translateHLSL(const char* const pCode,
                    const ShaderType::Enum shaderType,
                    std::string& result,
                    std::string& compilationErrors,
-                   std::vector<std::string>* outIncludedFiles) {
+                   std::set<std::string>* outIncludedFiles) {
 	M4::g_hlslParserErrors.clear();
 
 	const char* const mOpenGL = "OpenGL";

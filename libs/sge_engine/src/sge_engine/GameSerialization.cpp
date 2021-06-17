@@ -496,9 +496,6 @@ JsonValue* serializeGameWorld(const GameWorld* world, JsonValueBuffer& jvb) {
 	jWorld->setMember("rimLightColor", serializeVariableT(world->m_rimLight, jvb));
 	jWorld->setMember("rimCosineWidth", serializeVariableT(world->m_rimCosineWidth, jvb));
 
-	jWorld->setMember("skyColorBottom", serializeVariableT(world->m_skyColorBottom, jvb));
-	jWorld->setMember("skyColorTop", serializeVariableT(world->m_skyColorTop, jvb));
-
 	jWorld->setMember("gridShouldDraw", serializeVariableT(world->gridShouldDraw, jvb));
 	jWorld->setMember("gridNumSegments", serializeVariableT(world->gridNumSegments, jvb));
 	jWorld->setMember("gridSegmentsSpacing", serializeVariableT(world->gridSegmentsSpacing, jvb));
@@ -605,14 +602,6 @@ bool loadGameWorldFromStream(GameWorld* world, IReadStream* stream, const char* 
 
 	if (const JsonValue* const jRimWidth = jWorld->getMember("rimCosineWidth")) {
 		deserializeVariable((char*)&world->m_rimCosineWidth, jRimWidth, typeLib().find(sgeTypeId(float)));
-	}
-
-	if (const JsonValue* const jSkyColor = jWorld->getMember("skyColorBottom")) {
-		deserializeVariable((char*)&world->m_skyColorBottom, jSkyColor, typeLib().find(sgeTypeId(vec3f)));
-	}
-
-	if (const JsonValue* const jSkyColor = jWorld->getMember("skyColorTop")) {
-		deserializeVariable((char*)&world->m_skyColorTop, jSkyColor, typeLib().find(sgeTypeId(vec3f)));
 	}
 
 	deserializeWorldMember(&world->gridShouldDraw, "gridShouldDraw", sgeTypeId(decltype(world->gridShouldDraw)));

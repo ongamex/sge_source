@@ -1,4 +1,5 @@
 #include "renderer.h"
+#include "HLSLTranslator.h"
 
 namespace sge {
 
@@ -27,5 +28,22 @@ SGE_Impl_request_resource(DepthStencilState, ResourceType::DepthStencilState);
 SGE_Impl_request_resource(BlendState, ResourceType::BlendState);
 SGE_Impl_request_resource(SamplerState, ResourceType::Sampler);
 SGE_Impl_request_resource(Query, ResourceType::Query);
+
+CreateShaderResult
+    ShadingProgram::createFromCustomHLSL(const char* const pVSCode, const char* const pPSCode, std::set<std::string>* outIncludedFiles) {
+	std::string compilationErrors;
+
+	std::string vsTranslated;
+	if (!translateHLSL(pVSCode, ShadingLanguage::ApiNative, ShaderType::VertexShader, vsTranslated, compilationErrors, outIncludedFiles)) {
+		return CreateShaderResult(false, compilationErrors);
+	}
+
+	std::string psTranslated;
+	if (!translateHLSL(pPSCode, ShadingLanguage::ApiNative, ShaderType::PixelShader, psTranslated, compilationErrors, outIncludedFiles)) {
+		return CreateShaderResult(false, compilationErrors);
+	}
+
+	return createFromNativeCode(vsTranslated.c_str(), psTranslated.c_str());
+}
 
 } // namespace sge

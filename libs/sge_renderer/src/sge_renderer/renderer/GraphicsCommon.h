@@ -60,6 +60,14 @@ struct ShadingLanguage {
 		Common,
 		HLSL,
 		GLSL,
+
+#if SGE_RENDERER_D3D11
+		ApiNative = HLSL,
+#elif SGE_RENDERER_GL
+		ApiNative = GLSL,
+#else
+		// Not implemented.
+#endif
 	};
 
 	SGE_GPRAHICS_COMMON_ENUM_HIDE;
@@ -641,7 +649,7 @@ struct ShaderType {
 	enum Enum {
 		VertexShader,
 		PixelShader,
-		//ComputeShader,
+		// ComputeShader,
 
 		NumElems
 	};

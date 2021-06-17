@@ -1,7 +1,7 @@
 #include "WorldSettingsWindow.h"
 #include "IconsForkAwesome/IconsForkAwesome.h"
-#include "sge_core/SGEImGui.h"
 #include "sge_core/ICore.h"
+#include "sge_core/SGEImGui.h"
 #include "sge_engine/EngineGlobal.h"
 #include "sge_engine/GameInspector.h"
 #include "sge_engine/GameWorld.h"
@@ -52,12 +52,35 @@ void WorldSettingsWindow::update(SGEContext* const UNUSED(sgecon), const InputSt
 		}
 
 		if (ImGui::CollapsingHeader(ICON_FK_SUN " Sky")) {
-			
-			AssetType type = AssetType::Texture2D;
-			assetPicker("Sky Texture", world->skyTexAsset, getCore()->getAssetLib(), &type, 1);
+			char* skyModeToStr[] = {
+			    "Colors",                      // mode_topBottomColors
+			    "Texture 2D Spherical Mapped", // mode_texture2D_sphericalMapping
+			    "Texture 2D Cube Mapped",      // mode_texture2D_cubeMapping
+			};
 
-			ImGui::ColorEdit3("Sky Top Color", m_inspector.getWorld()->m_skyColorTop.data);
-			ImGui::ColorEdit3("Sky Bottom Color", m_inspector.getWorld()->m_skyColorBottom.data);
+			if (ImGui::BeginCombo("Mode", skyModeToStr[world->skySettings.mode])) {
+				if (ImGui::Selectable(skyModeToStr[WorldSkySettings::mode_topBottomColors])) {
+					world->skySettings.mode = WorldSkySettings::mode_topBottomColors;
+				}
+
+				if (ImGui::Selectable(skyModeToStr[WorldSkySettings::mode_texture2D_sphericalMapping])) {
+					world->skySettings.mode = WorldSkySettings::mode_texture2D_sphericalMapping;
+				}
+
+				if (ImGui::Selectable(skyModeToStr[WorldSkySettings::mode_texture2D_cubeMapping])) {
+					world->skySettings.mode = WorldSkySettings::mode_texture2D_cubeMapping;
+				}
+
+				ImGui::EndCombo();
+			}
+
+			if (world->skySettings.mode == WorldSkySettings::mode_topBottomColors) {
+				ImGui::ColorEdit3("Sky Top Color", m_inspector.getWorld()->skySettings.colorTop.data);
+				ImGui::ColorEdit3("Sky Bottom Color", m_inspector.getWorld()->skySettings.colorBottom.data);
+			} else {
+				AssetType type = AssetType::Texture2D;
+				assetPicker("Sky Texture", world->skySettings.textureAssetPath, getCore()->getAssetLib(), &type, 1);
+			}
 		}
 
 		if (ImGui::CollapsingHeader(ICON_FK_CAMERA " Gameplay")) {

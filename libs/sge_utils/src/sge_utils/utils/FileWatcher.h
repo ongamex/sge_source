@@ -53,8 +53,8 @@ struct FileWatcher {
 };
 
 struct FilesWatcher {
-	void initialize(const std::set<std::string>& filesToWatch, uint64 delayedCheckIntervals = 0) {
-		timeIntervalBetweenActualChecks = delayedCheckIntervals;
+	void initialize(const std::set<std::string>& filesToWatch, float delayedCheckIntervalsSeconds = 0) {
+		timeIntervalBetweenActualChecks = delayedCheckIntervalsSeconds;
 		for (const std::string& filePath : filesToWatch) {
 			watchers.emplace_back(FileWatcher(filePath.c_str()));
 		}
@@ -63,11 +63,13 @@ struct FilesWatcher {
 	/// Returns true if any file was updated.
 	bool update() {
 		if (timeIntervalBetweenActualChecks != 0) {
-			uint64 nowNs = Timer::now_nanoseconds_int();
-			if (nowNs - lastCheckTime < timeIntervalBetweenActualChecks) {
+			const float now = Timer::now_seconds();
+			if (now - lastCheckTime < timeIntervalBetweenActualChecks) {
 				// Not enough time has passed do not check.
 				return false;
 			}
+
+			lastCheckTime = now;
 		}
 
 		bool updated = false;
@@ -81,8 +83,8 @@ struct FilesWatcher {
 
   private:
 	Timer timer;
-	uint64 timeIntervalBetweenActualChecks = 0;
-	uint64 lastCheckTime = 0;
+	float timeIntervalBetweenActualChecks = 0;
+	float lastCheckTime = 0;
 	std::vector<FileWatcher> watchers;
 };
 

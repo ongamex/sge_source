@@ -29,7 +29,7 @@ void OptionPermuataor::build(const std::vector<OptionDesc>& options) {
 }
 
 int OptionPermuataor::computePermutationIndex(const OptionChoice* const optionChoices, const int numOptions) const {
-	if (numOptions != allOptions.size()) {
+	if (numAllPermutations == 0 || numOptions != allOptions.size()) {
 		sgeAssert(false && "All options must be specified!");
 		return -1;
 	}

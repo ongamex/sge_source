@@ -310,13 +310,19 @@ void DefaultGameDrawer::drawWorld(const GameDrawSets& drawSets, const DrawReason
 
 	// Draw the sky
 	if (drawReason_IsGameOrEditNoShadowPass(drawReason)) {
+		PAsset skyTexture = getCore()->getAssetLib()->getAsset(getWorld()->skySettings.textureAssetPath.c_str(), true);
+
+		SkyShaderSettings skyShaderSettings;
+		skyShaderSettings.topColor = getWorld()->skySettings.colorTop;
+		skyShaderSettings.bottomColor = getWorld()->skySettings.colorBottom;
+		skyShaderSettings.texture = isAssetLoaded(skyTexture, AssetType::Texture2D) ? skyTexture->asTextureView()->tex.GetPtr() : nullptr;
+		skyShaderSettings.mode = SkyShaderSettings::Mode(getWorld()->skySettings.mode);
+
 		mat4f view = drawSets.drawCamera->getView();
 		mat4f proj = drawSets.drawCamera->getProj();
 		vec3f camPosWs = drawSets.drawCamera->getCameraPosition();
-		Texture* skyTex =
-		    isAssetLoaded(getWorld()->skyTexAsset, AssetType::Texture2D) ? getWorld()->skyTexAsset->asTextureView()->tex.GetPtr() : nullptr;
 
-		m_skyShader.draw(drawSets.rdest, camPosWs, view, proj, skyTex);
+		m_skyShader.draw(drawSets.rdest, camPosWs, view, proj, skyShaderSettings);
 	}
 }
 

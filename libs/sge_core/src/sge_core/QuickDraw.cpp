@@ -302,13 +302,15 @@ void QuickDraw::initalize2DDrawResources(SGEContext* context) {
 
 	// Create the shading programs.
 	m_effect2DColored = sgedev->requestResource<ShadingProgram>();
-	m_effect2DColored->create(EFFECT_2D_UBERSHADER, EFFECT_2D_UBERSHADER);
+	m_effect2DColored->createFromCustomHLSL(EFFECT_2D_UBERSHADER, EFFECT_2D_UBERSHADER);
 
 	m_effect2DTextured = sgedev->requestResource<ShadingProgram>();
-	m_effect2DTextured->create(EFFECT_2D_UBERSHADER, EFFECT_2D_UBERSHADER, "#define COLOR_TEXTURE\n");
+	const std::string effect2DTexturedCode = std::string("#define COLOR_TEXTURE\n") + EFFECT_2D_UBERSHADER;
+	m_effect2DTextured->createFromCustomHLSL(effect2DTexturedCode.c_str(), effect2DTexturedCode.c_str());
 
 	m_effect2DText = sgedev->requestResource<ShadingProgram>();
-	m_effect2DText->create(EFFECT_2D_UBERSHADER, EFFECT_2D_UBERSHADER, "#define COLOR_TEXTURE\n#define COLOR_TEXTURE_TEXT_MODE\n");
+	const std::string effect2DTextCode = std::string("#define COLOR_TEXTURE\n#define COLOR_TEXTURE_TEXT_MODE\n") + EFFECT_2D_UBERSHADER;
+	m_effect2DText->createFromCustomHLSL(effect2DTextCode.c_str(), effect2DTextCode.c_str());
 
 
 	rsDefault = sgedev->requestResource<RasterizerState>();
@@ -357,7 +359,7 @@ void QuickDraw::initalize3DDrawResources(SGEContext* context) {
 	SGEDevice* sgedev = context->getDevice();
 
 	m_effect3DVertexColored = sgedev->requestResource<ShadingProgram>();
-	m_effect3DVertexColored->create(EFFECT_3D_VERTEX_COLOR, EFFECT_3D_VERTEX_COLOR);
+	m_effect3DVertexColored->createFromCustomHLSL(EFFECT_3D_VERTEX_COLOR, EFFECT_3D_VERTEX_COLOR);
 
 	m_vb3d = sgedev->requestResource<Buffer>();
 	m_vb3d->create(BufferDesc::GetDefaultVertexBuffer(VB_MAX_TRI_CNT * 3 * sizeof(vec3f), ResourceUsage::Dynamic), NULL);
