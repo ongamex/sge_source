@@ -57,7 +57,6 @@ ReflBlock() {
 
 	ReflAddActor(ATimeline)
 		ReflMember(ATimeline, m_isEnabled)
-		
 		ReflMember(ATimeline, m_useSmoothInterpolation)
 		ReflMember(ATimeline, keyFrames)
 		ReflMember(ATimeline, framesPerSecond)

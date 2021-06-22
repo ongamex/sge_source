@@ -248,8 +248,6 @@ void GameWorld::clear() {
 	m_defaultGravity = vec3f(0.f, -10.f, 0.f);
 	m_physicsSimNumSubSteps = 3;
 
-	skySettings = WorldSkySettings();
-
 	m_childernOf.clear();
 	m_parentOf.clear();
 

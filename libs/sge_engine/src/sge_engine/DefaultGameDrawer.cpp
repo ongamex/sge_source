@@ -15,6 +15,7 @@
 #include "sge_engine/actors/ALine.h"
 #include "sge_engine/actors/ALocator.h"
 #include "sge_engine/actors/ANavMesh.h"
+#include "sge_engine/actors/ASky.h"
 #include "sge_engine/materials/Material.h"
 #include "sge_engine/traits/TraitModel.h"
 #include "sge_engine/traits/TraitMultiModel.h"
@@ -310,19 +311,30 @@ void DefaultGameDrawer::drawWorld(const GameDrawSets& drawSets, const DrawReason
 
 	// Draw the sky
 	if (drawReason_IsGameOrEditNoShadowPass(drawReason)) {
-		PAsset skyTexture = getCore()->getAssetLib()->getAsset(getWorld()->skySettings.textureAssetPath.c_str(), true);
+		const std::vector<GameObject*>* allSkies = getWorld()->getObjects(sgeTypeId(ASky));
 
-		SkyShaderSettings skyShaderSettings;
-		skyShaderSettings.topColor = getWorld()->skySettings.colorTop;
-		skyShaderSettings.bottomColor = getWorld()->skySettings.colorBottom;
-		skyShaderSettings.texture = isAssetLoaded(skyTexture, AssetType::Texture2D) ? skyTexture->asTextureView()->tex.GetPtr() : nullptr;
-		skyShaderSettings.mode = SkyShaderSettings::Mode(getWorld()->skySettings.mode);
+		ASky* sky = allSkies ? static_cast<ASky*>(allSkies->at(0)) : nullptr;
 
-		mat4f view = drawSets.drawCamera->getView();
-		mat4f proj = drawSets.drawCamera->getProj();
-		vec3f camPosWs = drawSets.drawCamera->getCameraPosition();
+		if (sky) {
+			SkyShaderSettings skyShaderSettings = sky->getSkyShaderSetting();
 
-		m_skyShader.draw(drawSets.rdest, camPosWs, view, proj, skyShaderSettings);
+			mat4f view = drawSets.drawCamera->getView();
+			mat4f proj = drawSets.drawCamera->getProj();
+			vec3f camPosWs = drawSets.drawCamera->getCameraPosition();
+
+			m_skyShader.draw(drawSets.rdest, camPosWs, view, proj, skyShaderSettings);
+		} else {
+			mat4f view = drawSets.drawCamera->getView();
+			mat4f proj = drawSets.drawCamera->getProj();
+			vec3f camPosWs = drawSets.drawCamera->getCameraPosition();
+
+			SkyShaderSettings skyShaderSettings;
+			skyShaderSettings.mode = SkyShaderSettings::mode_colorGradinet;
+			skyShaderSettings.topColor = vec3f(0.75f);
+			skyShaderSettings.bottomColor = vec3f(0.25f);
+
+			m_skyShader.draw(drawSets.rdest, camPosWs, view, proj, skyShaderSettings);
+		}
 	}
 }
 

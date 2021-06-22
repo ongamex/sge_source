@@ -189,19 +189,26 @@ struct PS_OUTPUT {
 
 PS_OUTPUT psMain(VS_OUTPUT IN)
 {
+	const int mode_colorGradinet = 0;
+	const int mode_textureSphericalMapped = 1;
+	const int mode_textureCubeMapped = 2;
+	
 	PS_OUTPUT psOut;
 	
 	const float3 normal = normalize(IN.dirV);
 	
 	float3 color = float3(1.f, 0.f, 1.f);
-	if(mode == 0) {
+	if(mode == mode_colorGradinet) {
 		color = lerp(uColorBottom, uColorTop, normal.y * 0.5f + 0.5f);
-	} else  if(mode == 1) {
-		float2 uv = directionToUV_cubeMapping(normal, 4.f / float2(tex2Dsize(uSkyTexture)));
-		color = tex2D(uSkyTexture, uv);
-	} else  if(mode == 2) {
+	} else  if(mode == mode_textureSphericalMapped) {
 		float2 uv = directionToUV_spherical(normal);
 		color = tex2D(uSkyTexture, uv);
+	}
+	else  if(mode == mode_textureCubeMapped) {
+		float2 uv = directionToUV_cubeMapping(normal, 4.f / float2(tex2Dsize(uSkyTexture)));
+		color = tex2D(uSkyTexture, uv);
+	} else {
+		color = float3(1.f, 0.f, 1.f);
 	}
 	
 	psOut.target0 = float4(color, 1.f);

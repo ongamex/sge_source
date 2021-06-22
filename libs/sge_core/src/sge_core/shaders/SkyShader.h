@@ -12,13 +12,13 @@ struct ICamera;
 
 struct SkyShaderSettings {
 	enum Mode : int {
-		mode_topAndBottomColors,
-		mode_textureSphericalMapped,
-		mode_textureCubeMapped,
+		mode_colorGradinet = 0,
+		mode_textureSphericalMapped = 1,
+		mode_textureCubeMapped = 2,
 		
 	};
 
-	Mode mode = mode_topAndBottomColors;
+	Mode mode = mode_colorGradinet;
 	vec3f topColor = vec3f(0.75f);
 	vec3f bottomColor = vec3f(0.25f);
 	Texture* texture = nullptr;

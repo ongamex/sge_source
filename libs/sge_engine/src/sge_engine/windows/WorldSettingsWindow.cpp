@@ -51,38 +51,6 @@ void WorldSettingsWindow::update(SGEContext* const UNUSED(sgecon), const InputSt
 			ImGui::DragFloat("Rim Width Cosine", &m_inspector.getWorld()->m_rimCosineWidth, 0.01f, 0.f, 1.f);
 		}
 
-		if (ImGui::CollapsingHeader(ICON_FK_SUN " Sky")) {
-			char* skyModeToStr[] = {
-			    "Colors",                      // mode_topBottomColors
-			    "Texture 2D Spherical Mapped", // mode_texture2D_sphericalMapping
-			    "Texture 2D Cube Mapped",      // mode_texture2D_cubeMapping
-			};
-
-			if (ImGui::BeginCombo("Mode", skyModeToStr[world->skySettings.mode])) {
-				if (ImGui::Selectable(skyModeToStr[WorldSkySettings::mode_topBottomColors])) {
-					world->skySettings.mode = WorldSkySettings::mode_topBottomColors;
-				}
-
-				if (ImGui::Selectable(skyModeToStr[WorldSkySettings::mode_texture2D_sphericalMapping])) {
-					world->skySettings.mode = WorldSkySettings::mode_texture2D_sphericalMapping;
-				}
-
-				if (ImGui::Selectable(skyModeToStr[WorldSkySettings::mode_texture2D_cubeMapping])) {
-					world->skySettings.mode = WorldSkySettings::mode_texture2D_cubeMapping;
-				}
-
-				ImGui::EndCombo();
-			}
-
-			if (world->skySettings.mode == WorldSkySettings::mode_topBottomColors) {
-				ImGui::ColorEdit3("Sky Top Color", m_inspector.getWorld()->skySettings.colorTop.data);
-				ImGui::ColorEdit3("Sky Bottom Color", m_inspector.getWorld()->skySettings.colorBottom.data);
-			} else {
-				AssetType type = AssetType::Texture2D;
-				assetPicker("Sky Texture", world->skySettings.textureAssetPath, getCore()->getAssetLib(), &type, 1);
-			}
-		}
-
 		if (ImGui::CollapsingHeader(ICON_FK_CAMERA " Gameplay")) {
 			ImGuiEx::Label(ICON_FK_CAMERA " Gameplay Camera");
 			actorPicker("##CameraActorPicker", *m_inspector.getWorld(), m_inspector.getWorld()->m_cameraPovider, nullptr, true);
