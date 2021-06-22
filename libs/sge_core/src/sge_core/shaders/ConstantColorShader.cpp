@@ -17,7 +17,7 @@ using namespace sge;
 //-----------------------------------------------------------------------------
 // BasicModelDraw
 //-----------------------------------------------------------------------------
-void ConstantColorShader::drawGeometry(
+void ConstantColorWireShader::drawGeometry(
     const RenderDestination& rdest, const mat4f& projView, const mat4f& world, const Geometry& geometry, const vec4f& shadingColor) {
 	enum : int { OPT_HasVertexSkinning, kNumOptions };
 
@@ -51,6 +51,23 @@ void ConstantColorShader::drawGeometry(
 		shadingPermut->createFromFile(sgedev, "core_shaders/ConstantColor.shader", compileTimeOptions, uniformsToCache);
 	}
 
+	if (m_rasterWireframeDepthBias.HasResource() == false) {
+		RasterDesc rd;
+		rd.fillMode = FillMode::Wireframe;
+		rd.depthBiasAdd = 0.f;
+		rd.depthBiasSlope = -1.f;
+		m_rasterWireframeDepthBias = rdest.sgecon->getDevice()->requestRasterizerState(rd);
+	}
+
+	if (m_rasterWireframeDepthBiasCCW.HasResource() == false) {
+		RasterDesc rd;
+		rd.fillMode = FillMode::Wireframe;
+		rd.cullMode = CullMode::Front;
+		rd.depthBiasAdd = 0.f;
+		rd.depthBiasSlope = -1.f;
+		m_rasterWireframeDepthBiasCCW = rdest.sgecon->getDevice()->requestRasterizerState(rd);
+	}
+
 	const int optHasVertexSkinning = (geometry.hasVertexSkinning()) ? kHasVertexSkinning_Yes : kHasVertexSkinning_No;
 
 	const OptionPermuataor::OptionChoice optionChoice[kNumOptions] = {
@@ -74,8 +91,7 @@ void ConstantColorShader::drawGeometry(
 
 	const bool flipCulling = determinant(world) < 0.f;
 
-	RasterizerState* const rasterState =
-	    flipCulling ? getCore()->getGraphicsResources().RS_wireframeBackfaceCCW : getCore()->getGraphicsResources().RS_defaultWireframe;
+	RasterizerState* const rasterState = flipCulling ? m_rasterWireframeDepthBiasCCW : m_rasterWireframeDepthBias;
 	stateGroup.setRenderState(rasterState, getCore()->getGraphicsResources().DSS_default_lessEqual);
 
 	StaticArray<BoundUniform, 24> uniforms;
@@ -103,7 +119,7 @@ void ConstantColorShader::drawGeometry(
 	rdest.sgecon->executeDrawCall(dc, rdest.frameTarget, &rdest.viewport);
 }
 
-void ConstantColorShader::draw(const RenderDestination& rdest,
+void ConstantColorWireShader::draw(const RenderDestination& rdest,
                                const mat4f& projView,
                                const mat4f& preRoot,
                                const EvaluatedModel& evalModel,

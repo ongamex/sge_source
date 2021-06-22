@@ -296,6 +296,35 @@ void GLContextStateCache::ApplyRasterDesc(const RasterDesc& desc) {
 		}
 	}
 #endif
+	
+	bool biasChanged = UPDATE_ON_DIFF(m_rasterDesc.depthBiasAdd, desc.depthBiasAdd);
+	biasChanged = UPDATE_ON_DIFF(m_rasterDesc.depthBiasSlope, desc.depthBiasSlope) || biasChanged;
+	if (biasChanged) {
+		GLenum mode = GL_INVALID_ENUM;
+		switch (desc.fillMode) {
+			case FillMode::Solid:
+				mode = GL_POLYGON_OFFSET_FILL;
+				break;
+
+			case FillMode::Wireframe:
+				mode = GL_POLYGON_OFFSET_LINE;
+				break;
+
+			default:
+				// Unknown fill mode
+				sgeAssert(false);
+		}
+
+		if (mode != GL_INVALID_ENUM) {
+			if (m_rasterDesc.depthBiasAdd != 0.f || m_rasterDesc.depthBiasSlope != 0.f) {
+				glEnable(mode);
+			}
+
+			glPolygonOffset(m_rasterDesc.depthBiasSlope, m_rasterDesc.depthBiasAdd);
+		} else {
+			glPolygonOffset(0.f, 0.f);
+		}
+	}
 
 	// Scissors.
 	if (UPDATE_ON_DIFF(m_rasterDesc.useScissor, desc.useScissor)) {

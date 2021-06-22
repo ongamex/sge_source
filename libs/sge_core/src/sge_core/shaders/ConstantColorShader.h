@@ -11,12 +11,10 @@ namespace sge {
 struct EvaluatedModel;
 struct ModelMesh;
 
-//------------------------------------------------------------
-// ConstantColorShader
-//------------------------------------------------------------
-struct SGE_CORE_API ConstantColorShader {
+// ConstantColorWireShader draws the specified geometry in wireframe with a constant color.
+struct SGE_CORE_API ConstantColorWireShader {
   public:
-	ConstantColorShader() = default;
+	ConstantColorWireShader() = default;
 
 	void draw(const RenderDestination& rdest,
 	          const mat4f& projView,
@@ -30,6 +28,8 @@ struct SGE_CORE_API ConstantColorShader {
   private:
 	Optional<ShadingProgramPermuator> shadingPermut;
 	StateGroup stateGroup;
+	GpuHandle<RasterizerState> m_rasterWireframeDepthBias;
+	GpuHandle<RasterizerState> m_rasterWireframeDepthBiasCCW;
 };
 
 } // namespace sge

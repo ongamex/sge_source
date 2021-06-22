@@ -83,7 +83,7 @@ struct SGE_ENGINE_API DefaultGameDrawer : public IGameDrawer {
 
   public:
 	BasicModelDraw m_modeldraw;
-	ConstantColorShader m_constantColorShader;
+	ConstantColorWireShader m_constantColorShader;
 	TexturedPlaneDraw m_texturedPlaneDraw;
 	ParticleRenderDataGen m_partRendDataGen;
 
