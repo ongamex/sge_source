@@ -12,8 +12,11 @@ namespace sge {
 //------------------------------------------------------------
 struct SGE_CORE_API ShadingProgramPermuator {
 	struct Unform {
-		int safetyIndex;
+		int safetyIndex; ///< The user specified to the ShadingProgramPermuator an array of uniforms to be found. In order to decrease
+		                 ///< debugging we want this index to be the same as the index in the array specified by the user, as they are going
+		                 ///< to access them by that index.
 		const char* uniformName;
+		ShaderType::Enum shaderStage;
 	};
 
 	struct Permutation {
@@ -24,8 +27,6 @@ struct SGE_CORE_API ShadingProgramPermuator {
 		/// in in the @uniforms.
 		template <size_t N>
 		void bind(StaticArray<BoundUniform, N>& uniforms, const int uniformEnumId, void* const dataPointer) const {
-			sgeAssert(dataPointer != nullptr);
-
 			if (uniformLUT[uniformEnumId].isNull() == false) {
 				[[maybe_unused]] bool bindSucceeded = uniforms.push_back(BoundUniform(uniformLUT[uniformEnumId], (dataPointer)));
 				sgeAssert(bindSucceeded);
@@ -38,12 +39,14 @@ struct SGE_CORE_API ShadingProgramPermuator {
 	bool createFromFile(SGEDevice* sgedev,
 	                    const char* const fileName,
 	                    const std::vector<OptionPermuataor::OptionDesc>& compileTimeOptions,
-	                    const std::vector<Unform>& uniformsToCacheInLUT);
+	                    const std::vector<Unform>& uniformsToCacheInLUT,
+	                    std::set<std::string>* outIncludedFiles = nullptr);
 
 	bool create(SGEDevice* sgedev,
 	            const char* const shaderCode,
 	            const std::vector<OptionPermuataor::OptionDesc>& compileTimeOptions,
-	            const std::vector<Unform>& uniformsToCacheInLUT);
+	            const std::vector<Unform>& uniformsToCacheInLUT,
+	            std::set<std::string>* outIncludedFiles = nullptr);
 
 
 	const OptionPermuataor getCompileTimeOptionsPerm() const { return compileTimeOptionsPermutator; }

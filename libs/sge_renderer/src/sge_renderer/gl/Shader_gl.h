@@ -47,10 +47,7 @@ struct ShaderGL : public Shader {
 	~ShaderGL() { destroy(); }
 
 	// Creates the shader using the native language for the API.
-	bool createNative(const ShaderType::Enum type, const char* pCode, const char* const entryPoint);
-
-	// Create the shader using the custom shading language.
-	bool create(const ShaderType::Enum type, const char* pCode, const char* preapendedCode = NULL) final;
+	CreateShaderResult createNative(const ShaderType::Enum type, const char* pCode, const char* const entryPoint);
 
 	virtual void destroy() override;
 	virtual bool isValid() const override;

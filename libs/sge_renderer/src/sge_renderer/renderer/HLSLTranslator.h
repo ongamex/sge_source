@@ -2,6 +2,7 @@
 
 #include "sge_renderer/renderer/GraphicsCommon.h"
 #include <string>
+#include <set>
 
 namespace sge {
 
@@ -13,6 +14,7 @@ bool translateHLSL(const char* const pCode,
                    const ShadingLanguage::Enum shadingLanguage,
                    const ShaderType::Enum shaderType,
                    std::string& result,
-                   std::string& compilationErrors);
+                   std::string& compilationErrors,
+                   std::set<std::string>* outIncludedFiles = nullptr);
 
 } // namespace sge

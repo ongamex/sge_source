@@ -142,6 +142,10 @@ struct BoundUniform {
 	    : bindLocation(bindLocation)
 	    , textures(textures) {}
 
+	BoundUniform(BindLocation bindLocation, Buffer* buffer)
+	    : bindLocation(bindLocation)
+	    , buffer(buffer) {}
+
 	BindLocation bindLocation;
 	union {
 		void* data;

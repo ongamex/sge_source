@@ -15,6 +15,7 @@
 #include "sge_engine/actors/ALine.h"
 #include "sge_engine/actors/ALocator.h"
 #include "sge_engine/actors/ANavMesh.h"
+#include "sge_engine/actors/ASky.h"
 #include "sge_engine/materials/Material.h"
 #include "sge_engine/traits/TraitModel.h"
 #include "sge_engine/traits/TraitMultiModel.h"
@@ -41,23 +42,6 @@ struct AInvisibleRigidObstacle;
 
 void DefaultGameDrawer::prepareForNewFrame() {
 	m_shadingLights.clear();
-
-	if (m_skySphereVB.IsResourceValid() == false) {
-		m_skySphereVB = getCore()->getDevice()->requestResource<Buffer>();
-		m_skySphereNumVerts = GeomGen::sphere(m_skySphereVB.GetPtr(), 8, 8);
-
-		VertexDecl vdecl[] = {VertexDecl(0, "a_position", UniformType::Float3, 0)};
-
-		m_skySphereVBVertexDeclIdx = getCore()->getDevice()->getVertexDeclIndex(vdecl, SGE_ARRSZ(vdecl));
-	}
-
-	if (m_skyGradientShader.IsResourceValid() == false) {
-		m_skyGradientShader = getCore()->getDevice()->requestResource<ShadingProgram>();
-		std::string code;
-		if (FileReadStream::readTextFile("core_shaders/SkyGradient.shader", code)) {
-			m_skyGradientShader->create(code.c_str(), code.c_str());
-		}
-	}
 }
 
 void DefaultGameDrawer::updateShadowMaps(const GameDrawSets& drawSets) {
@@ -325,80 +309,32 @@ void DefaultGameDrawer::fillGeneralModsWithLights(Actor* actor, GeneralDrawMod& 
 void DefaultGameDrawer::drawWorld(const GameDrawSets& drawSets, const DrawReason drawReason) {
 	IGameDrawer::drawWorld(drawSets, drawReason);
 
-	struct OrderedActor {
-		Actor* pActor;
-		float v = FLT_MAX;
-
-		bool operator<(const OrderedActor& r) const { return (v < r.v) || (v == r.v && pActor < r.pActor); }
-	};
-
-	const vec3f sortingPlanePos = drawSets.drawCamera->getCameraPosition();
-	const vec3f sortingPlaneNormal = drawSets.drawCamera->getCameraLookDir();
-	const Plane sortingPlane = Plane::FromPosAndDir(sortingPlanePos, sortingPlaneNormal);
-
-	std::vector<OrderedActor> actorsToRender;
-
-	getWorld()->iterateOverPlayingObjects(
-	    [&](GameObject* object) -> bool {
-		    // TODO: Skip this check for whole types. We know they are not actors...
-		    Actor* actor = object->getActor();
-		    if (actor) {
-			    const AABox3f bboxWs = actor->getBBoxOS().getTransformed(actor->getTransformMtx());
-			    const vec3f nearestPointSortingPlane = bboxWs.center() - sortingPlaneNormal * bboxWs.halfDiagonal().length();
-
-			    actorsToRender.push_back({actor, sortingPlane.Distance(nearestPointSortingPlane)});
-		    }
-
-		    return true;
-	    },
-	    false);
-
-	std::sort(actorsToRender.begin(), actorsToRender.end());
-	for (auto& p : actorsToRender) {
-		drawActor(drawSets, editMode_actors, p.pActor, 0, drawReason);
-	}
-
-	// Draw the sky.
+	// Draw the sky
 	if (drawReason_IsGameOrEditNoShadowPass(drawReason)) {
-		StateGroup sg;
-		sg.setProgram(m_skyGradientShader);
-		sg.setPrimitiveTopology(PrimitiveTopology::TriangleList);
-		sg.setVBDeclIndex(m_skySphereVBVertexDeclIdx);
-		sg.setVB(0, m_skySphereVB, 0, sizeof(vec3f));
+		const std::vector<GameObject*>* allSkies = getWorld()->getObjects(sgeTypeId(ASky));
 
-		RasterizerState* const rasterState = getCore()->getGraphicsResources().RS_noCulling;
+		ASky* sky = allSkies ? static_cast<ASky*>(allSkies->at(0)) : nullptr;
 
-		sg.setRenderState(rasterState, getCore()->getGraphicsResources().DSS_default_lessEqual);
+		if (sky) {
+			SkyShaderSettings skyShaderSettings = sky->getSkyShaderSetting();
 
-		BindLocation uViewLoc = m_skyGradientShader->getReflection().findUniform("uView");
-		BindLocation uProjLoc = m_skyGradientShader->getReflection().findUniform("uProj");
-		BindLocation uColorBottomLoc = m_skyGradientShader->getReflection().findUniform("uColorBottom");
-		BindLocation uColorTomLoc = m_skyGradientShader->getReflection().findUniform("uColorTop");
+			mat4f view = drawSets.drawCamera->getView();
+			mat4f proj = drawSets.drawCamera->getProj();
+			vec3f camPosWs = drawSets.drawCamera->getCameraPosition();
 
-		mat4f view = drawSets.drawCamera->getView();
-		mat4f proj = drawSets.drawCamera->getProj();
+			m_skyShader.draw(drawSets.rdest, camPosWs, view, proj, skyShaderSettings);
+		} else {
+			mat4f view = drawSets.drawCamera->getView();
+			mat4f proj = drawSets.drawCamera->getProj();
+			vec3f camPosWs = drawSets.drawCamera->getCameraPosition();
 
-		// TODO: more optimal sky shading please.
-		[[maybe_unused]] Frustum f = Frustum::extractClippingPlanes(proj, kIsTexcoordStyleD3D);
-		[[maybe_unused]] float far = f.f.v4.w;
-		// HACK: use a separate variable.
-		view = drawSets.drawCamera->getView() * mat4f::getScaling(far - 1e-3f);
+			SkyShaderSettings skyShaderSettings;
+			skyShaderSettings.mode = SkyShaderSettings::mode_colorGradinet;
+			skyShaderSettings.topColor = vec3f(0.75f);
+			skyShaderSettings.bottomColor = vec3f(0.25f);
 
-		vec3f colorBottom = getWorld()->m_skyColorBottom;
-		vec3f colorTop = getWorld()->m_skyColorTop;
-
-		StaticArray<BoundUniform, 6> uniforms;
-		uniforms.push_back(BoundUniform(uViewLoc, &view));
-		uniforms.push_back(BoundUniform(uProjLoc, &proj));
-		uniforms.push_back(BoundUniform(uColorBottomLoc, &colorBottom));
-		uniforms.push_back(BoundUniform(uColorTomLoc, &colorTop));
-
-		DrawCall dc;
-		dc.setStateGroup(&sg);
-		dc.setUniforms(uniforms.data(), uniforms.size());
-		dc.draw(m_skySphereNumVerts, 0);
-
-		drawSets.rdest.sgecon->executeDrawCall(dc, drawSets.rdest.frameTarget, &drawSets.rdest.viewport);
+			m_skyShader.draw(drawSets.rdest, camPosWs, view, proj, skyShaderSettings);
+		}
 	}
 }
 

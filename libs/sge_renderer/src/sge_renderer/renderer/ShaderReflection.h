@@ -167,7 +167,7 @@ struct SamplerRefl {
   public:
 	unsigned nameStrIdx = 0; // A runtime mapping string->int for the "name" string.
 	std::string name;
-	int arraySize = 0; // 0 means not an array
+	int arraySize = 0; // 0 means not an array.
 
 #ifdef SGE_RENDERER_D3D11
 	ShaderType::Enum d3d11_shaderType = ShaderType::VertexShader;
@@ -203,17 +203,27 @@ struct UniformContainer {
 		m_nameStrIdxLUT.emplace_back(UniformLUTPair(uniform.nameStrIdx, loc));
 	}
 
-	BindLocation findUniform(const char* const name) const {
+	BindLocation findUniform(const char* const name, [[maybe_unused]] ShaderType::Enum shaderType) const {
 		for (const auto& itr : m_uniforms) {
+			// @shaderType is ignored on OpenGL as all shader reflection there cannot 
+			// tell us which shader stage needs them, they are all uniforms to the shading program.
+			// OpenGL manages to handle shader uniforms (those used by multiple shader stages at once)
+			// internally.
+#ifdef SGE_RENDERER_D3D11
+			if (itr.second.d3d11_shaderType == shaderType && itr.second.name == name) {
+				return itr.first;
+			}
+#elif defined(SGE_RENDERER_GL)
 			if (itr.second.name == name) {
 				return itr.first;
 			}
+#endif
 		}
 
 		return BindLocation();
 	}
 
-	BindLocation findUniform(unsigned const nameStrIdx) const {
+	BindLocation findUniform(unsigned const nameStrIdx, ShaderType::Enum shaderType) const {
 		for (const auto& pair : m_nameStrIdxLUT) {
 			if (pair.first == nameStrIdx) {
 				return pair.second;
@@ -229,7 +239,7 @@ struct UniformContainer {
 //---------------------------------------------------
 struct ShadingProgramRefl {
 	bool create(ShadingProgram* const shadingProgram);
-	BindLocation findUniform(const char* const uniformName) const;
+	BindLocation findUniform(const char* const uniformName, [[maybe_unused]] ShaderType::Enum shaderType) const;
 
   public:
 	std::vector<VertShaderAttrib> inputVertices;

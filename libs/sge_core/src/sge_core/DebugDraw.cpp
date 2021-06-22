@@ -107,7 +107,7 @@ void DebugDraw::initialze(SGEDevice* sgedev) {
 
 	//
 	m_shaderSolidVertexColor = sgedev->requestResource<ShadingProgram>();
-	m_shaderSolidVertexColor->create(EFFECT_3D_VERTEX_COLOR, EFFECT_3D_VERTEX_COLOR);
+	m_shaderSolidVertexColor->createFromCustomHLSL(EFFECT_3D_VERTEX_COLOR, EFFECT_3D_VERTEX_COLOR);
 
 	//
 	m_vertexBuffer = sgedev->requestResource<Buffer>();
@@ -135,7 +135,7 @@ void DebugDraw::drawWieredCommand(const RenderDestination& rdest, const mat4f& p
 
 	// Set-up the draw call
 	BoundUniform uniforms[] = {
-	    BoundUniform(m_shaderSolidVertexColor->getReflection().numericUnforms.findUniform(m_projViewWorld_strIdx), (void*)&projView),
+	    BoundUniform(m_shaderSolidVertexColor->getReflection().numericUnforms.findUniform("projViewWorld", ShaderType::VertexShader), (void*)&projView),
 	};
 
 	m_stateGroup.setProgram(m_shaderSolidVertexColor);

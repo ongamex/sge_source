@@ -108,17 +108,17 @@ void TexturedPlaneDraw::initialize(SGEDevice* sgedev) {
 		m_vertexBuffer->create(BufferDesc::GetDefaultVertexBuffer(sizeof(vertices)), vertices);
 
 		m_shadingProgram = sgedev->requestResource<ShadingProgram>();
-		m_shadingProgram->create(EFFECT_TEXTURED_PLANE, EFFECT_TEXTURED_PLANE);
+		m_shadingProgram->createFromCustomHLSL(EFFECT_TEXTURED_PLANE, EFFECT_TEXTURED_PLANE);
 
 		const ShadingProgramRefl& refl = m_shadingProgram->getReflection();
 
-		m_texDiffuse_bindLoc = refl.textures.findUniform("texDiffuse");
+		m_texDiffuse_bindLoc = refl.textures.findUniform("texDiffuse", ShaderType::PixelShader);
 #ifdef SGE_RENDERER_D3D11
-		m_texDiffuseSampler_bindLoc = refl.samplers.findUniform("texDiffuse_sampler");
+		m_texDiffuseSampler_bindLoc = refl.samplers.findUniform("texDiffuse_sampler", ShaderType::PixelShader);
 #endif
-		m_projViewWorld_bindLoc = refl.numericUnforms.findUniform("projViewWorld");
-		m_tint_bindLoc = refl.numericUnforms.findUniform("tint");
-		m_uvRegion_bindLoc = refl.numericUnforms.findUniform("uvRegion");
+		m_projViewWorld_bindLoc = refl.findUniform("projViewWorld", ShaderType::VertexShader);
+		m_tint_bindLoc = refl.findUniform("tint", ShaderType::PixelShader);
+		m_uvRegion_bindLoc = refl.findUniform("uvRegion", ShaderType::PixelShader);
 	}
 }
 

@@ -52,21 +52,24 @@ bool ShadingProgramGL::create(Shader* vertShdr, Shader* pixelShdr) {
 	return reflectonSucceeded;
 }
 
-bool ShadingProgramGL::create(const char* const pVSCode, const char* const pPSCode, const char* const preAppendedCode) {
+CreateShaderResult ShadingProgramGL::createFromNativeCode(const char* const pVSCode, const char* const pPSCode) {
 	GpuHandle<ShaderGL> vs = getDevice()->requestResource<Shader>();
-	bool r = vs->create(ShaderType::VertexShader, pVSCode, preAppendedCode);
-	if (r == false) {
-		return r;
+	CreateShaderResult createVertexShdrRes = vs->createNative(ShaderType::VertexShader, pVSCode, nullptr);
+	if (createVertexShdrRes.succeeded == false) {
+		return createVertexShdrRes;
 	}
 
 	GpuHandle<ShaderGL> ps = getDevice()->requestResource<Shader>();
-	r = ps->create(ShaderType::PixelShader, pPSCode, preAppendedCode);
+	CreateShaderResult createPixelShdrRes = ps->createNative(ShaderType::PixelShader, pPSCode, nullptr);
 
-	if (r == false) {
-		return r;
+	if (createPixelShdrRes.succeeded == false) {
+		return createPixelShdrRes;
 	}
 
-	return create(vs, ps);
+	if (create(vs, ps)) {
+		return CreateShaderResult(true, "");
+	}
+	return CreateShaderResult();
 }
 
 void ShadingProgramGL::destroy() {

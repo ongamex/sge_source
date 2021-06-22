@@ -11,7 +11,7 @@
 #include <HLSLGenerator.h>
 #include <HLSLParser.h>
 
-constexpr const char* const SGE_FAKE_SHADER_SRC_FILE = "no_file.nope";
+constexpr const char* const SGE_FAKE_SHADER_SRC_FILE = "<NO-FILE>";
 
 namespace preprocessor {
 struct Args {
@@ -49,11 +49,11 @@ void error_fn(void* UNUSED(userdata), char* UNUSED(format), va_list UNUSED(arg))
 	// SGE_DEBUG_WAR(format, arg);
 }
 
-std::string preprocess(const char* code, const char* const* macros, const int numMacros) {
+std::string preprocess(const char* code, const char* const* macros, const int numMacros, std::set<std::string>* outIncludedFiles) {
 	// Not that anyone is going to do it but:
-	// mcpp uses some global state, so it isn't thread safe
+	// mcpp uses some global state, so it isn't thread safe!
 	static std::mutex lock;
-	std::lock_guard<std::mutex> lockGuard(lock);
+	const std::lock_guard<std::mutex> lockGuard(lock);
 
 	std::vector<std::string> args;
 	std::vector<const char*> argsCFormat;
@@ -122,17 +122,19 @@ std::string preprocess(const char* code, const char* const* macros, const int nu
 		return 0;
 	};
 
-
-
 	// These two are redirected to some global mcpp values.
 	char* compilationResult = nullptr;
 	char* colpilationErrors = nullptr;
 
-	// int const res = mcpp_run(compileOptionsForMCpp.c_str(), SGE_FAKE_SHADER_SRC_FILE, &compilationResult, &colpilationErrors,
-	// mcppFileLoader);
 	int const res =
 	    sge_mcpp_preprocess(&compilationResult, &colpilationErrors, argsCFormat.data(), int(argsCFormat.size()), loadFileFn, &udata);
 	std::string result = compilationResult ? compilationResult : "";
+
+	if (outIncludedFiles != nullptr) {
+		for (auto& itr : includeFiles) {
+			outIncludedFiles->insert(itr.first);
+		}
+	}
 
 	return result;
 }
@@ -144,7 +146,8 @@ bool translateHLSL(const char* const pCode,
                    const ShadingLanguage::Enum shadingLanguage,
                    const ShaderType::Enum shaderType,
                    std::string& result,
-                   std::string& compilationErrors) {
+                   std::string& compilationErrors,
+                   std::set<std::string>* outIncludedFiles) {
 	M4::g_hlslParserErrors.clear();
 
 	const char* const mOpenGL = "OpenGL";
@@ -160,7 +163,7 @@ bool translateHLSL(const char* const pCode,
 	}
 
 
-	const std::string processsedCode = preprocessor::preprocess(pCode, macros.data(), int(macros.size()));
+	const std::string processsedCode = preprocessor::preprocess(pCode, macros.data(), int(macros.size()), outIncludedFiles);
 
 	M4::Allocator m4Alloc;
 	M4::HLSLParser hlslParser(&m4Alloc, SGE_FAKE_SHADER_SRC_FILE, processsedCode.c_str(), processsedCode.size());

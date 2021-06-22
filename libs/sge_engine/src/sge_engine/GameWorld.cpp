@@ -248,9 +248,6 @@ void GameWorld::clear() {
 	m_defaultGravity = vec3f(0.f, -10.f, 0.f);
 	m_physicsSimNumSubSteps = 3;
 
-	m_skyColorBottom = vec3f(0.419f);
-	m_skyColorTop = vec3f(0.133f);
-
 	m_childernOf.clear();
 	m_parentOf.clear();
 

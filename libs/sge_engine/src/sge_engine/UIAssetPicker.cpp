@@ -169,6 +169,18 @@ bool assetPicker(
 	return wasAssetPicked;
 }
 
+SGE_ENGINE_API bool assetPicker(
+    const char* label, std::shared_ptr<Asset>& asset, AssetLibrary* const assetLibrary, const AssetType assetTypes[], const int numAssetTypes) {
+	std::string tempPath = isAssetLoaded(asset) ? asset->getPath() : "";
+
+	if (assetPicker(label, tempPath, assetLibrary, assetTypes, numAssetTypes)) {
+		asset = assetLibrary->getAsset(tempPath.c_str(), true);
+		return true;
+	}
+
+	return false;
+}
+
 bool actorPicker(
     const char* label, GameWorld& world, ObjectId& ioValue, std::function<bool(const GameObject&)> filter, bool pickPrimarySelection) {
 	GameInspector* inspector = world.getInspector();

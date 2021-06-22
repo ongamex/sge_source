@@ -16,6 +16,7 @@
 
 namespace sge {
 
+struct Asset;
 struct QuickDraw;
 
 struct GameWorld;
@@ -282,8 +283,6 @@ struct SGE_ENGINE_API GameWorld {
 	// Scene default ambient lighting.
 	vec3f m_ambientLight = vec3f(0.25f);
 	vec3f m_rimLight = vec3f(0.1f);
-	vec3f m_skyColorBottom = vec3f(0.419f);
-	vec3f m_skyColorTop = vec3f(0.133f);
 	float m_rimCosineWidth = 0.3f;
 
 	/// A pointer to the attached inspector(if any).

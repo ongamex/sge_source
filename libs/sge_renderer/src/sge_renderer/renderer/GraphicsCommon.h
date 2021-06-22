@@ -60,6 +60,14 @@ struct ShadingLanguage {
 		Common,
 		HLSL,
 		GLSL,
+
+#if SGE_RENDERER_D3D11
+		ApiNative = HLSL,
+#elif SGE_RENDERER_GL
+		ApiNative = GLSL,
+#else
+	// Not implemented.
+#endif
 	};
 
 	SGE_GPRAHICS_COMMON_ENUM_HIDE;
@@ -641,7 +649,7 @@ struct ShaderType {
 	enum Enum {
 		VertexShader,
 		PixelShader,
-		ComputeShader,
+		// ComputeShader,
 
 		NumElems
 	};
@@ -757,6 +765,8 @@ struct RasterDesc {
 	CullMode::Enum cullMode;
 	FillMode::Enum fillMode;
 	bool useScissor;
+	float depthBiasAdd = 0.f;
+	float depthBiasSlope = 0.f;
 
 	RasterDesc(const bool backFaceCW = false,
 	           const CullMode::Enum cullMode = CullMode::Back,
@@ -769,7 +779,7 @@ struct RasterDesc {
 
 	bool operator==(const RasterDesc& other) const {
 		return backFaceCCW == other.backFaceCCW && cullMode == other.cullMode && fillMode == other.fillMode &&
-		       useScissor == other.useScissor;
+		       useScissor == other.useScissor && depthBiasAdd == other.depthBiasAdd && depthBiasSlope == other.depthBiasSlope;
 	}
 
 	bool operator!=(const RasterDesc& other) const { return !(*this == other); }

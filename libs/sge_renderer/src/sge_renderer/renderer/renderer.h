@@ -1,6 +1,7 @@
 #pragma once
 
 #include <map>
+#include <set>
 
 #include "GraphicsCommon.h"
 #include "ShaderReflection.h"
@@ -161,16 +162,23 @@ struct Texture : public RAIResource {
 //-----------------------------------------------------------------------
 //
 //-----------------------------------------------------------------------
+struct CreateShaderResult {
+	CreateShaderResult() = default;
+	CreateShaderResult(bool succeeded, std::string errors)
+	    : succeeded(succeeded)
+	    , errors(errors) {}
+
+	bool succeeded = false;
+	std::string errors;
+};
+
 struct Shader : public RAIResource {
 	Shader() = default;
 
 	ResourceType::Enum getResourceType() const final { return ResourceType::Shader; }
 
 	// Creates the shader using the native language for the API.
-	virtual bool createNative(const ShaderType::Enum type, const char* pCode, const char* const entryPoint) = 0;
-
-	// Create the shader using the custom shading language.
-	virtual bool create(const ShaderType::Enum type, const char* pCode, const char* preapendedCode = NULL) = 0;
+	virtual CreateShaderResult createNative(const ShaderType::Enum type, const char* pCode, const char* const entryPoint) = 0;
 
 	virtual const ShaderType::Enum getShaderType() const = 0;
 };
@@ -184,7 +192,9 @@ struct ShadingProgram : public RAIResource {
 	ResourceType::Enum getResourceType() const final { return ResourceType::ShadingProgram; }
 
 	virtual bool create(Shader* vertShdr, Shader* pixelShdr) = 0;
-	virtual bool create(const char* const pVSCode, const char* const pPSCode, const char* const preAppendedCode = NULL) = 0;
+	virtual CreateShaderResult createFromNativeCode(const char* const pVSCode, const char* const pPSCode) = 0;
+
+	CreateShaderResult createFromCustomHLSL(const char* const pVSCode, const char* const pPSCode, std::set<std::string>* outIncludedFiles = nullptr);
 
 	virtual Shader* getVertexShader() const = 0;
 	virtual Shader* getPixelShader() const = 0;
@@ -309,7 +319,7 @@ struct SGEContext {
 	virtual void unMap(Buffer* buffer) = 0;
 
 	// Textures.
-	virtual void updateTextureData(Texture* texture,  const TextureData& td) = 0;
+	virtual void updateTextureData(Texture* texture, const TextureData& td) = 0;
 
 	// Frame targets.
 	virtual void clearColor(FrameTarget* target, int index, const float rgba[4]) = 0;

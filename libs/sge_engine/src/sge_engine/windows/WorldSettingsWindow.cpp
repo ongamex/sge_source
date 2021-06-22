@@ -1,5 +1,6 @@
 #include "WorldSettingsWindow.h"
 #include "IconsForkAwesome/IconsForkAwesome.h"
+#include "sge_core/ICore.h"
 #include "sge_core/SGEImGui.h"
 #include "sge_engine/EngineGlobal.h"
 #include "sge_engine/GameInspector.h"
@@ -50,13 +51,9 @@ void WorldSettingsWindow::update(SGEContext* const UNUSED(sgecon), const InputSt
 			ImGui::DragFloat("Rim Width Cosine", &m_inspector.getWorld()->m_rimCosineWidth, 0.01f, 0.f, 1.f);
 		}
 
-		if (ImGui::CollapsingHeader(ICON_FK_SUN " Sky")) {
-			ImGui::ColorPicker3("Sky Top Color", m_inspector.getWorld()->m_skyColorTop.data);
-			ImGui::ColorPicker3("Sky Bottom Color", m_inspector.getWorld()->m_skyColorBottom.data);
-		}
-
 		if (ImGui::CollapsingHeader(ICON_FK_CAMERA " Gameplay")) {
-			ImGui::InputInt(ICON_FK_CAMERA " Gameplay Camera", &m_inspector.getWorld()->m_cameraPovider.id);
+			ImGuiEx::Label(ICON_FK_CAMERA " Gameplay Camera");
+			actorPicker("##CameraActorPicker", *m_inspector.getWorld(), m_inspector.getWorld()->m_cameraPovider, nullptr, true);
 
 			ImGui::SameLine();
 			if (ImGui::Button(ICON_FK_SHOPPING_CART)) {

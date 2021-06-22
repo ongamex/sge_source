@@ -310,9 +310,9 @@ std::string SGEDeviceD3D11::D3D11_GetWorkingShaderModel(const ShaderType::Enum s
 	std::string shaderModel;
 
 	switch (shaderType) {
-		case ShaderType::ComputeShader:
-			shaderModel += "cs_";
-			break;
+		// case ShaderType::ComputeShader:
+		//	shaderModel += "cs_";
+		//	break;
 		case ShaderType::VertexShader:
 			shaderModel += "vs_";
 			break;
@@ -529,7 +529,7 @@ void SGEContextImmediateD3D11::executeDrawCall(DrawCall& drawCall,
 					// uniform.texture and not an array with uniform.textures with 1 element specified.
 					if (bindLocation.texArraySize_or_numericUniformSizeBytes == 1) {
 						TextureD3D11* texture = reinterpret_cast<TextureD3D11*>(uniform.texture);
-						srvs[bindLocation.shaderFreq][bindLocation.bindLocation] = texture->D3D11_GetSRV();
+						srvs[bindLocation.shaderFreq][bindLocation.bindLocation] = texture ? texture->D3D11_GetSRV() : nullptr;
 					} else {
 						for (int t = 0; t < bindLocation.texArraySize_or_numericUniformSizeBytes; ++t) {
 							TextureD3D11* const d3d11Tex = static_cast<TextureD3D11*>(uniform.textures[t]);
@@ -560,19 +560,10 @@ void SGEContextImmediateD3D11::executeDrawCall(DrawCall& drawCall,
 
 				default: {
 					if (UniformType::isNumeric((UniformType::Enum)bindLocation.uniformType)) {
-						// Caution:
-						// When having one cbuffer bound to multiple slots we get a performance dorpdown,
-						// we use multiple uniform buffers for each stage.
-						// Because we are faking numeric unforms(basically OpenGL/D3D9 style uniforms) we enforce that the
-						// $Global uniform buffer must be the same across all stages.
-						if (bindLocation.shaderFreq != ShaderType::VertexShader) {
-							sgeAssert(false);
-						} else {
-							char* const cBufferMem = (char*)globalCBufferMappedMem[bindLocation.shaderFreq];
-							if_checked(cBufferMem != nullptr) {
-								memcpy(cBufferMem + bindLocation.bindLocation, uniform.data,
-								       bindLocation.texArraySize_or_numericUniformSizeBytes);
-							}
+						char* const cBufferMem = (char*)globalCBufferMappedMem[bindLocation.shaderFreq];
+						if_checked(cBufferMem != nullptr) {
+							memcpy(cBufferMem + bindLocation.bindLocation, uniform.data,
+							       bindLocation.texArraySize_or_numericUniformSizeBytes);
 						}
 					} else {
 						sgeAssert(false);
@@ -586,11 +577,6 @@ void SGEContextImmediateD3D11::executeDrawCall(DrawCall& drawCall,
 		for (int t = 0; t < ShaderType::NumElems; ++t) {
 			if (globalCBufferMappedMem[t] != nullptr) {
 				BufferD3D11* const cbuffer = (BufferD3D11*)getDeviceD3D11()->D3D11_GetGlobalUniformsBuffer((ShaderType::Enum)t);
-
-				if (t != 0) {
-					memcpy(globalCBufferMappedMem[t], globalCBufferMappedMem[0], cbuffer->getDesc().sizeBytes);
-				}
-
 				cbuffer->unMap(this);
 				cbuffers[t][globalCBufferSlot[t]] = cbuffer->D3D11_GetResource();
 			}

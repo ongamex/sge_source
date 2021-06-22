@@ -13,7 +13,8 @@ struct ShadingProgramGL : public ShadingProgram {
 	~ShadingProgramGL() { destroy(); }
 
 	bool create(Shader* vertShdr, Shader* pixelShdr) final;
-	bool create(const char* const pVSCode, const char* const pPSCode, const char* const preAppendedCode = NULL) final;
+	CreateShaderResult createFromNativeCode(const char* const pVSCode, const char* const pPSCode) final;
+	//bool createFromNativeCode(const char* const pVSCode, const char* const pPSCode, std::set<std::string>* outIncludedFiles = nullptr) final;
 
 	void destroy() override;
 	bool isValid() const override;

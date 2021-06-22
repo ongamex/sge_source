@@ -527,10 +527,10 @@ GLenum ShaderType_GetGLNative(const ShaderType::Enum type) {
 			return GL_VERTEX_SHADER;
 		case ShaderType::PixelShader:
 			return GL_FRAGMENT_SHADER;
-#ifdef GL_COMPUTE_SHADER
-		case ShaderType::ComputeShader:
-			return GL_COMPUTE_SHADER;
-#endif
+//#ifdef GL_COMPUTE_SHADER
+//		case ShaderType::ComputeShader:
+//			return GL_COMPUTE_SHADER;
+//#endif
 	}
 
 	sgeAssert(false);

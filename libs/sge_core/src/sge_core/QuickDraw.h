@@ -155,13 +155,6 @@ struct SGE_CORE_API QuickDraw {
 	//------------------------------------------------------
 	// Common
 	//------------------------------------------------------
-	int projViewWorld_strIdx = 0;
-	int colorTexture_strIdx = 0;
-	int colorText_strIdx = 0;
-	int uvRegion_strIdx = 0;
-	int color_strIdx = 0;
-	int alphaMult_strIdx = 0;
-
 	GpuHandle<DepthStencilState> dssLessEqual;
 	GpuHandle<RasterizerState> rsDefault;
 	GpuHandle<RasterizerState> rsNoCullUseScissors;

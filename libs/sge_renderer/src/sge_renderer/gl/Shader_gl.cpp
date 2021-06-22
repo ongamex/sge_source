@@ -80,13 +80,13 @@ bool VertexMapperGL::isValid() const {
 //-----------------------------------------------------------------------
 // ShaderGL
 //-----------------------------------------------------------------------
-bool ShaderGL::createNative(const ShaderType::Enum type, const char* pCode, const char* const UNUSED(entryPoint)) {
+CreateShaderResult ShaderGL::createNative(const ShaderType::Enum type, const char* pCode, const char* const UNUSED(entryPoint)) {
 	// Cleanup any previous state.
 	destroy();
 
 	// Vlidate the input data
 	if (pCode == NULL) {
-		return false;
+		return CreateShaderResult();
 	}
 
 	/// create the shader object
@@ -109,46 +109,18 @@ bool ShaderGL::createNative(const ShaderType::Enum type, const char* pCode, cons
 		// Obtain the error message.
 		GLint logLenght = 0; // The lenght of the error message.
 		glGetShaderiv(m_glShader, GL_INFO_LOG_LENGTH, &logLenght);
+		std::vector<char> log;
 		if (logLenght != 0) {
 			GLint temp;
-			std::vector<char> log(logLenght + 1);
+			log.resize(logLenght + 1);
 			glGetShaderInfoLog(m_glShader, logLenght, &temp, log.data());
-			sgeAssert(false && "Native compilation FAILED:\n");
 		}
 
 		destroy();
-		return false;
+		return CreateShaderResult(false, log.empty() ? "" : log.data());
 	}
 
-	return true;
-}
-
-bool ShaderGL::create(const ShaderType::Enum type, const char* pCode, const char* preapendedCode) {
-	std::string codeWithPreappend;
-	if (preapendedCode != NULL) {
-		codeWithPreappend.reserve(strlen(pCode) + strlen(preapendedCode) + 1);
-
-		codeWithPreappend += preapendedCode;
-		codeWithPreappend += "\n";
-		codeWithPreappend += pCode;
-
-		pCode = codeWithPreappend.data();
-	}
-
-	std::string convertedCode, conversionErrors;
-
-	if (translateHLSL(pCode, ShadingLanguage::GLSL, type, convertedCode, conversionErrors) == false) {
-		sgeAssert("Failed compiling HLSLPArser Shader:\n");
-		if ((char*)conversionErrors.c_str()) {
-			printf((char*)conversionErrors.c_str());
-		}
-		// SGE_DEBUG_ERR("Shader code:\n");
-		// SGE_DEBUG_ERR(pCode);
-		sgeAssert(false);
-		return false;
-	}
-
-	return createNative(type, convertedCode.c_str(), "");
+	return CreateShaderResult(true, "");
 }
 
 void ShaderGL::destroy() {
