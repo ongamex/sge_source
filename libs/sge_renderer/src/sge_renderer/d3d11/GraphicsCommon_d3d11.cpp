@@ -549,9 +549,9 @@ D3D11_RASTERIZER_DESC RasterDesc_GetD3D11Nativce(const RasterDesc& desc) {
 	result.FillMode = FillMode_D3D11_Native(desc.fillMode);
 	result.CullMode = CullMode_D3D11_Native(desc.cullMode);
 	result.FrontCounterClockwise = !desc.backFaceCCW;
-	result.DepthBias = 0;
+	result.DepthBias = int(desc.depthBiasAdd);
 	result.DepthBiasClamp = 0.f;
-	result.SlopeScaledDepthBias = 0.f;
+	result.SlopeScaledDepthBias = desc.depthBiasSlope;
 	result.DepthClipEnable = TRUE;
 	result.ScissorEnable = desc.useScissor;
 	result.MultisampleEnable = FALSE;

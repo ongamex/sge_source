@@ -17,12 +17,12 @@ struct RasterizerStateD3D11 : public RasterizerState {
 	virtual void destroy() final;
 	virtual bool isValid() const final;
 
-	const RasterDesc& getDesc() const final { return m_bufferedDesc; }
+	const RasterDesc& getDesc() const final { return m_rasterStateDesc; }
 
 	ID3D11RasterizerState* D3D11_GetResource() { return m_dx11state; }
 
   private:
-	RasterDesc m_bufferedDesc;
+	RasterDesc m_rasterStateDesc;
 	TComPtr<ID3D11RasterizerState> m_dx11state;
 };
 

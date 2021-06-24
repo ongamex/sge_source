@@ -40,6 +40,7 @@ bool ShadingProgramGL::create(Shader* vertShdr, Shader* pixelShdr) {
 			glGetProgramInfoLog(m_glProgram, logLenght, &logLenght, &infoLog[0]);
 			sgeAssert(false);
 			// Display the error message.
+			sgeAssert(false);
 			// SGE_DEBUG_ERR((char*)infoLog.data());
 		}
 

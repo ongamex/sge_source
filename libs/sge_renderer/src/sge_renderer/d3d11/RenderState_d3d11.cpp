@@ -9,10 +9,10 @@ namespace sge {
 bool RasterizerStateD3D11::create(const RasterDesc& desc) {
 	destroy();
 
-	m_bufferedDesc = desc;
+	m_rasterStateDesc = desc;
 
-	// create the dx11 native rasterizer desc structure
-	D3D11_RASTERIZER_DESC d3d11NativeRasterizerDesc = RasterDesc_GetD3D11Nativce(m_bufferedDesc);
+	// Create the D3D11 native rasterizer desc structure.
+	D3D11_RASTERIZER_DESC d3d11NativeRasterizerDesc = RasterDesc_GetD3D11Nativce(m_rasterStateDesc);
 	ID3D11Device* const d3ddev = getDevice<SGEDeviceD3D11>()->D3D11_GetDevice();
 
 	// attempt the create the object

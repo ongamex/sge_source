@@ -10,7 +10,7 @@ namespace sge {
 //-----------------------------------------------------------------------
 // ShaderD3D11
 //-----------------------------------------------------------------------
-bool ShaderD3D11::createNative(const ShaderType::Enum type, const char* pCode, const char* const entryPoint) {
+CreateShaderResult ShaderD3D11::createNative(const ShaderType::Enum type, const char* pCode, const char* const entryPoint) {
 	destroy();
 
 	ID3D11Device* const d3ddev = getDevice<SGEDeviceD3D11>()->D3D11_GetDevice();
@@ -38,9 +38,8 @@ bool ShaderD3D11::createNative(const ShaderType::Enum type, const char* pCode, c
 			sgeAssert(false);
 		}
 
-		sgeAssert(false);
 		destroy();
-		return false;
+		return CreateShaderResult(false, errors);
 	}
 
 	HRESULT createShaderResult = E_FAIL;
@@ -57,8 +56,7 @@ bool ShaderD3D11::createNative(const ShaderType::Enum type, const char* pCode, c
 	}
 
 	if (FAILED(createShaderResult)) {
-		sgeAssert(false);
-		return false;
+		return CreateShaderResult(false, "ID3D11Device::Create*Shader failed!");
 	}
 
 	// Finally obtain the shader reflation...
@@ -68,46 +66,11 @@ bool ShaderD3D11::createNative(const ShaderType::Enum type, const char* pCode, c
 
 	if (FAILED(reflResult) || (d3dRefl == NULL)) {
 		destroy();
-		return false;
+		return CreateShaderResult(false, "D3DReflect failed!");
 	}
 
-	return true;
+	return CreateShaderResult(true, "");
 }
-
-//----------------------------------------------------------
-bool ShaderD3D11::create(const ShaderType::Enum type, const char* pCode, const char* preapendedCode) {
-	std::string codeWithPreappend;
-
-	if (preapendedCode != NULL) {
-		codeWithPreappend.reserve(strlen(pCode) + strlen(preapendedCode) + 1);
-
-		codeWithPreappend += preapendedCode;
-		codeWithPreappend += "\n";
-		codeWithPreappend += pCode;
-
-		pCode = codeWithPreappend.data();
-	}
-
-	[[maybe_unused]] std::string convertedCode;
-	[[maybe_unused]] std::string conversionErrors;
-	if (translateHLSL(pCode, ShadingLanguage::HLSL, type, convertedCode, conversionErrors) == false) {
-		sgeAssert(false);
-
-		// if (conversionErrors.empty() == false) {
-		//	SGE_DEBUG_ERR(conversionErrors.c_str());
-		//}
-
-		// SGE_DEBUG_LOG("Shader code:\n");
-		// SGE_DEBUG_LOG(pCode);
-		// SGE_DEBUG_LOG("\n");
-		sgeAssert(false);
-
-		return false;
-	}
-
-	return createNative(type, convertedCode.c_str(), type == ShaderType::VertexShader ? "vsMain" : "psMain");
-}
-
 
 bool ShaderD3D11::isValid() const {
 	return m_dx11Shader != nullptr;

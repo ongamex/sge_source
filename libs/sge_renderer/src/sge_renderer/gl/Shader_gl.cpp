@@ -114,6 +114,7 @@ CreateShaderResult ShaderGL::createNative(const ShaderType::Enum type, const cha
 			GLint temp;
 			log.resize(logLenght + 1);
 			glGetShaderInfoLog(m_glShader, logLenght, &temp, log.data());
+			sgeAssert(false);
 		}
 
 		destroy();

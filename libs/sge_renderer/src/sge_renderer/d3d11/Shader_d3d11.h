@@ -13,14 +13,11 @@ struct ShadingProgramD3D11;
 // ShaderD3D11
 //----------------------------------------------------------------------------
 struct ShaderD3D11 : public Shader {
-	ShaderD3D11() {}
+	ShaderD3D11() = default;
 	~ShaderD3D11() { destroy(); }
 
 	// Creates the shader using the native language for the API.
-	bool createNative(const ShaderType::Enum type, const char* pCode, const char* const entryPoint);
-
-	// Create the shader using the custom shading language.
-	bool create(const ShaderType::Enum type, const char* pCode, const char* preapendedCode = NULL) final;
+	virtual CreateShaderResult createNative(const ShaderType::Enum type, const char* pCode, const char* const entryPoint) override;
 
 	virtual void destroy() override;
 	virtual bool isValid() const override;

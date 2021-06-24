@@ -9,24 +9,28 @@
 
 namespace sge {
 
-bool ShadingProgramD3D11::create(const char* const pVSCode, const char* const pPSCode, const char* const preAppendedCode) {
+CreateShaderResult ShadingProgramD3D11::createFromNativeCode(const char* const pVSCode, const char* const pPSCode) {
 	// Create the Vertex Shader...
 	GpuHandle<Shader> vs = getDevice()->requestResource(ResourceType::Shader);
-	bool createShader = vs->create(ShaderType::VertexShader, pVSCode, preAppendedCode);
+	CreateShaderResult createVertexShaderRes = vs->createNative(ShaderType::VertexShader, pVSCode, "vsMain");
 
-	if (createShader == false) {
-		return createShader;
+	if (createVertexShaderRes.succeeded == false) {
+		return createVertexShaderRes;
 	}
 
 	// Create the Pixel Shader.
 	GpuHandle<Shader> ps = getDevice()->requestResource(ResourceType::Shader);
-	createShader = ps->create(ShaderType::PixelShader, pPSCode, preAppendedCode);
+	CreateShaderResult createPixelShaderRes = ps->createNative(ShaderType::PixelShader, pPSCode, "psMain");
 
-	if (createShader == false) {
-		return createShader;
+	if (createPixelShaderRes.succeeded == false) {
+		return createPixelShaderRes;
 	}
 
-	return create(vs, ps);
+	if (create(vs, ps)) {
+		return CreateShaderResult(true, "");
+	} else {
+		return CreateShaderResult(false, "ShadingProgramD3D11::createFromNativeCode failed.");
+	}
 }
 
 bool ShadingProgramD3D11::create(Shader* vertShdr, Shader* pixelShdr) {

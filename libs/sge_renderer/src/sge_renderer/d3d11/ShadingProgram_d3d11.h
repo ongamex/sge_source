@@ -9,7 +9,7 @@ struct ShadingProgramD3D11 : public ShadingProgram {
 	~ShadingProgramD3D11() { destroy(); }
 
 	bool create(Shader* vertShdr, Shader* pixelShdr) final;
-	bool create(const char* const pVSCode, const char* const pPSCode, const char* const preAppendedCode = NULL) final;
+	CreateShaderResult createFromNativeCode(const char* const pVSCode, const char* const pPSCode) override;
 
 	void destroy() override;
 	bool isValid() const override;
