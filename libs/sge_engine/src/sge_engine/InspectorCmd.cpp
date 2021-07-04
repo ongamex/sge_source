@@ -4,6 +4,7 @@
 #include "GameSerialization.h"
 #include "InspectorCmd.h"
 #include "sge_core/ICore.h"
+#include "sge_engine/DynamicProperties.h"
 #include "sge_engine/EngineGlobal.h"
 #include "sge_utils/utils/strings.h"
 
@@ -31,7 +32,7 @@ void CmdMemberChange::setActorLocalTransform(CmdMemberChange* cmd, GameInspector
 }
 
 CmdMemberChange::~CmdMemberChange() {
-	const TypeDesc* const typeDesc = m_memberChain.getType();
+	const TypeDesc* const typeDesc = m_chainToDynamicProp.getType();
 
 	if (typeDesc) {
 		if (m_orginaldata) {
@@ -55,7 +56,7 @@ void CmdMemberChange::setup(ObjectId const objId,
 	sgeAssert(!objId.isNull() && originalValue && newValue);
 
 	m_objectId = objId;
-	m_memberChain = chain;
+	m_chainToDynamicProp = chain;
 	m_customCopyFn = customCopyFn;
 
 	// Todo: Error checking.
@@ -80,8 +81,8 @@ void CmdMemberChange::apply(GameInspector* inspector) {
 	}
 
 	// Copy the new data.
-	void* dest = m_memberChain.follow(actor);
-	const TypeDesc* const typeDesc = m_memberChain.getType();
+	void* dest = m_chainToDynamicProp.follow(actor);
+	const TypeDesc* const typeDesc = m_chainToDynamicProp.getType();
 
 	if (m_customCopyFn)
 		m_customCopyFn(this, inspector, dest, m_newData.get());
@@ -106,8 +107,8 @@ void CmdMemberChange::undo(GameInspector* inspector) {
 	}
 
 	// Copy the old data.
-	void* dest = m_memberChain.follow(actor);
-	const TypeDesc* const typeDesc = m_memberChain.getType();
+	void* dest = m_chainToDynamicProp.follow(actor);
+	const TypeDesc* const typeDesc = m_chainToDynamicProp.getType();
 
 	if (m_customCopyFn)
 		m_customCopyFn(this, inspector, dest, m_orginaldata.get());
@@ -125,6 +126,146 @@ void CmdMemberChange::undo(GameInspector* inspector) {
 
 void CmdMemberChange::getText(std::string& text) {
 	text = "GameWorldCommandChangeMember";
+}
+
+//--------------------------------------------------------------------
+// CmdDynamicProperyChanged
+//--------------------------------------------------------------------
+CmdDynamicProperyChanged::~CmdDynamicProperyChanged() {
+	const TypeDesc* const typeDesc = typeLib().find(m_propertyTypeId);
+	if (typeDesc) {
+		if (m_orginaldata) {
+			typeDesc->destructorFn(m_orginaldata.get());
+		}
+
+		if (m_newData) {
+			typeDesc->destructorFn(m_newData.get());
+		}
+	}
+
+	m_orginaldata.reset();
+	m_newData.reset();
+}
+
+void CmdDynamicProperyChanged::setup(
+    GameObject* obj, const MemberChain& chain, std::string dynamicPropName, const void* originalValue, const void* newValue) {
+	sgeAssert(obj != nullptr && originalValue && newValue);
+
+	m_objectId = obj->getId();
+	m_chainToDynamicProp = chain;
+	m_dynamicPropName = std::move(dynamicPropName);
+
+	DynamicProperties& dynamicProps = *(DynamicProperties*)m_chainToDynamicProp.follow(obj);
+	DynamicProperties::Property* pProperty = dynamicProps.find(m_dynamicPropName);
+
+	if (pProperty == nullptr) {
+		sgeAssert(false);
+		return;
+	}
+
+	// Todo: Error checking.
+	const TypeDesc* const typeDesc = typeLib().find(pProperty->type);
+	if (typeDesc == nullptr) {
+		sgeAssert(false);
+		return;
+	}
+
+	m_propertyTypeId = typeDesc->typeId;
+
+	m_orginaldata.reset(new char[typeDesc->sizeBytes]);
+	m_newData.reset(new char[typeDesc->sizeBytes]);
+
+	typeDesc->constructorFn(m_orginaldata.get());
+	typeDesc->copyFn(m_orginaldata.get(), originalValue);
+
+	typeDesc->constructorFn(m_newData.get());
+	typeDesc->copyFn(m_newData.get(), newValue);
+}
+
+void CmdDynamicProperyChanged::apply(GameInspector* inspector) {
+	if (m_propertyTypeId.isNull()) {
+		sgeAssert(false);
+		return;
+	}
+
+	GameObject* const object = inspector->m_world->getObjectById(m_objectId);
+
+	if (!object) {
+		sgeAssert(false);
+		return;
+	}
+
+	// Copy the new data.
+	DynamicProperties& dynamicProps = *(DynamicProperties*)m_chainToDynamicProp.follow(object);
+
+	DynamicProperties::Property* pProperty = dynamicProps.find(m_dynamicPropName);
+
+	if (pProperty == nullptr || pProperty->type != m_propertyTypeId) {
+		sgeAssert(false);
+		return;
+	}
+
+	void* dest = pProperty->propData.get();
+	const TypeDesc* const typeDesc = typeLib().find(m_propertyTypeId);
+	if (typeDesc == nullptr) {
+		sgeAssert(false);
+		return;
+	}
+
+	typeDesc->copyFn(dest, m_newData.get());
+
+	object->onMemberChanged();
+
+	// HACK: When we've got a node selected with the transform tool and move it a few time,
+	// if we undo while selected the gizmo with override the transform.
+	// We know that the gizmo watches the m_selectionChangeIdx so we are going to chage it in order
+	// to force it to "reset"
+	inspector->m_selectionChangeIdx++;
+}
+
+void CmdDynamicProperyChanged::undo(GameInspector* inspector) {
+	if (m_propertyTypeId.isNull()) {
+		sgeAssert(false);
+		return;
+	}
+
+	GameObject* const object = inspector->m_world->getObjectById(m_objectId);
+
+	if (!object) {
+		sgeAssert(false);
+		return;
+	}
+
+	// Copy the new data.
+	DynamicProperties& dynamicProps = *(DynamicProperties*)m_chainToDynamicProp.follow(object);
+
+	DynamicProperties::Property* pProperty = dynamicProps.find(m_dynamicPropName);
+
+	if (pProperty == nullptr || pProperty->type != m_propertyTypeId) {
+		sgeAssert(false);
+		return;
+	}
+
+	void* dest = pProperty->propData.get();
+	const TypeDesc* const typeDesc = typeLib().find(m_propertyTypeId);
+	if (typeDesc == nullptr) {
+		sgeAssert(false);
+		return;
+	}
+
+	typeDesc->copyFn(dest, m_orginaldata.get());
+
+	object->onMemberChanged();
+
+	// HACK: When we've got a node selected with the transform tool and move it a few time,
+	// if we undo while selected the gizmo with override the transform.
+	// We know that the gizmo watches the m_selectionChangeIdx so we are going to chage it in order
+	// to force it to "reset"
+	inspector->m_selectionChangeIdx++;
+}
+
+void CmdDynamicProperyChanged::getText(std::string& text) {
+	text = "CmdDynamicProperyChanged";
 }
 
 //--------------------------------------------------------------------

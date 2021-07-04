@@ -81,6 +81,8 @@ struct Material {
 
 	float metalness = 0.f;
 	float roughness = 0.30f;
+
+	bool disableCulling = false;
 };
 
 } // namespace sge

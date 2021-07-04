@@ -7,6 +7,7 @@
 #include "sge_core/ui/MultiCurve2DEditor.h"
 #include "sge_engine//RigidBodyEditorConfig.h"
 #include "sge_engine/AssetProperty.h"
+#include "sge_engine/DynamicProperties.h"
 #include "sge_engine/EngineGlobal.h"
 #include "sge_engine/GameInspector.h"
 #include "sge_engine/GameWorld.h"
@@ -687,6 +688,42 @@ void ProperyEditorUIGen::editStringAsAssetPath(GameInspector& inspector,
 	}
 }
 
+void ProperyEditorUIGen::editDynamicProperties(GameInspector& inspector, GameObject* gameObject, MemberChain chainToDynamicProps) {
+	DynamicProperties* dynPops = (DynamicProperties*)chainToDynamicProps.follow(gameObject);
+
+	for (auto& itrProp : dynPops->m_properties) {
+		ImGuiEx::Label(itrProp.first.c_str());
+		DynamicProperties::Property& prop = itrProp.second;
+
+		if (prop.type == sgeTypeId(int)) {
+			int& data = prop.getRef<int>();
+			int dataForEdit = data;
+
+			bool justReleased = false;
+			bool justActivated = false;
+			bool change = SGEImGui::DragInts("##DragInts", &dataForEdit, 1, &justReleased, &justActivated);
+
+			if (justActivated) {
+				g_propWidgetState.widgetSavedData.resetVariantToValue<int>(data);
+			}
+
+			if (change) {
+				data = dataForEdit;
+			}
+
+			if (justReleased) {
+				// Check if the new data is actually different, as the UI may fire a lot of updates at us.
+				if (*g_propWidgetState.widgetSavedData.get<int>() != data) {
+					CmdDynamicProperyChanged* cmd = new CmdDynamicProperyChanged;
+					cmd->setup(gameObject, chainToDynamicProps, itrProp.first, g_propWidgetState.widgetSavedData.get<int>(), &dataForEdit);
+					inspector.appendCommand(cmd, true);
+
+					g_propWidgetState.widgetSavedData.Destroy();
+				}
+			}
+		}
+	}
+}
 
 //----------------------------------------------------------
 // PropertyEditorWindow

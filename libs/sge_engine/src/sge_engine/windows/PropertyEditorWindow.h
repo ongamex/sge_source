@@ -30,6 +30,8 @@ namespace ProperyEditorUIGen {
 	                                          MemberChain chain,
 	                                          const AssetType possibleAssetTypes[],
 	                                          const int numPossibleAssetTypes);
+
+	SGE_ENGINE_API void editDynamicProperties(GameInspector& inspector, GameObject* gameObject, MemberChain chain);
 } // namespace ProperyEditorUIGen
 
 //----------------------------------------------------------

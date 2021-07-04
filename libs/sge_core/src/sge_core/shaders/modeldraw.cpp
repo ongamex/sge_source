@@ -314,7 +314,7 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 	}
 
 	RasterizerState* rasterState = nullptr;
-	if (mods.forceNoCulling) {
+	if (mods.forceNoCulling || material.disableCulling) {
 		rasterState = getCore()->getGraphicsResources().RS_noCulling;
 	} else {
 		// We are baking shadow maps and we want to render the backfaces

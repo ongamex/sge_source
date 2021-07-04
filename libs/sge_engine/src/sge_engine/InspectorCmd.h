@@ -86,11 +86,37 @@ struct SGE_ENGINE_API CmdMemberChange : public InspectorCmd {
 
   public:
 	ObjectId m_objectId;
-	MemberChain m_memberChain; // A path starting from the actor that will lead us to the member that we are going to change.
+	MemberChain m_chainToDynamicProp; // A path starting from the actor that will lead us to the member that we are going to change.
 	void (*m_customCopyFn)(CmdMemberChange* cmd,
 	                       GameInspector* inspector,
 	                       void* dest,
 	                       void* src) = nullptr; // if specified a custom copy function
+
+	std::unique_ptr<char[]> m_orginaldata;
+	std::unique_ptr<char[]> m_newData;
+};
+
+//--------------------------------------------------------------------
+// CmdDynamicProperyChanged
+//--------------------------------------------------------------------
+struct SGE_ENGINE_API CmdDynamicProperyChanged : public InspectorCmd {
+	CmdDynamicProperyChanged() = default;
+	~CmdDynamicProperyChanged();
+
+	void setup(GameObject* obj, const MemberChain& chain, std::string dynamicPropName, const void* originalValue, const void* newValue);
+
+	void apply(GameInspector* inspector) final;
+	void redo(GameInspector* inspector) final { apply(inspector); }
+	void undo(GameInspector* inspector) final;
+	void getText(std::string& text) final;
+
+  public:
+
+	ObjectId m_objectId;
+	MemberChain m_chainToDynamicProp; // A path starting from the actor that will lead us the dynamic properties.
+	std::string m_dynamicPropName;
+	TypeId m_propertyTypeId;
+	
 
 	std::unique_ptr<char[]> m_orginaldata;
 	std::unique_ptr<char[]> m_newData;
