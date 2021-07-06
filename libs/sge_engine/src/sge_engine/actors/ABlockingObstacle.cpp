@@ -176,11 +176,6 @@ AABox3f ABlockingObstacle::getBBoxOS() const {
 void ABlockingObstacle::doAttributeEditor(GameInspector* inspector) {
 	MemberChain chain;
 
-	chain.clear();
-	chain.add(typeLib().find<ABlockingObstacle>()->findMember(&ABlockingObstacle::m_logicTransform));
-	ProperyEditorUIGen::doMemberUI(*inspector, this, chain);
-	chain.pop();
-
 	chain.add(typeLib().find<ABlockingObstacle>()->findMember(&ABlockingObstacle::targetDesc));
 	chain.add(typeLib().find<SimpleObstacleDesc>()->findMember(&SimpleObstacleDesc::type));
 	ProperyEditorUIGen::doMemberUI(*inspector, this, chain);

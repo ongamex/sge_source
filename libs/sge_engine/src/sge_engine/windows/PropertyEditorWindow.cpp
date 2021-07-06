@@ -58,9 +58,18 @@ void ProperyEditorUIGen::doGameObjectUI(GameInspector& inspector, GameObject* co
 		int idGui = gameObject->getId().id;
 		ImGui::InputInt("Id", &idGui, 0);
 
+
 		IActorCustomAttributeEditorTrait* const actorCustomAETrait = getTrait<IActorCustomAttributeEditorTrait>(gameObject);
 
 		if (actorCustomAETrait) {
+			// If the attribute editor is customly made, make sure that we show the most common properties automatically.
+			// It is thedious to always add them manually.
+			ProperyEditorUIGen::doMemberUI(inspector, gameObject, sgeFindMember(GameObject, m_displayName));
+			if (gameObject->isActor()) {
+				ProperyEditorUIGen::doMemberUI(inspector, gameObject, sgeFindMember(Actor, m_logicTransform));
+				ProperyEditorUIGen::doMemberUI(inspector, gameObject, sgeFindMember(Actor, m_forceAlphaZSort));
+			}
+
 			actorCustomAETrait->doAttributeEditor(&inspector);
 		} else {
 			for (const MemberDesc& member : pDesc->members) {

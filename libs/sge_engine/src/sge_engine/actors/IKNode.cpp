@@ -92,14 +92,6 @@ void AIKNode::doAttributeEditor(GameInspector* inspector) {
 	chain.pop();
 	ImGuiEx::EndGroupPanel();
 
-	chain.add(sgeFindMember(AIKNode, m_displayName));
-	ProperyEditorUIGen::doMemberUI(*inspector, this, chain);
-	chain.pop();
-
-	chain.add(sgeFindMember(AIKNode, m_logicTransform));
-	ProperyEditorUIGen::doMemberUI(*inspector, this, chain);
-	chain.pop();
-
 	if (ImGui::Button("Bind")) {
 		bind(startId, endId);
 	}

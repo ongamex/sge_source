@@ -149,7 +149,7 @@ void ANavMesh::build() {
 
 		for (const GameObject* const object : *GameObject::getWorld()->getObjects(actorType)) {
 			const TraitRigidBody* const traitRb = getTrait<TraitRigidBody>(object);
-			if (traitRb != nullptr) {
+			if (traitRb != nullptr && traitRb->getRigidBody()->isValid()) {
 				const btTransform bodyWorldTransform = traitRb->m_rigidBody.getBulletRigidBody()->getWorldTransform();
 				const btCollisionShape* const shape = traitRb->m_rigidBody.getBulletRigidBody()->getCollisionShape();
 				bulletCollisionShapeToTriangles(shape, bodyWorldTransform, trianglesVerticesWorldSpace, trianglesIndices);
