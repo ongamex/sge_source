@@ -18,6 +18,7 @@ ReflBlock()
 		ReflMember(Actor, m_logicTransform)
 		ReflMember(Actor, m_bindingToParentTransform).addMemberFlag(MFF_NonEditable)
 		ReflMember(Actor, m_bindingIgnoreRotation)
+		ReflMember(Actor, m_forceAlphaZSort)
 	;
 }
 // clang-format on

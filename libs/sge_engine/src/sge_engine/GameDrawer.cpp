@@ -5,6 +5,7 @@
 #include "IWorldScript.h"
 #include "sge_core/DebugDraw.h"
 #include "sge_core/ICore.h"
+#include "sge_engine/EngineGlobal.h"
 
 namespace sge {
 
@@ -24,17 +25,54 @@ bool IGameDrawer::drawItem(const GameDrawSets& drawSets, const SelectedItem& ite
 }
 
 void IGameDrawer::drawWorld(const GameDrawSets& drawSets, const DrawReason drawReason) {
+	struct ActorsNeedingZSort {
+		float zSortDistance = 0.f;
+		Actor* actor = nullptr;
+
+		bool operator<(const ActorsNeedingZSort& other) const { return zSortDistance < other.zSortDistance; }
+	};
+
+	std::vector<ActorsNeedingZSort> m_zSortedActorsToDraw;
+
+	const vec3f zSortingPlanePosWs = drawSets.drawCamera->getCameraPosition();
+	const vec3f zSortingPlaneNormal = drawSets.drawCamera->getCameraLookDir();
+	const Plane zSortPlane = Plane::FromPosAndDir(zSortingPlanePosWs, zSortingPlaneNormal);
+
 	getWorld()->iterateOverPlayingObjects(
 	    [&](GameObject* object) -> bool {
 		    // TODO: Skip this check for whole types. We know they are not actors...
-		    Actor* actor = object->getActor();
-		    if (actor) {
-			    drawActor(drawSets, editMode_actors, actor, 0, drawReason);
+		    if (Actor* actor = object->getActor()) {
+			    bool shouldDrawTheActorNow = true;
+			    if (actor->m_forceAlphaZSort) {
+				    AABox3f actorBboxOS = actor->getBBoxOS();
+				    if (actorBboxOS.IsEmpty() == false) {
+					    vec3f actorBBoxCenterWs = mat_mul_pos(actor->getTransformMtx(), actorBboxOS.center());
+
+					    ActorsNeedingZSort sortingArgs;
+					    sortingArgs.actor = actor;
+					    sortingArgs.zSortDistance = zSortPlane.Distance(actorBBoxCenterWs);
+
+					    m_zSortedActorsToDraw.push_back(sortingArgs);
+					    shouldDrawTheActorNow = false;
+				    }
+			    }
+
+			    if (shouldDrawTheActorNow) {
+				    drawActor(drawSets, editMode_actors, actor, 0, drawReason);
+			    }
 		    }
 
 		    return true;
 	    },
 	    false);
+
+	getCore()->getDebugDraw().getGroup("camera").clear(false);
+	getCore()->getDebugDraw().getGroup("camera").getWiered().line(vec3f(0.f), zSortingPlaneNormal * 10.f, 0xFFFFFFFF);
+
+	std::sort(m_zSortedActorsToDraw.rbegin(), m_zSortedActorsToDraw.rend());
+	for (ActorsNeedingZSort& actorZSort : m_zSortedActorsToDraw) {
+		drawActor(drawSets, editMode_actors, actorZSort.actor, 0, drawReason);
+	}
 
 	if (getWorld()->inspector && getWorld()->inspector->m_physicsDebugDrawEnabled) {
 		drawSets.rdest.sgecon->clearDepth(drawSets.rdest.frameTarget, 1.f);

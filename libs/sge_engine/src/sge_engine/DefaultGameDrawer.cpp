@@ -307,9 +307,8 @@ void DefaultGameDrawer::fillGeneralModsWithLights(Actor* actor, GeneralDrawMod& 
 
 
 void DefaultGameDrawer::drawWorld(const GameDrawSets& drawSets, const DrawReason drawReason) {
-	IGameDrawer::drawWorld(drawSets, drawReason);
 
-	// Draw the sky
+		// Draw the sky
 	if (drawReason_IsGameOrEditNoShadowPass(drawReason)) {
 		const std::vector<GameObject*>* allSkies = getWorld()->getObjects(sgeTypeId(ASky));
 
@@ -336,6 +335,10 @@ void DefaultGameDrawer::drawWorld(const GameDrawSets& drawSets, const DrawReason
 			m_skyShader.draw(drawSets.rdest, camPosWs, view, proj, skyShaderSettings);
 		}
 	}
+
+	IGameDrawer::drawWorld(drawSets, drawReason);
+
+
 }
 
 void DefaultGameDrawer::drawActor(

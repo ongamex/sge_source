@@ -88,6 +88,13 @@ struct SGE_ENGINE_API Actor : public GameObject {
 	transf3d m_logicTransform = transf3d::getIdentity();
 	transf3d m_bindingToParentTransform = transf3d::getIdentity();
 	bool m_bindingIgnoreRotation = false;
+
+	/// Toggles if the whole actor (and all of its renderable stuff) needs to be concidered for z-depth sorting for alpha blending.
+	/// This technically is incomplete/incorrect, as one actor might have multiple renderable that need to be sorted individually against
+	/// all other renderables in the scene. However in most cases sorting z-ordering by actors (and within an actor) is kind of enough.
+	/// This needs to be solved correctly in the future.
+	bool m_forceAlphaZSort = false;
+	
 	mutable mat4f m_trasformAsMtx;
 	mutable bool m_isTrasformAsMtxValid = false;
 };

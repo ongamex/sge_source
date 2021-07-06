@@ -45,7 +45,7 @@ struct SGE_ENGINE_API CameraTraitCamera : public TraitCamera, public ICamera {
 
 	// From ICamera
 	vec3f getCameraPosition() const final { return getActor()->getTransform().p; }
-	virtual vec3f getCameraLookDir() const final { return getView().getRow(2).xyz(); }
+	virtual vec3f getCameraLookDir() const final { return -getView().getRow(2).xyz(); }
 	mat4f getView() const final { return m_view; }
 	mat4f getProj() const final { return m_proj; }
 	mat4f getProjView() const final { return m_projView; }
