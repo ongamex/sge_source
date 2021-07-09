@@ -5,6 +5,7 @@
 #include "ModelParseSettings.h"
 #include "sge_core/model/Model.h"
 #include "sge_utils/math/transform.h"
+#include "sge_utils/utils/optional.h"
 
 namespace sge {
 
@@ -39,6 +40,7 @@ struct FBXSDKParser {
 	/// A helper function for @importMeshes, imports a single mesh.
 	/// @param [in] importedMeshIndex the index of the mesh in the imported result.
 	void importMeshes_singleMesh(FbxMesh* fbxMesh, int importedMeshIndex, const bool importSkinningData);
+	int importMeshes_getDefaultMaterialIndex();
 	/// Step 4:
 	/// Finally import fully the nodes. In @discoverNodesRecursive we've just allocated them but here
 	/// we load their attachments, children and so on.
@@ -59,6 +61,10 @@ struct FBXSDKParser {
 	std::map<FbxSurfaceMaterial*, int> m_fbxMtl2MtlIndex;
 	std::map<FbxMesh*, int> m_fbxMesh2MeshIndex;
 	std::map<FbxNode*, int> m_fbxNode2NodeIndex;
+
+	// Some DCC (like Blender) might export a geometry with no materials attached to it.
+	// In that case we create a material (one per scene) to be used as a default.
+	Optional<int> m_defaultMaterialIndex;
 
 	/// Meshes to be used for collision geometry (if any). These do not participate in the m_fbxMesh2MeshIndex
 	/// as they aren't going to be used for rendering.

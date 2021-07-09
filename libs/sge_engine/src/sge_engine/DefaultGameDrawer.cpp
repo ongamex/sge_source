@@ -34,7 +34,12 @@
 
 namespace sge {
 
-static inline const vec4f kPrimarySelectionColor = vec4f(0.25f, 1.f, 0.63f, 1.f);
+static inline const vec4f kPrimarySelectionColor1 = vec4f(0.25f, 0.8f, 0.63f, 1.f);
+static inline const vec4f kPrimarySelectionColor2 = vec4f(0.25f, 1.f, 0.63f, 1.f);
+vec4f getPrimarySelectionColor() {
+	float k = 0.5f * (sinf(2.f * Timer::now_seconds() * pi()) + 1.f);
+	return lerp(kPrimarySelectionColor1, kPrimarySelectionColor2, k);
+}
 static inline const vec4f kSecondarySelectionColor = colorFromIntRgba(245, 158, 66, 255);
 
 // Actors forward declaration
@@ -307,8 +312,7 @@ void DefaultGameDrawer::fillGeneralModsWithLights(Actor* actor, GeneralDrawMod& 
 
 
 void DefaultGameDrawer::drawWorld(const GameDrawSets& drawSets, const DrawReason drawReason) {
-
-		// Draw the sky
+	// Draw the sky
 	if (drawReason_IsGameOrEditNoShadowPass(drawReason)) {
 		const std::vector<GameObject*>* allSkies = getWorld()->getObjects(sgeTypeId(ASky));
 
@@ -337,15 +341,13 @@ void DefaultGameDrawer::drawWorld(const GameDrawSets& drawSets, const DrawReason
 	}
 
 	IGameDrawer::drawWorld(drawSets, drawReason);
-
-
 }
 
 void DefaultGameDrawer::drawActor(
     const GameDrawSets& drawSets, EditMode const editMode, Actor* actor, int const itemIndex, DrawReason const drawReason) {
 	const bool useWireframe = drawReason_IsVisualizeSelection(drawReason);
 
-	const vec4f wireframeColor = (drawReason == drawReason_visualizeSelectionPrimary) ? kPrimarySelectionColor : kSecondarySelectionColor;
+	const vec4f wireframeColor = (drawReason == drawReason_visualizeSelectionPrimary) ? getPrimarySelectionColor() : kSecondarySelectionColor;
 	const int wireframeColorInt = colorToIntRgba(wireframeColor);
 
 	vec4f selectionTint = useWireframe ? wireframeColor : vec4f(0.f);
@@ -440,7 +442,7 @@ void DefaultGameDrawer::drawTraitViewportIcon(TraitViewportIcon* viewportIcon, c
 	vec4f wireframeColor = vec4f(1.f);
 
 	if (drawReason == drawReason_visualizeSelectionPrimary)
-		wireframeColor = kPrimarySelectionColor;
+		wireframeColor = getPrimarySelectionColor();
 	else if (drawReason == drawReason_visualizeSelection)
 		wireframeColor = kSecondarySelectionColor;
 
@@ -762,7 +764,7 @@ void DefaultGameDrawer::drawActorLegacy(Actor* actor,
 	const vec3f camLookDir = drawSets.drawCamera->getCameraLookDir();
 
 	const bool useWireframe = drawReason_IsVisualizeSelection(drawReason);
-	vec4f wireframeColor = (drawReason == drawReason_visualizeSelectionPrimary) ? kPrimarySelectionColor : kSecondarySelectionColor;
+	vec4f wireframeColor = (drawReason == drawReason_visualizeSelectionPrimary) ? getPrimarySelectionColor() : kSecondarySelectionColor;
 	if (!useWireframe && drawReason == drawReason_editing) {
 		wireframeColor = vec4f(1.f);
 	}

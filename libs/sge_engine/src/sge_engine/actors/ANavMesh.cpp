@@ -57,6 +57,7 @@ void ANavMesh::create() {
 		onWorldLoadedCBHandle.unsubscribe();
 	});
 }
+
 AABox3f ANavMesh::getBBoxOS() const {
 	return AABox3f::getFromHalfDiagonal(vec3f(1.f));
 }

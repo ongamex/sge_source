@@ -525,16 +525,6 @@ void FBXSDKParser::importMeshes_singleMesh(FbxMesh* fbxMesh, int importedMeshInd
 	}
 
 	ModelMesh& mesh = *m_model->meshAt(importedMeshIndex);
-
-	mesh.name = fbxMesh->GetName();
-
-	// We assume that the meshes are separated by material already.
-	const int materialCount = fbxMesh->GetElementMaterialCount();
-	if (materialCount != 1) {
-		sgeAssert(false);
-		throw FBXParseError("Failed to load mesh. More than one materials are attached!");
-	}
-
 	mesh.name = fbxMesh->GetName();
 
 	// Remember, we are assuming that the meshes are already triangulated.
@@ -1008,6 +998,16 @@ void FBXSDKParser::importMeshes_singleMesh(FbxMesh* fbxMesh, int importedMeshInd
 	mesh.vbBonesWeightsByteOffset = boneWeightsByteOffset;
 }
 
+int FBXSDKParser::importMeshes_getDefaultMaterialIndex() {
+	if (m_defaultMaterialIndex) {
+		return *m_defaultMaterialIndex;
+	}
+
+	m_defaultMaterialIndex = m_model->makeNewMaterial();
+	m_model->materialAt(*m_defaultMaterialIndex)->name = "Default Generated Mtl";
+	return *m_defaultMaterialIndex;
+}
+
 void FBXSDKParser::importNodes() {
 	for (const auto& pair : m_fbxNode2NodeIndex) {
 		FbxNode* fbxNode = pair.first;
@@ -1075,7 +1075,17 @@ void FBXSDKParser::importNodes_singleNode(FbxNode* fbxNode, int importNodeIndex)
 				const auto& itrFindMeshIndex = m_fbxMesh2MeshIndex.find(fbxMesh);
 				const auto& itrFindMaterialIndex = m_fbxMtl2MtlIndex.find(fbxSurfMtl);
 
-				if (itrFindMeshIndex != m_fbxMesh2MeshIndex.end() && itrFindMaterialIndex != m_fbxMtl2MtlIndex.end()) {
+				// Get the material for the mesh attachment in this node.
+				// Blender can produce mesh attachments with no materials.
+				// In that case create a default material that we are going to assign.
+				int materialIndex = -1;
+				if (fbxSurfMtl == nullptr) {
+					materialIndex = importMeshes_getDefaultMaterialIndex();
+				} else if (itrFindMaterialIndex != m_fbxMtl2MtlIndex.end()) {
+					materialIndex = itrFindMaterialIndex->second;
+				}
+
+				if (itrFindMeshIndex != m_fbxMesh2MeshIndex.end() && materialIndex >= 0) {
 					node->meshAttachments.push_back(MeshAttachment(itrFindMeshIndex->second, itrFindMaterialIndex->second));
 				}
 			}
