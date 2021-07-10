@@ -51,116 +51,124 @@ bool assetPicker(
 	if (ImGui::BeginPopup("Asset Picker")) {
 		static ImGuiTextFilter filter;
 
-		filter.Draw();
-		if (ImGui::IsItemClicked(2)) {
-			ImGui::ClearActiveID(); // Hack: (if we do not make this call ImGui::InputText will set it's cached value.
-			filter.Clear();
-		}
-
 		int textureItemsInLine = 0;
 
-		for (int iType = 0; iType < numAssetTypes; ++iType) {
-			const AssetType assetType = assetTypes[iType];
-			if (ImGui::BeginMenu(assetType_getName(assetType))) {
-				for (auto& itr : assetLibrary->getAllAssets(assetType)) {
-					if (!filter.PassFilter(itr.first.c_str())) {
-						continue;
-					}
 
-					std::shared_ptr<Asset>& asset = itr.second;
-					if (assetType == AssetType::Texture2D) {
-						if (isAssetLoadFailed(asset) == false) {
-							if (!isAssetLoaded(asset)) {
-								if (ImGui::Button(itr.first.c_str(), ImVec2(48, 48))) {
-									getCore()->getAssetLib()->getAsset(AssetType::Texture2D, asset->getPath().c_str(), true);
-								}
-							} else if (isAssetLoaded(asset)) {
-								if (ImGui::ImageButton(asset->asTextureView()->tex.GetPtr(), ImVec2(48, 48))) {
-									assetPath = itr.first;
-									wasAssetPicked = true;
-								}
+		auto doAssetTypeMenu = [&](const AssetType assetType) -> void {
+			filter.Draw();
+			if (ImGui::IsItemClicked(2)) {
+				ImGui::ClearActiveID(); // Hack: (if we do not make this call ImGui::InputText will set it's cached value.
+				filter.Clear();
+			}
+
+			for (auto& itr : assetLibrary->getAllAssets(assetType)) {
+				if (!filter.PassFilter(itr.first.c_str())) {
+					continue;
+				}
+
+				std::shared_ptr<Asset>& asset = itr.second;
+				if (assetType == AssetType::Texture2D) {
+					if (isAssetLoadFailed(asset) == false) {
+						if (!isAssetLoaded(asset)) {
+							if (ImGui::Button(itr.first.c_str(), ImVec2(48, 48))) {
+								getCore()->getAssetLib()->getAsset(AssetType::Texture2D, asset->getPath().c_str(), true);
 							}
-
-							if (ImGui::IsItemHovered()) {
-								ImGui::BeginTooltip();
-								ImGui::Text(itr.first.c_str());
-								ImGui::EndTooltip();
-							}
-
-							textureItemsInLine++;
-
-							if (textureItemsInLine == 8)
-								textureItemsInLine = 0;
-							else
-								ImGui::SameLine();
-						}
-					} else if (assetType == AssetType::Model) {
-						if (isAssetLoaded(asset)) {
-							ImGui::Text(ICON_FK_CHECK);
-						} else {
-							ImGui::Text(ICON_FK_RECYCLE);
-						}
-
-						ImGui::SameLine();
-
-						bool selected = itr.first == assetPath;
-						if (ImGui::Selectable(itr.first.c_str(), &selected, ImGuiSelectableFlags_DontClosePopups)) {
-							if (!isAssetLoaded(asset)) {
-								getCore()->getAssetLib()->getAsset(AssetType::Model, asset->getPath().c_str(), true);
-							} else {
+						} else if (isAssetLoaded(asset)) {
+							if (ImGui::ImageButton(asset->asTextureView()->tex.GetPtr(), ImVec2(48, 48))) {
 								assetPath = itr.first;
 								wasAssetPicked = true;
 							}
 						}
 
-						if (ImGui::IsItemHovered() && isAssetLoaded(asset)) {
+						if (ImGui::IsItemHovered()) {
 							ImGui::BeginTooltip();
-
-							const int textureSize = 256;
-							static float passedTime = 0.f;
-							static GpuHandle<FrameTarget> frameTarget;
-
-							passedTime += ImGui::GetIO().DeltaTime;
-
-							if (!frameTarget) {
-								frameTarget = getCore()->getDevice()->requestResource<FrameTarget>();
-								frameTarget->create2D(textureSize, textureSize);
-							}
-
-							AssetModel* model = asset->asModel();
-
-							getCore()->getDevice()->getContext()->clearColor(frameTarget, 0, vec4f(0.f).data);
-							getCore()->getDevice()->getContext()->clearDepth(frameTarget, 1.f);
-
-							const vec3f camPos =
-							    mat_mul_pos(mat4f::getRotationY(passedTime * sge2Pi * 0.25f),
-							                model->staticEval.aabox.halfDiagonal() * 1.66f + model->staticEval.aabox.center());
-							const mat4f proj = mat4f::getPerspectiveFovRH(deg2rad(90.f), 1.f, 0.01f, 10000.f, kIsTexcoordStyleD3D);
-							const mat4f lookAt = mat4f::getLookAtRH(camPos, vec3f(0.f), vec3f(0.f, kIsTexcoordStyleD3D ? 1.f : -1.f, 0.f));
-
-							RenderDestination rdest(getCore()->getDevice()->getContext(), frameTarget);
-							getCore()->getModelDraw().draw(rdest, camPos, -camPos.normalized0(), proj * lookAt, mat4f::getIdentity(),
-							                               DrawReasonInfo(), model->staticEval, InstanceDrawMods());
-
-							ImGui::Image(frameTarget->getRenderTarget(0), ImVec2(textureSize, textureSize));
+							ImGui::Text(itr.first.c_str());
 							ImGui::EndTooltip();
 						}
 
+						textureItemsInLine++;
+
+						if (textureItemsInLine == 8)
+							textureItemsInLine = 0;
+						else
+							ImGui::SameLine();
+					}
+				} else if (assetType == AssetType::Model) {
+					if (isAssetLoaded(asset)) {
+						ImGui::Text(ICON_FK_CHECK);
 					} else {
-						// Generic for all asset types.
-						if (itr.first == assetPath) {
-							ImGui::TextUnformatted(itr.first.c_str());
+						ImGui::Text(ICON_FK_RECYCLE);
+					}
+
+					ImGui::SameLine();
+
+					bool selected = itr.first == assetPath;
+					if (ImGui::Selectable(itr.first.c_str(), &selected, ImGuiSelectableFlags_DontClosePopups)) {
+						if (!isAssetLoaded(asset)) {
+							getCore()->getAssetLib()->getAsset(AssetType::Model, asset->getPath().c_str(), true);
 						} else {
-							bool selected = false;
-							if (ImGui::Selectable(itr.first.c_str(), &selected)) {
-								assetPath = itr.first;
-								wasAssetPicked = true;
-							}
+							assetPath = itr.first;
+							wasAssetPicked = true;
+						}
+					}
+
+					if (ImGui::IsItemHovered() && isAssetLoaded(asset)) {
+						ImGui::BeginTooltip();
+
+						const int textureSize = 256;
+						static float passedTime = 0.f;
+						static GpuHandle<FrameTarget> frameTarget;
+
+						passedTime += ImGui::GetIO().DeltaTime;
+
+						if (!frameTarget) {
+							frameTarget = getCore()->getDevice()->requestResource<FrameTarget>();
+							frameTarget->create2D(textureSize, textureSize);
+						}
+
+						AssetModel* model = asset->asModel();
+
+						getCore()->getDevice()->getContext()->clearColor(frameTarget, 0, vec4f(0.f).data);
+						getCore()->getDevice()->getContext()->clearDepth(frameTarget, 1.f);
+
+						const vec3f camPos = mat_mul_pos(mat4f::getRotationY(passedTime * sge2Pi * 0.25f),
+						                                 model->staticEval.aabox.halfDiagonal() * 1.66f + model->staticEval.aabox.center());
+						const mat4f proj = mat4f::getPerspectiveFovRH(deg2rad(90.f), 1.f, 0.01f, 10000.f, kIsTexcoordStyleD3D);
+						const mat4f lookAt = mat4f::getLookAtRH(camPos, vec3f(0.f), vec3f(0.f, kIsTexcoordStyleD3D ? 1.f : -1.f, 0.f));
+
+						RenderDestination rdest(getCore()->getDevice()->getContext(), frameTarget);
+						getCore()->getModelDraw().draw(rdest, camPos, -camPos.normalized0(), proj * lookAt, mat4f::getIdentity(),
+						                               DrawReasonInfo(), model->staticEval, InstanceDrawMods());
+
+						ImGui::Image(frameTarget->getRenderTarget(0), ImVec2(textureSize, textureSize));
+						ImGui::EndTooltip();
+					}
+
+				} else {
+					// Generic for all asset types.
+					if (itr.first == assetPath) {
+						ImGui::TextUnformatted(itr.first.c_str());
+					} else {
+						bool selected = false;
+						if (ImGui::Selectable(itr.first.c_str(), &selected)) {
+							assetPath = itr.first;
+							wasAssetPicked = true;
 						}
 					}
 				}
+			}
+		};
 
-				ImGui::EndMenu();
+		if (numAssetTypes == 1) {
+			doAssetTypeMenu(assetTypes[0]);
+		} else {
+			for (int iType = 0; iType < numAssetTypes; ++iType) {
+				const AssetType assetType = assetTypes[iType];
+
+				if (ImGui::BeginMenu(assetType_getName(assetType))) {
+					doAssetTypeMenu(assetType);
+					ImGui::EndMenu();
+				}
 			}
 		}
 		ImGui::EndPopup();
