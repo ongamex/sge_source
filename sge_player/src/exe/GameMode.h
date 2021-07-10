@@ -1,6 +1,6 @@
 #pragma once
 
-#include "sge_engine/GameDrawer.h"
+#include "sge_engine/GameDrawer/GameDrawer.h"
 #include "sge_engine/SceneInstance.h"
 #include "sge_utils/utils/timer.h"
 

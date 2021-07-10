@@ -12,7 +12,7 @@
 #include "sge_engine/GameInspector.h"
 #include "sge_engine/GameWorld.h"
 #include "sge_engine/Physics.h"
-#include "sge_engine/UIAssetPicker.h"
+#include "sge_engine/ui/UIAssetPicker.h"
 #include "sge_engine/traits/TraitCustomAE.h"
 #include "sge_utils/math/EulerAngles.h"
 #include "sge_utils/math/MultiCurve2D.h"

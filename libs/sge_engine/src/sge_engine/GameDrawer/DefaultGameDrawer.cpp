@@ -1,4 +1,4 @@
-#include "sge_engine/DefaultGameDrawer.h"
+#include "sge_engine/GameDrawer/DefaultGameDrawer.h"
 #include "sge_core/DebugDraw.h"
 #include "sge_core/ICore.h"
 #include "sge_core/QuickDraw.h"
@@ -347,7 +347,8 @@ void DefaultGameDrawer::drawActor(
     const GameDrawSets& drawSets, EditMode const editMode, Actor* actor, int const itemIndex, DrawReason const drawReason) {
 	const bool useWireframe = drawReason_IsVisualizeSelection(drawReason);
 
-	const vec4f wireframeColor = (drawReason == drawReason_visualizeSelectionPrimary) ? getPrimarySelectionColor() : kSecondarySelectionColor;
+	const vec4f wireframeColor =
+	    (drawReason == drawReason_visualizeSelectionPrimary) ? getPrimarySelectionColor() : kSecondarySelectionColor;
 	const int wireframeColorInt = colorToIntRgba(wireframeColor);
 
 	vec4f selectionTint = useWireframe ? wireframeColor : vec4f(0.f);
@@ -462,6 +463,65 @@ void DefaultGameDrawer::drawTraitStaticModel(TraitModel* modelTrait,
 	if (modelTrait->getRenderable() == false) {
 		return;
 	}
+
+#if 1
+
+	std::vector<IRenderItem*> ris;
+
+	modelTrait->getRenderItems(ris);
+
+	const vec3f camPos = drawSets.drawCamera->getCameraPosition();
+	const vec3f camLookDir = drawSets.drawCamera->getCameraLookDir();
+
+	const mat4f n2w = modelTrait->getActor()->getTransformMtx();
+
+	for (IRenderItem* ri : ris) {
+		TraitModelRenderItem* tri = static_cast<TraitModelRenderItem*>(ri);
+
+		ModelNode* node = tri->evalModel->m_model->nodeAt(tri->iEvalNode);
+
+		const MeshAttachment& meshAttachment = node->meshAttachments[tri->iEvalNodeMechAttachmentIndex];
+		const EvaluatedMaterial& mtl = tri->evalModel->getEvalMaterial(meshAttachment.attachedMaterialIndex);
+		const EvaluatedMesh& evalMesh = tri->evalModel->getEvalMesh(meshAttachment.attachedMeshIndex);
+		const EvaluatedNode& evalNode = tri->evalModel->getEvalNode(tri->iEvalNode);
+
+		Material material;
+
+		material.diffuseColor = mtl.diffuseColor;
+		material.metalness = mtl.metallic;
+		material.roughness = mtl.roughness;
+
+		material.diffuseTexture = isAssetLoaded(mtl.diffuseTexture) && mtl.diffuseTexture->asTextureView()
+		                              ? mtl.diffuseTexture->asTextureView()->tex.GetPtr()
+		                              : nullptr;
+
+		material.texNormalMap = isAssetLoaded(mtl.texNormalMap) && mtl.texNormalMap->asTextureView()
+		                            ? mtl.texNormalMap->asTextureView()->tex.GetPtr()
+		                            : nullptr;
+
+		material.texMetalness =
+		    isAssetLoaded(mtl.texMetallic) && mtl.texMetallic->asTextureView() ? mtl.texMetallic->asTextureView()->tex.GetPtr() : nullptr;
+
+		material.texRoughness = isAssetLoaded(mtl.texRoughness) && mtl.texRoughness->asTextureView()
+		                            ? mtl.texRoughness->asTextureView()->tex.GetPtr()
+		                            : nullptr;
+
+		const Geometry& geom = evalMesh.geometry;
+
+		mat4f const finalTrasform = (evalMesh.geometry.hasVertexSkinning()) ? n2w : n2w * evalNode.evalGlobalTransform;
+
+		if (!drawReason_IsVisualizeSelection(drawReason)) {
+			m_modeldraw.drawGeometry(drawSets.rdest, camPos, camLookDir, drawSets.drawCamera->getProjView(), finalTrasform, generalMods,
+			                         &geom, material, modelTrait->instanceDrawMods);
+		} else {
+			m_constantColorShader.drawGeometry(drawSets.rdest, drawSets.drawCamera->getProjView(), finalTrasform, geom,
+			                                   generalMods.selectionTint);
+		}
+	}
+
+#else
+
+
 
 	const vec3f camPos = drawSets.drawCamera->getCameraPosition();
 	const vec3f camLookDir = drawSets.drawCamera->getCameraLookDir();
@@ -591,6 +651,7 @@ void DefaultGameDrawer::drawTraitStaticModel(TraitModel* modelTrait,
 			}
 		}
 	}
+#endif
 }
 
 void DefaultGameDrawer::drawTraitParticles(TraitParticles* particlesTrait, const GameDrawSets& drawSets, GeneralDrawMod generalMods) {

@@ -2,7 +2,7 @@
 #include "sge_core/GameUI/Widget.h"
 #include "sge_core/ICore.h"
 #include "sge_core/QuickDraw.h"
-#include "sge_engine/GameDrawer.h"
+#include "sge_engine/GameDrawer/GameDrawer.h"
 #include "sge_engine/GameWorld.h"
 #include "sge_engine/IWorldScript.h"
 

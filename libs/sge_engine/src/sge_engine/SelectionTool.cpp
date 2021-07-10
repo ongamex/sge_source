@@ -1,10 +1,9 @@
 #include "imgui/imgui.h"
-#include "imgui/imgui.h"
 
 #include "Actor.h"
-#include "GameDrawer.h"
 #include "GameInspector.h"
 #include "sge_core/QuickDraw.h"
+#include "sge_engine/GameDrawer/GameDrawer.h"
 #include "sge_utils/math/Box.h"
 
 #include "SelectionTool.h"

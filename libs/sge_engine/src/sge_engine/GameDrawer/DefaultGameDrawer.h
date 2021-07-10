@@ -1,9 +1,9 @@
 #pragma once
 
 #include "sge_core/shaders/ConstantColorShader.h"
-#include "sge_core/shaders/modeldraw.h"
 #include "sge_core/shaders/SkyShader.h"
-#include "sge_engine/GameDrawer.h"
+#include "sge_core/shaders/modeldraw.h"
+#include "sge_engine/GameDrawer/GameDrawer.h"
 #include "sge_engine/GameObject.h"
 #include "sge_engine/TexturedPlaneDraw.h"
 #include "sge_engine/actors/ALight.h"

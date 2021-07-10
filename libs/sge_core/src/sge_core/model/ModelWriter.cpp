@@ -149,7 +149,7 @@ void ModelWriter::writeNodes() {
 		}
 
 		if (node->limbLength > 0.f) {
-				jNode->setMember("limbLength", jvb(node->limbLength));
+			jNode->setMember("limbLength", jvb(node->limbLength));
 		}
 
 		// Attached meshes.

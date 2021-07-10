@@ -23,7 +23,7 @@
 #include "sge_core/application/input.h"
 #include "sge_core/ui/MultiCurve2DEditor.h"
 #include "sge_engine/EngineGlobal.h"
-#include "sge_engine/GameDrawer.h"
+#include "sge_engine/GameDrawer/GameDrawer.h"
 #include "sge_engine/GameSerialization.h"
 #include "sge_engine/actors/ACRSpline.h"
 #include "sge_engine/actors/ALight.h"

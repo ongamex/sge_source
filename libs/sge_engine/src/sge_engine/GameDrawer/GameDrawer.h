@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Actor.h"
+#include "sge_engine/Actor.h"
 #include "sge_renderer/renderer/renderer.h"
 
 namespace sge {

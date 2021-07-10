@@ -1,12 +1,12 @@
 #define _CRT_SECURE_NO_WARNINGS
 
-#include "GameInspector.h"
-#include "GameWorld.h"
 #include "IconsForkAwesome/IconsForkAwesome.h"
 #include "sge_core/ICore.h"
 #include "sge_core/SGEImGui.h"
 #include "sge_core/shaders/modeldraw.h"
 #include "sge_engine/EngineGlobal.h"
+#include "sge_engine/GameInspector.h"
+#include "sge_engine/GameWorld.h"
 #include "sge_engine/ui/ImGuiDragDrop.h"
 #include "sge_utils/utils/strings.h"
 
@@ -169,8 +169,11 @@ bool assetPicker(
 	return wasAssetPicked;
 }
 
-SGE_ENGINE_API bool assetPicker(
-    const char* label, std::shared_ptr<Asset>& asset, AssetLibrary* const assetLibrary, const AssetType assetTypes[], const int numAssetTypes) {
+SGE_ENGINE_API bool assetPicker(const char* label,
+                                std::shared_ptr<Asset>& asset,
+                                AssetLibrary* const assetLibrary,
+                                const AssetType assetTypes[],
+                                const int numAssetTypes) {
 	std::string tempPath = isAssetLoaded(asset) ? asset->getPath() : "";
 
 	if (assetPicker(label, tempPath, assetLibrary, assetTypes, numAssetTypes)) {

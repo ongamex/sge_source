@@ -1,6 +1,6 @@
 #pragma once
 
-#include "GameDrawer.h"
+#include "sge_engine/GameDrawer/GameDrawer.h"
 #include "GameInspector.h"
 #include "GameWorld.h"
 

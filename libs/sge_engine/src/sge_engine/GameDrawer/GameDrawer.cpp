@@ -1,11 +1,11 @@
 #include "GameDrawer.h"
 
-#include "GameInspector.h"
-#include "GameWorld.h"
-#include "IWorldScript.h"
 #include "sge_core/DebugDraw.h"
 #include "sge_core/ICore.h"
 #include "sge_engine/EngineGlobal.h"
+#include "sge_engine/GameInspector.h"
+#include "sge_engine/GameWorld.h"
+#include "sge_engine/IWorldScript.h"
 
 namespace sge {
 

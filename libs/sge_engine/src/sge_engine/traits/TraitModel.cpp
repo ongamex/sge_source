@@ -155,6 +155,39 @@ void TraitModel::computeSkeleton(std::vector<mat4f>& boneOverrides) {
 	}
 }
 
+inline void TraitModel::getRenderItems(std::vector<IRenderItem*>& renderItems) {
+	m_tempRenderItems.clear();
+
+	const AssetModel* const assetModel = getAssetProperty().getAssetModel();
+	mat4f node2world = getActor()->getTransformMtx();
+
+	const EvaluatedModel* evalModel = m_evalModel.hasValue() ? &m_evalModel.get() : &assetModel->staticEval;
+
+	if (evalModel) {
+		int numNodes = evalModel->getNumEvalNodes();
+
+		for (int iNode = 0; iNode < numNodes; ++iNode) {
+			TraitModelRenderItem renderItem;
+
+			const EvaluatedNode& evalNode = evalModel->getEvalNode(iNode);
+			for (int iAttach = 0; iAttach < evalModel->m_model->nodeAt(iNode)->meshAttachments.size(); ++iAttach) {
+				renderItem.bboxWs = evalNode.aabbGlobalSpace.getTransformed(node2world);
+				renderItem.traitModel = this;
+				renderItem.evalModel = evalModel;
+				renderItem.iEvalNode = iNode;
+				renderItem.iEvalNodeMechAttachmentIndex = iAttach;
+				renderItem.needsAlphaSorting = getActor()->m_forceAlphaZSort;
+
+				m_tempRenderItems.push_back(renderItem);
+			}
+		}
+	}
+
+	for (TraitModelRenderItem& ri : m_tempRenderItems) {
+		renderItems.push_back(&ri);
+	}
+}
+
 
 void editTraitStaticModel(GameInspector& inspector, GameObject* actor, MemberChain chain) {
 	TraitModel& traitStaticModel = *(TraitModel*)chain.follow(actor);

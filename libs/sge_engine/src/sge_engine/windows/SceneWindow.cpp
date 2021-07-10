@@ -5,7 +5,7 @@
 #include "sge_core/SGEImGui.h"
 #include "sge_engine/Camera.h"
 #include "sge_engine/EngineGlobal.h"
-#include "sge_engine/GameDrawer.h"
+#include "sge_engine/GameDrawer/GameDrawer.h"
 #include "sge_engine/GameInspector.h"
 #include "sge_utils/math/color.h"
 #include "sge_utils/utils/Wildcard.h"

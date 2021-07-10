@@ -1,10 +1,8 @@
 #pragma once
 
-
 #include "IImGuiWindow.h"
 #include "imgui/imgui.h"
-#include "sge_engine/GameDrawer.h"
-
+#include "sge_engine/GameDrawer/GameDrawer.h"
 
 #include "sge_core/model/EvaluatedModel.h"
 #include "sge_core/shaders/modeldraw.h"

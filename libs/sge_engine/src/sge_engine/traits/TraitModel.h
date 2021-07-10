@@ -4,12 +4,20 @@
 #include "sge_core/shaders/modeldraw.h"
 #include "sge_engine/Actor.h"
 #include "sge_engine/AssetProperty.h"
+#include "sge_engine/GameDrawer/IRenderItem.h"
 #include "sge_engine/enums2d.h"
-
 
 namespace sge {
 
 struct ICamera;
+struct TraitModel;
+
+struct TraitModelRenderItem : public IRenderItem {
+	TraitModel* traitModel = nullptr;
+	const EvaluatedModel* evalModel = nullptr;
+	int iEvalNode = -1; // The mesh to be rendered from the model.
+	int iEvalNodeMechAttachmentIndex = -1;
+};
 
 /// @brief TraitModel is a trait designed to be attached in an Actor.
 /// It provides a simple way to assign a renderable 3D Model to the game object (both animated and static).
@@ -77,6 +85,8 @@ struct SGE_ENGINE_API TraitModel : public Trait {
 	void computeNodeToBoneIds();
 	void computeSkeleton(std::vector<mat4f>& boneOverrides);
 
+	void getRenderItems(std::vector<IRenderItem*>& renderItems);
+
   private:
 	bool updateAssetProperty() {
 		if (m_assetProperty.update()) {
@@ -97,6 +107,8 @@ struct SGE_ENGINE_API TraitModel : public Trait {
 		std::string materialName;
 		ObjectId materialObjId;
 	};
+
+	std::vector<TraitModelRenderItem> m_tempRenderItems;
 
 	mat4f m_additionalTransform = mat4f::getIdentity();
 	AssetProperty m_assetProperty;

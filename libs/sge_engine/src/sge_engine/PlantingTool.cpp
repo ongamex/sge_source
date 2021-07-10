@@ -1,10 +1,10 @@
 #include "PlantingTool.h"
-#include "GameDrawer.h"
 #include "GameInspector.h"
 #include "Physics.h"
 #include "sge_core/AssetLibrary.h"
 #include "sge_core/ICore.h"
 #include "sge_core/application/input.h"
+#include "sge_engine/GameDrawer/GameDrawer.h"
 #include "sge_engine/PhysicsHelpers.h"
 #include "sge_engine/traits/TraitCamera.h"
 
