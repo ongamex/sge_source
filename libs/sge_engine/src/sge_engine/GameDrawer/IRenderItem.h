@@ -5,7 +5,7 @@
 
 namespace sge {
 
-struct GeneralDrawMod;
+struct DrawReasonInfo;
 
 struct IRenderItem {
 	IRenderItem() = default;

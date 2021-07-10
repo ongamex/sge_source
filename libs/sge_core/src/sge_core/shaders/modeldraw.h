@@ -39,9 +39,9 @@ struct ShadingLightData {
 };
 
 //------------------------------------------------------------
-// GeneralDrawMod
+// DrawReasonInfo
 //------------------------------------------------------------
-struct GeneralDrawMod {
+struct DrawReasonInfo {
 	/// True if the drawing is reandering a shadow map.
 	bool isRenderingShadowMap = false;
 	/// True if the current render is targeting a shadow map for a point light.
@@ -85,7 +85,7 @@ struct SGE_CORE_API BasicModelDraw {
 	          const vec3f& camLookDir,
 	          const mat4f& projView,
 	          const mat4f& preRoot,
-	          const GeneralDrawMod& generalMods,
+	          const DrawReasonInfo& generalMods,
 	          const EvaluatedModel& model,
 	          const InstanceDrawMods& mods,
 	          const std::vector<MaterialOverride>* mtlOverrides = nullptr);
@@ -95,7 +95,7 @@ struct SGE_CORE_API BasicModelDraw {
 	                  const vec3f& camLookDir,
 	                  const mat4f& projView,
 	                  const mat4f& world,
-	                  const GeneralDrawMod& generalMods,
+	                  const DrawReasonInfo& generalMods,
 	                  const Geometry* geometry,
 	                  const Material& material,
 	                  const InstanceDrawMods& mods);
@@ -106,7 +106,7 @@ struct SGE_CORE_API BasicModelDraw {
 	                             const vec3f& camLookDir,
 	                             const mat4f& projView,
 	                             const mat4f& world,
-	                             const GeneralDrawMod& generalMods,
+	                             const DrawReasonInfo& generalMods,
 	                             const Geometry* geometry,
 	                             const Material& material,
 	                             const InstanceDrawMods& mods);
@@ -116,7 +116,7 @@ struct SGE_CORE_API BasicModelDraw {
 	                                    const vec3f& camLookDir,
 	                                    const mat4f& projView,
 	                                    const mat4f& world,
-	                                    const GeneralDrawMod& generalMods,
+	                                    const DrawReasonInfo& generalMods,
 	                                    const Geometry* geometry,
 	                                    const Material& material,
 	                                    const InstanceDrawMods& mods);

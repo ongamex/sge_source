@@ -8,29 +8,40 @@ namespace sge {
 //--------------------------------------------------------------------
 // AStaticObstacle
 //--------------------------------------------------------------------
+
+// clang-format off
 DefineTypeId(CollisionShapeSource, 20'03'02'0005);
 ReflBlock() {
 	ReflAddType(CollisionShapeSource) ReflEnumVal((int)CollisionShapeSource::FromBoundingBox, "FromBoundingBox")
-	    ReflEnumVal((int)CollisionShapeSource::FromConcaveHulls, "FromConcaveHulls")
-	        ReflEnumVal((int)CollisionShapeSource::FromConvexHulls, "FromConvexHulls");
+	ReflEnumVal((int)CollisionShapeSource::FromConcaveHulls, "FromConcaveHulls")
+	ReflEnumVal((int)CollisionShapeSource::FromConvexHulls, "FromConvexHulls");
 }
 
 DefineTypeId(AStaticObstacle, 20'03'02'0006);
 ReflBlock() {
-	ReflAddActor(AStaticObstacle) ReflMember(AStaticObstacle, m_traitModel);
+	ReflAddActor(AStaticObstacle)
+		ReflMember(AStaticObstacle, m_traitModel)
+		ReflMember(AStaticObstacle, m_traitSprite)
+	;
 }
+// clang-format on
 
 AABox3f AStaticObstacle::getBBoxOS() const {
-	return m_traitModel.getBBoxOS();
+	AABox3f bbox = m_traitModel.getBBoxOS();
+	bbox.expand(m_traitSprite.getBBoxOS());
+	return bbox;
 }
 
 void AStaticObstacle::create() {
 	registerTrait(m_traitRB);
 	registerTrait(m_traitModel);
+	registerTrait(m_traitSprite);
 	m_traitModel.getAssetProperty().setTargetAsset("assets/editor/models/box.mdl");
 }
 
 void AStaticObstacle::postUpdate(const GameUpdateSets& UNUSED(updateSets)) {
+	m_traitSprite.postUpdate();
+
 	if (m_traitModel.postUpdate()) {
 		if (m_traitRB.getRigidBody()->isValid()) {
 			this->getWorld()->physicsWorld.removePhysicsObject(*m_traitRB.getRigidBody());

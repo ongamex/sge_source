@@ -223,13 +223,6 @@ void AIKNode::update(const GameUpdateSets& u) {
 	} else {
 		tempChainActors.back()->setOrientation(originalEndOrientationWs);
 	}
-
-	//
-	auto& g = getCore()->getDebugDraw().getGroup("IKDebug");
-	g.clear(false);
-	for (vec3f p : solverPositionWs) {
-		g.getWiered().sphere(mat4f::getTranslation(p), 0xFF00FFFF, 0.1f, 6);
-	}
 }
 
 } // namespace sge

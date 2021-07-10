@@ -65,10 +65,7 @@ void IGameDrawer::drawWorld(const GameDrawSets& drawSets, const DrawReason drawR
 		    return true;
 	    },
 	    false);
-
-	getCore()->getDebugDraw().getGroup("camera").clear(false);
-	getCore()->getDebugDraw().getGroup("camera").getWiered().line(vec3f(0.f), zSortingPlaneNormal * 10.f, 0xFFFFFFFF);
-
+	
 	std::sort(m_zSortedActorsToDraw.rbegin(), m_zSortedActorsToDraw.rend());
 	for (ActorsNeedingZSort& actorZSort : m_zSortedActorsToDraw) {
 		drawActor(drawSets, editMode_actors, actorZSort.actor, 0, drawReason);

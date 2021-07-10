@@ -30,7 +30,6 @@ void ModelPreviewWidget::doWidget(SGEContext* const sgecon, const InputState& is
 
 	RenderDestination rdest(sgecon, m_frameTarget);
 
-
 	const ImVec2 canvas_pos = ImGui::GetCursorScreenPos();
 	vec2f canvas_size = widgetSize.isValid() ? widgetSize.get() : fromImGui(ImGui::GetContentRegionAvail());
 
@@ -69,20 +68,12 @@ void ModelPreviewWidget::doWidget(SGEContext* const sgecon, const InputState& is
 	debugDraw.drawWiredAdd_Grid(vec3f(0), vec3f::getAxis(0), vec3f::getAxis(2), 5, 5, 0xFF333733);
 	debugDraw.drawWired_Execute(rdest, proj * lookAt, nullptr);
 
-	GeneralDrawMod mods;
+	DrawReasonInfo mods;
 	InstanceDrawMods imods;
 	imods.forceNoLighting = true;
 
 	getCore()->getModelDraw().draw(rdest, camera.eyePosition(), -camera.orbitPoint.normalized0(), proj * lookAt, mat4f::getIdentity(),
-	                               GeneralDrawMod(), m_eval, imods);
-
-	// ImGui::InvisibleButton("TextureCanvasIB", canvas_size);
-
-
-
-	// ImVec2 canvasMax = canvas_pos;
-	// canvasMax.x += canvas_size.x;
-	// canvasMax.y += canvas_size.y;
+	                               DrawReasonInfo(), m_eval, imods);
 
 	if (kIsTexcoordStyleD3D) {
 		ImGui::Image(m_frameTarget->getRenderTarget(0), ImVec2(canvas_size.x, canvas_size.y));
@@ -234,7 +225,7 @@ void ModelPreviewWindow::update(SGEContext* const sgecon, const InputState& is) 
 			debugDraw.drawWired_Execute(rdest, proj * lookAt, nullptr);
 
 			getCore()->getModelDraw().draw(rdest, camera.eyePosition(), -camera.orbitPoint.normalized0(), proj * lookAt,
-			                               mat4f::getIdentity(), GeneralDrawMod(), m_eval, InstanceDrawMods());
+			                               mat4f::getIdentity(), DrawReasonInfo(), m_eval, InstanceDrawMods());
 
 			ImGui::InvisibleButton("TextureCanvasIB", canvas_size);
 

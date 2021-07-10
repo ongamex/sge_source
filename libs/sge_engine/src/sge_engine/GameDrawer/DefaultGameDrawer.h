@@ -15,6 +15,7 @@ namespace sge {
 
 struct TraitTexturedPlane;
 struct TraitModel;
+struct TraitSprite;
 struct TraitMultiModel;
 struct TraitViewportIcon;
 struct TraitPath3DFoQuickPlatform;
@@ -45,41 +46,46 @@ struct SGE_ENGINE_API DefaultGameDrawer : public IGameDrawer {
 	                     const GameDrawSets& drawSets,
 	                     EditMode const editMode,
 	                     int const itemIndex,
-	                     const GeneralDrawMod& generalMods,
+	                     const DrawReasonInfo& generalMods,
 	                     DrawReason const drawReason);
 
 	void drawTraitTexturedPlane(TraitTexturedPlane* traitTexPlane,
 	                            const GameDrawSets& drawSets,
-	                            const GeneralDrawMod& generalMods,
+	                            const DrawReasonInfo& generalMods,
 	                            DrawReason const drawReason);
 
 	void drawTraitViewportIcon(TraitViewportIcon* viewportIcon, const GameDrawSets& drawSets, DrawReason const drawReason);
 
-	void drawTraitStaticModel(TraitModel* modelTrait,
-	                          const GameDrawSets& drawSets,
-	                          const GeneralDrawMod& generalMods,
-	                          DrawReason const drawReason);
+	void drawTraitModel(TraitModel* modelTrait,
+	                    const GameDrawSets& drawSets,
+	                    const DrawReasonInfo& generalMods,
+	                    DrawReason const drawReason);
+
+	void drawTraitSprite(TraitSprite* modelTrait,
+	                     const GameDrawSets& drawSets,
+	                     const DrawReasonInfo& generalMods,
+	                     DrawReason const drawReason);
 
 	void drawTraitMultiModel(TraitMultiModel* multiModelTrait,
 	                         const GameDrawSets& drawSets,
-	                         const GeneralDrawMod& generalMods,
+	                         const DrawReasonInfo& generalMods,
 	                         DrawReason const drawReason);
 
-	void drawTraitRenderableGeom(TraitRenderableGeom* ttRendGeom, const GameDrawSets& drawSets, const GeneralDrawMod& generalMods);
+	void drawTraitRenderableGeom(TraitRenderableGeom* ttRendGeom, const GameDrawSets& drawSets, const DrawReasonInfo& generalMods);
 
-	void drawTraitParticles(TraitParticles* particlesTrait, const GameDrawSets& drawSets, GeneralDrawMod generalMods);
+	void drawTraitParticles(TraitParticles* particlesTrait, const GameDrawSets& drawSets, DrawReasonInfo generalMods);
 
-	void drawTraitParticles2(TraitParticles2* particlesTrait, const GameDrawSets& drawSets, GeneralDrawMod generalMods);
+	void drawTraitParticles2(TraitParticles2* particlesTrait, const GameDrawSets& drawSets, DrawReasonInfo generalMods);
 
 	void drawANavMesh(ANavMesh* navMesh,
 	                  const GameDrawSets& drawSets,
-	                  const GeneralDrawMod& generalMods,
+	                  const DrawReasonInfo& generalMods,
 	                  DrawReason const drawReason,
 	                  const uint32 wireframeColor);
 
   private:
 	bool isInFrustum(const GameDrawSets& drawSets, Actor* actor) const;
-	void fillGeneralModsWithLights(Actor* actor, GeneralDrawMod& generalMods);
+	void fillGeneralModsWithLights(Actor* actor, DrawReasonInfo& generalMods);
 
   public:
 	BasicModelDraw m_modeldraw;

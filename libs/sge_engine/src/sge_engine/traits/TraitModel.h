@@ -5,7 +5,7 @@
 #include "sge_engine/Actor.h"
 #include "sge_engine/AssetProperty.h"
 #include "sge_engine/GameDrawer/IRenderItem.h"
-#include "sge_engine/enums2d.h"
+
 
 namespace sge {
 
@@ -44,7 +44,7 @@ struct SGE_ENGINE_API TraitModel : public Trait {
 	SGE_TraitDecl_Full(TraitModel);
 
 	TraitModel()
-	    : m_assetProperty(AssetType::Model, AssetType::Texture2D, AssetType::Sprite) {}
+	    : m_assetProperty(AssetType::Model) {}
 
 	void setModel(const char* assetPath, bool updateNow) {
 		m_assetProperty.setTargetAsset(assetPath);
@@ -108,17 +108,16 @@ struct SGE_ENGINE_API TraitModel : public Trait {
 		ObjectId materialObjId;
 	};
 
-	std::vector<TraitModelRenderItem> m_tempRenderItems;
-
-	mat4f m_additionalTransform = mat4f::getIdentity();
-	AssetProperty m_assetProperty;
-
-	Optional<EvaluatedModel> m_evalModel;
-
-	// 3D model specific properties.
-	// TODO: move them in a strcuture.
-	InstanceDrawMods instanceDrawMods;
+  public:
 	bool isRenderable = true;
+	AssetProperty m_assetProperty;
+	mat4f m_additionalTransform = mat4f::getIdentity();
+
+	// Used when the trait is going to render an animated model.
+	// This hold the evaluated 3D model to be rendered.
+	Optional<EvaluatedModel> m_evalModel;
+	InstanceDrawMods instanceDrawMods;
+
 	std::vector<MaterialOverride> m_materialOverrides;
 
 	// External skeleton, useful for IK. Not sure for regular skinned meshes.
@@ -126,71 +125,7 @@ struct SGE_ENGINE_API TraitModel : public Trait {
 	ObjectId rootSkeletonId;
 	std::unordered_map<int, ObjectId> nodeToBoneId;
 
-	/// @brief A struct holding the rendering options of a sprite or a texture in 3D.
-	struct ImageSettings {
-		/// @brief Computes the object-to-node transformation of the sprite so i has its origin in the deisiered location.
-		mat4f getAnchorAlignMtxOS(float imageWidth, float imageHeight) const {
-			const float sz = imageWidth / m_pixelsPerUnit;
-			const float sy = imageHeight / m_pixelsPerUnit;
-
-			const mat4f anchorAlignMtx = anchor_getPlaneAlignMatrix(m_anchor, vec2f(sz, sy));
-			return anchorAlignMtx;
-		}
-
-		/// @brief Computes the matrix that needs to be applied to a quad
-		/// that faces +X and has corners (0,0,0) and (0,1,1), So it appears as described by this structure:
-		/// its size, orientation (billboarding), aligment and so on.
-		/// @param [in] asset is the asset that is going to be attached to the plane. it needs to be a texture or a sprite.
-		/// @param [in] drawCamera the camera that is going to be used for rendering. If null the billboarding effect will be missing.
-		/// @param [in] nodeToWorldTransform the transform that indicates the location of the object(for example, could be the transform
-		/// of an actor).
-		/// @param [in] additionaTransform an additional transform to be applied before before all other transforms.
-		/// @return the matrix to be used as object-to-world transform form the quad described above.
-		mat4f computeObjectToWorldTransform(const Asset& asset,
-		                                    const ICamera* const drawCamera,
-		                                    const transf3d& nodeToWorldTransform,
-		                                    const mat4f& additionaTransform) const;
-
-		AABox3f computeBBoxOS(const Asset& asset, const mat4f& additionaTransform) const;
-
-		/// Adds a color tint to the final color and the alpha of the object.
-		vec4f colorTint = vec4f(1.f);
-
-		// Sprite and texture drawing.
-		/// @brief Describes where the (0,0,0) point of the plane should be relative to the object.
-		/// TODO: replace this with UV style coordinates.
-		Anchor m_anchor = anchor_bottomMid;
-
-		/// @brief Describes how much along the plane normal (which is X) should the plane be moved.
-		/// This is useful when we want to place recoration on top of walls or floor objects.
-		float m_localXOffset = 0.01f;
-
-		/// @brief Describes how big is one pixel in world space.
-		float m_pixelsPerUnit = 64.f;
-
-		/// @brief Describes if any billboarding should happen for the plane.
-		Billboarding m_billboarding = billboarding_none;
-
-		/// @brief if true the image will get rendered with no lighting applied,
-		/// as if we just rendered the color (with gamma correction and post processing).
-		bool forceNoLighting = true;
-
-		/// @brief if true the plane will not get any culling applied. Useful if we want the
-		/// texture to be visible from both sides.
-		bool forceNoCulling = true;
-
-		/// @brief If true, the sprite plane will, by default look towards +Z, otherwise it will be facing +X.
-		bool defaultFacingAxisZ = true;
-
-		/// Flips the sprite horizontally while maintaining its origin at the same place.
-		/// Useful if we are building a 2D game where the character is a sprite that can walk left and right.
-		bool flipHorizontally = false;
-
-		/// Sprite (if any) evaluation time in seconds.
-		float spriteFrameTime = 0.f;
-	};
-
-	ImageSettings imageSettings;
+	std::vector<TraitModelRenderItem> m_tempRenderItems;
 };
 
 } // namespace sge

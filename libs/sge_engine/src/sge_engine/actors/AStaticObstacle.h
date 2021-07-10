@@ -4,6 +4,7 @@
 
 #include "sge_engine/Actor.h"
 #include "sge_engine/traits/TraitModel.h"
+#include "sge_engine/traits/TraitSprite.h"
 #include "sge_engine/traits/TraitRigidBody.h"
 
 namespace sge {
@@ -25,6 +26,7 @@ struct SGE_ENGINE_API AStaticObstacle : public Actor {
   public:
 	TraitRigidBody m_traitRB;
 	TraitModel m_traitModel;
+	TraitSprite m_traitSprite;
 };
 
 

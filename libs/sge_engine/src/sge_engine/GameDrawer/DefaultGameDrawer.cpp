@@ -21,6 +21,7 @@
 #include "sge_engine/traits/TraitMultiModel.h"
 #include "sge_engine/traits/TraitParticles.h"
 #include "sge_engine/traits/TraitRenderableGeom.h"
+#include "sge_engine/traits/TraitSprite.h"
 #include "sge_engine/traits/TraitTexturedPlane.h"
 #include "sge_engine/traits/TraitViewportIcon.h"
 #include "sge_utils/math/Frustum.h"
@@ -295,7 +296,7 @@ bool DefaultGameDrawer::isInFrustum(const GameDrawSets& drawSets, Actor* actor) 
 	return true;
 }
 
-void DefaultGameDrawer::fillGeneralModsWithLights(Actor* actor, GeneralDrawMod& generalMods) {
+void DefaultGameDrawer::fillGeneralModsWithLights(Actor* actor, DrawReasonInfo& generalMods) {
 	// Find all the lights that can affect this object.
 	m_shadingLightPerObject.clear();
 	AABox3f bboxOS = actor->getBBoxOS();
@@ -355,7 +356,7 @@ void DefaultGameDrawer::drawActor(
 	selectionTint.w = useWireframe ? 1.f : 0.f;
 
 	// Build the general modifications for the actor drawing.
-	GeneralDrawMod generalMods;
+	DrawReasonInfo generalMods;
 
 	generalMods.selectionTint = selectionTint;
 	generalMods.isRenderingShadowMap = (drawReason == drawReason_gameplayShadow);
@@ -379,7 +380,11 @@ void DefaultGameDrawer::drawActor(
 	}
 
 	if (TraitModel* const modelTrait = getTrait<TraitModel>(actor); editMode == editMode_actors && modelTrait) {
-		drawTraitStaticModel(modelTrait, drawSets, generalMods, drawReason);
+		drawTraitModel(modelTrait, drawSets, generalMods, drawReason);
+	}
+
+	if (TraitSprite* const triatSprite = getTrait<TraitSprite>(actor); editMode == editMode_actors && triatSprite) {
+		drawTraitSprite(triatSprite, drawSets, generalMods, drawReason);
 	}
 
 	if (TraitMultiModel* const multiModelTrait = getTrait<TraitMultiModel>(actor); editMode == editMode_actors && multiModelTrait) {
@@ -410,7 +415,7 @@ void DefaultGameDrawer::drawActor(
 
 void DefaultGameDrawer::drawTraitTexturedPlane(TraitTexturedPlane* traitTexPlane,
                                                const GameDrawSets& drawSets,
-                                               const GeneralDrawMod& generalMods,
+                                               const DrawReasonInfo& generalMods,
                                                DrawReason const UNUSED(drawReason)) {
 	const vec3f camPos = drawSets.drawCamera->getCameraPosition();
 	const vec3f camLookDir = drawSets.drawCamera->getCameraLookDir();
@@ -456,10 +461,10 @@ void DefaultGameDrawer::drawTraitViewportIcon(TraitViewportIcon* viewportIcon, c
 };
 
 
-void DefaultGameDrawer::drawTraitStaticModel(TraitModel* modelTrait,
-                                             const GameDrawSets& drawSets,
-                                             const GeneralDrawMod& generalMods,
-                                             DrawReason const drawReason) {
+void DefaultGameDrawer::drawTraitModel(TraitModel* modelTrait,
+                                       const GameDrawSets& drawSets,
+                                       const DrawReasonInfo& generalMods,
+                                       DrawReason const drawReason) {
 	if (modelTrait->getRenderable() == false) {
 		return;
 	}
@@ -593,17 +598,31 @@ void DefaultGameDrawer::drawTraitStaticModel(TraitModel* modelTrait,
 				}
 			}
 		}
-	} else if (isAssetLoaded(asset) && asset->getType() == AssetType::Texture2D) {
+	}
+#endif
+}
+
+void DefaultGameDrawer::drawTraitSprite(TraitSprite* spriteTrait,
+                                        const GameDrawSets& drawSets,
+                                        const DrawReasonInfo& generalMods,
+                                        DrawReason const drawReason) {
+	const vec3f camPos = drawSets.drawCamera->getCameraPosition();
+	const vec3f camLookDir = drawSets.drawCamera->getCameraLookDir();
+	Actor* const actor = spriteTrait->getActor();
+
+	PAsset const asset = spriteTrait->getAssetProperty().getAsset();
+
+	if (isAssetLoaded(asset) && asset->getType() == AssetType::Texture2D) {
 		AssetTexture* ppTexture = asset->asTextureView();
 		if (ppTexture && ppTexture->tex.IsResourceValid()) {
 			Texture* const texture = ppTexture->tex.GetPtr();
 			if (texture) {
-				mat4f obj2world = modelTrait->imageSettings.computeObjectToWorldTransform(
-				    *asset.get(), drawSets.drawCamera, actor->getTransform(), modelTrait->m_additionalTransform);
+				mat4f obj2world = spriteTrait->imageSettings.computeObjectToWorldTransform(
+				    *asset.get(), drawSets.drawCamera, actor->getTransform(), spriteTrait->m_additionalTransform);
 
 				Geometry texPlaneGeom = m_texturedPlaneDraw.getGeometry(drawSets.rdest.getDevice());
 				Material texPlaneMtl = m_texturedPlaneDraw.getMaterial(texture);
-				texPlaneMtl.diffuseColor = vec4f(modelTrait->imageSettings.colorTint);
+				texPlaneMtl.diffuseColor = vec4f(spriteTrait->imageSettings.colorTint);
 
 				if (drawReason_IsVisualizeSelection(drawReason)) {
 					texPlaneMtl.diffuseColor *= generalMods.selectionTint;
@@ -611,8 +630,8 @@ void DefaultGameDrawer::drawTraitStaticModel(TraitModel* modelTrait,
 
 				InstanceDrawMods mods;
 				mods.gameTime = getWorld()->timeSpendPlaying;
-				mods.forceNoLighting = modelTrait->imageSettings.forceNoLighting;
-				mods.forceNoCulling = modelTrait->imageSettings.forceNoCulling;
+				mods.forceNoLighting = spriteTrait->imageSettings.forceNoLighting;
+				mods.forceNoCulling = spriteTrait->imageSettings.forceNoCulling;
 
 				m_modeldraw.drawGeometry(drawSets.rdest, camPos, camLookDir, drawSets.drawCamera->getProjView(), obj2world, generalMods,
 				                         &texPlaneGeom, texPlaneMtl, mods);
@@ -623,14 +642,15 @@ void DefaultGameDrawer::drawTraitStaticModel(TraitModel* modelTrait,
 		if (pSprite && isAssetLoaded(pSprite->textureAsset) && pSprite->textureAsset->asTextureView() != nullptr &&
 		    pSprite->textureAsset->asTextureView()->tex.GetPtr() != nullptr) {
 			// Get the frame of the sprite to be rendered.
-			const SpriteAnimation::Frame* const frame = pSprite->spriteAnimation.getFrameForTime(modelTrait->imageSettings.spriteFrameTime);
+			const SpriteAnimation::Frame* const frame =
+			    pSprite->spriteAnimation.getFrameForTime(spriteTrait->imageSettings.spriteFrameTime);
 			if (frame) {
-				mat4f obj2world = modelTrait->imageSettings.computeObjectToWorldTransform(
-				    *asset.get(), drawSets.drawCamera, actor->getTransform(), modelTrait->m_additionalTransform);
+				mat4f obj2world = spriteTrait->imageSettings.computeObjectToWorldTransform(
+				    *asset.get(), drawSets.drawCamera, actor->getTransform(), spriteTrait->m_additionalTransform);
 
 				Geometry texPlaneGeom = m_texturedPlaneDraw.getGeometry(drawSets.rdest.getDevice());
 				Material texPlaneMtl = m_texturedPlaneDraw.getMaterial(pSprite->textureAsset->asTextureView()->tex.GetPtr());
-				texPlaneMtl.diffuseColor = vec4f(modelTrait->imageSettings.colorTint);
+				texPlaneMtl.diffuseColor = vec4f(spriteTrait->imageSettings.colorTint);
 
 				if (drawReason_IsVisualizeSelection(drawReason)) {
 					texPlaneMtl.diffuseColor *= generalMods.selectionTint;
@@ -638,8 +658,8 @@ void DefaultGameDrawer::drawTraitStaticModel(TraitModel* modelTrait,
 
 				InstanceDrawMods mods;
 				mods.gameTime = getWorld()->timeSpendPlaying;
-				mods.forceNoLighting = modelTrait->imageSettings.forceNoLighting;
-				mods.forceNoCulling = true; // modelTrait->imageSettings.forceNoCulling;
+				mods.forceNoLighting = spriteTrait->imageSettings.forceNoLighting;
+				mods.forceNoCulling = spriteTrait->imageSettings.forceNoCulling;
 
 				// Compute the UVW transform so we get only this frame portion of the texture to be displayed.
 				texPlaneMtl.uvwTransform =
@@ -651,10 +671,9 @@ void DefaultGameDrawer::drawTraitStaticModel(TraitModel* modelTrait,
 			}
 		}
 	}
-#endif
 }
 
-void DefaultGameDrawer::drawTraitParticles(TraitParticles* particlesTrait, const GameDrawSets& drawSets, GeneralDrawMod generalMods) {
+void DefaultGameDrawer::drawTraitParticles(TraitParticles* particlesTrait, const GameDrawSets& drawSets, DrawReasonInfo generalMods) {
 	const vec3f camPos = drawSets.drawCamera->getCameraPosition();
 	const vec3f camLookDir = drawSets.drawCamera->getCameraLookDir();
 
@@ -698,7 +717,7 @@ void DefaultGameDrawer::drawTraitParticles(TraitParticles* particlesTrait, const
 	}
 }
 
-void DefaultGameDrawer::drawTraitParticles2(TraitParticles2* particlesTrait, const GameDrawSets& drawSets, GeneralDrawMod generalMods) {
+void DefaultGameDrawer::drawTraitParticles2(TraitParticles2* particlesTrait, const GameDrawSets& drawSets, DrawReasonInfo generalMods) {
 	const mat4f n2w = particlesTrait->getActor()->getTransformMtx();
 
 	const vec3f camPos = drawSets.drawCamera->getCameraPosition();
@@ -734,7 +753,7 @@ void DefaultGameDrawer::drawTraitParticles2(TraitParticles2* particlesTrait, con
 
 void DefaultGameDrawer::drawANavMesh(ANavMesh* navMesh,
                                      const GameDrawSets& drawSets,
-                                     const GeneralDrawMod& UNUSED(generalMods),
+                                     const DrawReasonInfo& UNUSED(generalMods),
                                      DrawReason const drawReason,
                                      const uint32 wireframeColor) {
 	vec4f wireframeColorAlphaFloat = colorFromIntRgba(wireframeColor);
@@ -773,7 +792,7 @@ void DefaultGameDrawer::drawANavMesh(ANavMesh* navMesh,
 
 void DefaultGameDrawer::drawTraitMultiModel(TraitMultiModel* multiModelTrait,
                                             const GameDrawSets& drawSets,
-                                            const GeneralDrawMod& generalMods,
+                                            const DrawReasonInfo& generalMods,
                                             DrawReason const UNUSED(drawReason)) {
 	const vec3f camPos = drawSets.drawCamera->getCameraPosition();
 	const vec3f camLookDir = drawSets.drawCamera->getCameraLookDir();
@@ -798,7 +817,7 @@ void DefaultGameDrawer::drawTraitMultiModel(TraitMultiModel* multiModelTrait,
 
 void DefaultGameDrawer::drawTraitRenderableGeom(TraitRenderableGeom* ttRendGeom,
                                                 const GameDrawSets& drawSets,
-                                                const GeneralDrawMod& generalMods) {
+                                                const DrawReasonInfo& generalMods) {
 	const mat4f actorToWorld = ttRendGeom->getActor()->getTransformMtx();
 	const vec3f camPos = drawSets.drawCamera->getCameraPosition();
 	const vec3f camLookDir = drawSets.drawCamera->getCameraLookDir();
@@ -817,7 +836,7 @@ void DefaultGameDrawer::drawActorLegacy(Actor* actor,
                                         const GameDrawSets& drawSets,
                                         EditMode const editMode,
                                         int const itemIndex,
-                                        const GeneralDrawMod& generalMods,
+                                        const DrawReasonInfo& generalMods,
                                         DrawReason const drawReason) {
 	TypeId actorType = actor->getType();
 
