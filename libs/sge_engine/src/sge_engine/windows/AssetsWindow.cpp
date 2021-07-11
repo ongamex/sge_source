@@ -695,18 +695,22 @@ void AssetsWindow::update(SGEContext* const sgecon, const InputState& is) {
 				};
 
 				bool hadChange = false;
-				hadChange |= doAddressModeUI("Tiling X", texAsset->assetSamplerDesc.addressModes[0]);
-				hadChange |= doAddressModeUI("Tiling Y", texAsset->assetSamplerDesc.addressModes[1]);
-				hadChange |= doAddressModeUI("Tiling Z", texAsset->assetSamplerDesc.addressModes[2]);
 
-				if (ImGui::BeginCombo("Filtering", getFilterModeName(texAsset->assetSamplerDesc.filter))) {
+				ImGuiEx::Label("Semi-Transparent");
+				hadChange |= ImGui::Checkbox("##Semi Transparent", &texAsset->meta.isSemiTransparent);
+
+				hadChange |= doAddressModeUI("Tiling X", texAsset->meta.assetSamplerDesc.addressModes[0]);
+				hadChange |= doAddressModeUI("Tiling Y", texAsset->meta.assetSamplerDesc.addressModes[1]);
+				hadChange |= doAddressModeUI("Tiling Z", texAsset->meta.assetSamplerDesc.addressModes[2]);
+
+				if (ImGui::BeginCombo("Filtering", getFilterModeName(texAsset->meta.assetSamplerDesc.filter))) {
 					if (ImGui::Selectable(getFilterModeName(TextureFilter::Min_Mag_Mip_Linear))) {
-						texAsset->assetSamplerDesc.filter = TextureFilter::Min_Mag_Mip_Linear;
+						texAsset->meta.assetSamplerDesc.filter = TextureFilter::Min_Mag_Mip_Linear;
 						hadChange = true;
 					}
 
 					if (ImGui::Selectable(getFilterModeName(TextureFilter::Min_Mag_Mip_Point))) {
-						texAsset->assetSamplerDesc.filter = TextureFilter::Min_Mag_Mip_Point;
+						texAsset->meta.assetSamplerDesc.filter = TextureFilter::Min_Mag_Mip_Point;
 						hadChange = true;
 					}
 
@@ -715,7 +719,7 @@ void AssetsWindow::update(SGEContext* const sgecon, const InputState& is) {
 
 				if (hadChange) {
 					GpuHandle<SamplerState> sampler = getCore()->getDevice()->requestResource<SamplerState>();
-					sampler->create(texAsset->assetSamplerDesc);
+					sampler->create(texAsset->meta.assetSamplerDesc);
 					texAsset->tex->setSamplerState(sampler);
 
 					// Save the modified settings to the *.info file of the texture.

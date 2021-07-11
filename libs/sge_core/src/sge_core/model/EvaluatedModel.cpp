@@ -179,6 +179,8 @@ bool EvaluatedModel::evaluateMaterials() {
 		evalMtl.diffuseColor = rawMaterial->diffuseColor;
 		evalMtl.roughness = rawMaterial->roughness;
 		evalMtl.metallic = rawMaterial->metallic;
+		evalMtl.needsAlphaSorting = rawMaterial->needsAlphaSorting;
+		evalMtl.alphaMultiplier = rawMaterial->alphaMultiplier;
 
 		// Check if there is a diffuse texture attached here.
 		if (rawMaterial->diffuseTextureName.empty() == false) {

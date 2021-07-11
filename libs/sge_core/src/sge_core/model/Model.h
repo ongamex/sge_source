@@ -75,6 +75,8 @@ struct ModelLoadSettings {
 struct ModelMaterial {
 	std::string name;
 
+	float alphaMultiplier = 1.f;
+	bool needsAlphaSorting = false;
 	vec4f diffuseColor = vec4f(1.f);
 	vec4f emissionColor = vec4f(0.f);
 	float metallic = 0.f;

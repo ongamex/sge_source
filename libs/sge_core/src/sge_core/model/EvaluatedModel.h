@@ -26,6 +26,8 @@ struct EvaluatedMaterial {
 	vec4f diffuseColor = vec4f(1.f, 0.f, 1.f, 1.f);
 	float metallic = 1.f;
 	float roughness = 1.f;
+	bool needsAlphaSorting = false;
+	float alphaMultiplier = 1.f;
 };
 
 struct EvaluatedNode {

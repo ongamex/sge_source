@@ -192,6 +192,9 @@ void ModelWriter::writeMaterials() {
 		jMaterial->setMember("metallic", jvb(mtl->metallic));
 		jMaterial->setMember("roughness", jvb(mtl->roughness));
 
+		jMaterial->setMember("needsAlphaSorting", jvb(mtl->alphaMultiplier));
+		jMaterial->setMember("needsAlphaSorting", jvb(mtl->needsAlphaSorting));
+
 		if (mtl->diffuseTextureName.empty() == false)
 			jMaterial->setMember("diffuseTextureName", jvb(mtl->diffuseTextureName));
 

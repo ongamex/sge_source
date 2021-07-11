@@ -147,21 +147,22 @@ bool AssetTexture::saveTextureSettingsToInfoFile(Asset& assetSelf) {
 	JsonValueBuffer jvb;
 	auto jRoot = jvb(JID_MAP);
 	jRoot->setMember("version", jvb(1));
-	jRoot->setMember("sampler", samplerDesc_toJson(assetSamplerDesc, jvb));
+	jRoot->setMember("sampler", samplerDesc_toJson(meta.assetSamplerDesc, jvb));
+	jRoot->setMember("isSemiTransparent", jvb(meta.isSemiTransparent));
 
 	JsonWriter jsonWriter;
 	bool success = jsonWriter.WriteInFile(infoPath.c_str(), jRoot, true);
 	return success;
 }
 
-SamplerDesc AssetTexture::loadTextureSettingInfoFile(const std::string& baseAssetPath) {
+AssetTextureMeta AssetTexture::loadTextureSettingInfoFile(const std::string& baseAssetPath) {
 	// [TEXTURE_ASSET_INFO]
 	const std::string infoPath = baseAssetPath + ".info";
 
 	FileReadStream frs;
 	if (!frs.open(infoPath.c_str())) {
 		// No info file, just use the defaults.
-		return SamplerDesc();
+		return AssetTextureMeta();
 	}
 
 	// Parse the json inside that file.
@@ -169,10 +170,12 @@ SamplerDesc AssetTexture::loadTextureSettingInfoFile(const std::string& baseAsse
 	if (!jp.parse(&frs)) {
 		// No info file, just use the defaults.
 		sgeAssert(false && "Parsing the texture info file, that contains additional settings for a texture asset cannot be parsed!");
-		return SamplerDesc();
+		return AssetTextureMeta();
 	}
 
 	try {
+		AssetTextureMeta result;
+		
 		auto jRoot = jp.getRoot();
 
 		int version = jRoot->getMemberOrThrow("version").getNumberAsOrThrow<int>();
@@ -182,14 +185,21 @@ SamplerDesc AssetTexture::loadTextureSettingInfoFile(const std::string& baseAsse
 			auto jSampler = jRoot->getMemberOrThrow("sampler", JID_MAP);
 			Optional<SamplerDesc> samplerDesc = samplerDesc_fromJson(jSampler);
 			if (samplerDesc) {
-				return *samplerDesc;
+				result.assetSamplerDesc = *samplerDesc;
 			}
+
+			const JsonValue* jIsSemiTransparent = jRoot->getMember("isSemiTransparent");
+			if (jIsSemiTransparent && jIsSemiTransparent->jid == JID_BOOL) {
+				result.isSemiTransparent = jIsSemiTransparent->getAsBool();
+			}
+
+			return result;
 		}
 	} catch (...) {
 	}
 
 	sgeAssert(false && "Parsing the texture info file, that contains additional settings for a texture asset cannot be parsed!");
-	return SamplerDesc();
+	return AssetTextureMeta();
 }
 
 AssetType assetType_guessFromExtension(const char* const ext, bool includeExternalExtensions) {
@@ -319,7 +329,7 @@ struct TextureViewAssetFactory : public IAssetFactory {
 		ddsLoadCode_importOrCreationFailed,
 	};
 
-	SamplerDesc getTextureSamplerDesc(const char* const pAssetPath) const { return AssetTexture::loadTextureSettingInfoFile(pAssetPath); }
+	AssetTextureMeta getAssetTextureMeta(const char* const pAssetPath) const { return AssetTexture::loadTextureSettingInfoFile(pAssetPath); }
 
 	// Check if the file version in DDS already exists, if not or the import fails the function returns false;
 	DDSLoadCode loadDDS(void* const pAsset, const char* const pPath, AssetLibrary* const pMngr) {
@@ -345,8 +355,8 @@ struct TextureViewAssetFactory : public IAssetFactory {
 		AssetTexture& texture = *(AssetTexture*)(pAsset);
 		texture.tex = pMngr->getDevice()->requestResource<Texture>();
 
-		texture.assetSamplerDesc = getTextureSamplerDesc(pPath);
-		bool const createSucceeded = texture.tex->create(desc, &initalData[0], texture.assetSamplerDesc);
+		texture.meta = getAssetTextureMeta(pPath);
+		bool const createSucceeded = texture.tex->create(desc, &initalData[0], texture.meta.assetSamplerDesc);
 
 		if (createSucceeded == false) {
 			texture.tex.Release();
@@ -404,8 +414,8 @@ struct TextureViewAssetFactory : public IAssetFactory {
 
 		texture.tex = pMngr->getDevice()->requestResource<Texture>();
 
-		const SamplerDesc samplerDesc = getTextureSamplerDesc(pPath);
-		texture.tex->create(textureDesc, &textureDataDesc, samplerDesc);
+		texture.meta = getAssetTextureMeta(pPath);
+		texture.tex->create(textureDesc, &textureDataDesc, texture.meta.assetSamplerDesc);
 
 		if (textureData != nullptr) {
 			stbi_image_free((void*)textureData);

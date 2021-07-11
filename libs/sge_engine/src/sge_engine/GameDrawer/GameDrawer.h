@@ -99,12 +99,9 @@ struct SGE_ENGINE_API IGameDrawer {
 	/// TODO: should we embed this in @prepareForNewFrame()
 	virtual void updateShadowMaps(const GameDrawSets& drawSets) = 0;
 
-	virtual void drawWorld(const GameDrawSets& drawSets, const DrawReason drawReason);
-	virtual void drawActor(
-	    const GameDrawSets& drawSets, EditMode const editMode, Actor* actor, int const itemIndex, DrawReason const drawReason) = 0;
-
-	bool drawItem(const GameDrawSets& drawSets, const SelectedItem& item, bool const selectionMode);
-
+	virtual void drawItem(const GameDrawSets& drawSets, const SelectedItemDirect& item, DrawReason drawReason) = 0;
+	virtual void drawWorld(const GameDrawSets& drawSets, const DrawReason drawReason) = 0;
+	
 	GameWorld* getWorld() { return m_world; }
 	const GameWorld* getWorld() const { return m_world; }
 

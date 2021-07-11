@@ -1,3 +1,4 @@
+#include "sge_engine/GameWorld.h"
 #include "sge_engine/TypeRegister.h"
 #include "sge_utils/utils/strings.h"
 
@@ -102,6 +103,15 @@ Actor* Trait::getActor() {
 const Actor* Trait::getActor() const {
 	const Actor* actor = dynamic_cast<const Actor*>(getObject());
 	return actor;
+}
+
+SelectedItemDirect SelectedItemDirect::formSelectedItem(const SelectedItem& item, GameWorld& world) {
+	SelectedItemDirect result;
+	result.editMode = item.editMode;
+	result.index = item.index;
+	result.gameObject = world.getObjectById(item.objectId);
+
+	return result;
 }
 
 } // namespace sge

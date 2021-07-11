@@ -7,6 +7,7 @@
 namespace sge {
 
 struct ICamera;
+struct TraitViewportIconRenderItem;
 
 ///-----------------------------------------------------------------------
 /// A viewport icon, always facing the camera represnting an object.
@@ -43,6 +44,8 @@ struct SGE_ENGINE_API TraitViewportIcon : public Trait {
 
 	/// Returns the loaded icon texture, nullptr is returned if none is loaded.
 	Texture* getIconTexture() const;
+
+	void getRenderItems(std::vector<TraitViewportIconRenderItem>& renderItems);
 
   private:
 	float m_pixelSizeUnitsScreenSpace = 0.001f;

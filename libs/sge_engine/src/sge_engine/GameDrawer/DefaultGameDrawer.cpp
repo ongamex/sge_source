@@ -34,6 +34,13 @@
 
 namespace sge {
 
+struct LegacyRenderItem : IRenderItem {
+	LegacyRenderItem(std::function<void()> drawFn)
+	    : drawFn(drawFn) {}
+
+	std::function<void()> drawFn;
+};
+
 static inline const vec4f kPrimarySelectionColor1 = vec4f(0.25f, 0.8f, 0.63f, 1.f);
 static inline const vec4f kPrimarySelectionColor2 = vec4f(0.25f, 1.f, 0.63f, 1.f);
 vec4f getPrimarySelectionColor() {
@@ -310,9 +317,111 @@ void DefaultGameDrawer::fillGeneralModsWithLights(Actor* actor, DrawReasonInfo& 
 	generalMods.lightsCount = int(m_shadingLightPerObject.size());
 }
 
+void DefaultGameDrawer::getRenderItemsForActor(const SelectedItemDirect& item, DrawReason UNUSED(drawReason)) {
+	if (item.gameObject == nullptr) {
+		return;
+	}
+
+	Actor* actor = item.gameObject->getActor();
+	if (actor == nullptr) {
+		return;
+	}
+
+	//if(isInFrustum(drawSets, actor)) {
+	//
+	//}
+
+	if (TraitModel* const trait = getTrait<TraitModel>(actor); item.editMode == editMode_actors && trait != nullptr) {
+		trait->getRenderItems(m_RIs_traitModel);
+	}
+
+	if (TraitViewportIcon* const trait = getTrait<TraitViewportIcon>(actor)) {
+		trait->getRenderItems(m_RIs_traitViewportIcon);
+	}
+}
+
+void DefaultGameDrawer::drawCurrentRenderItems(const GameDrawSets& drawSets, DrawReason drawReason) {
+	// DrawReasonInfo is overused for multiple things.
+	DrawReasonInfo generalMods;
+	const bool useWireframe = drawReason_IsVisualizeSelection(drawReason);
+	const vec4f wireframeColor =
+	    (drawReason == drawReason_visualizeSelectionPrimary) ? getPrimarySelectionColor() : kSecondarySelectionColor;
+	const int wireframeColorInt = colorToIntRgba(wireframeColor);
+	vec4f selectionTint = useWireframe ? wireframeColor : vec4f(0.f);
+	selectionTint.w = useWireframe ? 1.f : 0.f;
+
+	generalMods.selectionTint = selectionTint;
+	generalMods.isRenderingShadowMap = (drawReason == drawReason_gameplayShadow);
+	generalMods.ambientLightColor = getWorld()->m_ambientLight;
+	generalMods.uRimLightColorWWidth = vec4f(getWorld()->m_rimLight, getWorld()->m_rimCosineWidth);
+
+	// Extract the alpha sorting plane.
+	const vec3f zSortingPlanePosWs = drawSets.drawCamera->getCameraPosition();
+	const vec3f zSortingPlaneNormal = drawSets.drawCamera->getCameraLookDir();
+	const Plane zSortPlane = Plane::FromPosAndDir(zSortingPlanePosWs, zSortingPlaneNormal);
+
+	// Gather and stort the render items.
+	m_RIs_opaque.clear();
+	m_RIs_alphaSorted.clear();
+
+	for (auto& ri : m_RIs_traitModel) {
+		ri.zSortingValue = zSortPlane.Distance(ri.zSortingPositionWs);
+		if (ri.needsAlphaSorting) {
+			m_RIs_alphaSorted.push_back(&ri);
+		} else {
+			m_RIs_opaque.push_back(&ri);
+		}
+	}
+
+	for (auto& ri : m_RIs_traitViewportIcon) {
+		ri.zSortingValue = zSortPlane.Distance(ri.zSortingPositionWs);
+
+		if (ri.needsAlphaSorting) {
+			m_RIs_alphaSorted.push_back(&ri);
+		} else {
+			m_RIs_opaque.push_back(&ri);
+		}
+	}
+
+	std::sort(m_RIs_opaque.begin(), m_RIs_opaque.end(), [](IRenderItem* a, IRenderItem* b)->bool {
+		return a->zSortingValue < b->zSortingValue;
+	});
+
+	std::sort(m_RIs_alphaSorted.rbegin(), m_RIs_alphaSorted.rend(), [](IRenderItem* a, IRenderItem* b)->bool {
+		return a->zSortingValue < b->zSortingValue;
+	});
+
+	// TODO Sort the render items.
+
+	// Draw the render items.
+	auto drawRenderItems = [&](std::vector<IRenderItem*>& renderItems) -> void {
+		for (auto& riRaw : renderItems) {
+			if (auto riTraitModel = dynamic_cast<TraitModelRenderItem*>(riRaw)) {
+				draw_TraitModelRenderItem(*riTraitModel, drawSets, generalMods, drawReason);
+			} else if (auto riTraitViewportIcon = dynamic_cast<TraitViewportIconRenderItem*>(riRaw)) {
+				draw_TraitViewportIconRenderItem(*riTraitViewportIcon, drawSets, drawReason);
+			} else {
+				sgeAssert(false && "Render Item does not have a drawing implementation");
+			}
+		}
+	};
+
+	drawRenderItems(m_RIs_opaque);
+	drawRenderItems(m_RIs_alphaSorted);
+}
+
+void DefaultGameDrawer::drawItem(const GameDrawSets& drawSets, const SelectedItemDirect& item, DrawReason drawReason) {
+	clearRenderItems();
+
+	getRenderItemsForActor(item, drawReason);
+	drawCurrentRenderItems(drawSets, drawReason);
+}
 
 void DefaultGameDrawer::drawWorld(const GameDrawSets& drawSets, const DrawReason drawReason) {
-	// Draw the sky
+	clearRenderItems();
+
+	// Draw the sky.
+	// TODO: render it after the opaque objects and before alpha sorted ones.
 	if (drawReason_IsGameOrEditNoShadowPass(drawReason)) {
 		const std::vector<GameObject*>* allSkies = getWorld()->getObjects(sgeTypeId(ASky));
 
@@ -340,8 +449,74 @@ void DefaultGameDrawer::drawWorld(const GameDrawSets& drawSets, const DrawReason
 		}
 	}
 
-	IGameDrawer::drawWorld(drawSets, drawReason);
+	// Get the render items for all actors in the scene.
+	getWorld()->iterateOverPlayingObjects(
+	    [&](GameObject* object) -> bool {
+		    // TODO: Skip this check for whole types. We know they are not actors...
+		    if (Actor* actor = object->getActor()) {
+			    AABox3f actorBboxOS = actor->getBBoxOS();
+			    SelectedItemDirect item;
+			    item.editMode = editMode_actors;
+			    item.gameObject = actor;
+			    getRenderItemsForActor(item, drawReason);
+		    }
+
+		    return true;
+	    },
+	    false);
+
+	// Draw the render items.
+	drawCurrentRenderItems(drawSets, drawReason);
+
+	// Draw the debug draw commands.
+	getCore()->getDebugDraw().draw(drawSets.rdest, drawSets.drawCamera->getProjView());
 }
+
+void DefaultGameDrawer::draw_TraitModelRenderItem(TraitModelRenderItem& ri,
+                                                  const GameDrawSets& drawSets,
+                                                  const DrawReasonInfo& generalMods,
+                                                  DrawReason const drawReason) {
+	const vec3f camPos = drawSets.drawCamera->getCameraPosition();
+	const vec3f camLookDir = drawSets.drawCamera->getCameraLookDir();
+
+	const mat4f n2w = ri.traitModel->getActor()->getTransformMtx();
+
+	ModelNode* node = ri.evalModel->m_model->nodeAt(ri.iEvalNode);
+
+	const MeshAttachment& meshAttachment = node->meshAttachments[ri.iEvalNodeMechAttachmentIndex];
+	const EvaluatedMesh& evalMesh = ri.evalModel->getEvalMesh(meshAttachment.attachedMeshIndex);
+	const EvaluatedNode& evalNode = ri.evalModel->getEvalNode(ri.iEvalNode);
+
+	const Geometry& geom = evalMesh.geometry;
+
+	mat4f const finalTrasform = (evalMesh.geometry.hasVertexSkinning()) ? n2w : n2w * evalNode.evalGlobalTransform;
+
+	if (!drawReason_IsVisualizeSelection(drawReason)) {
+		m_modeldraw.drawGeometry(drawSets.rdest, camPos, camLookDir, drawSets.drawCamera->getProjView(), finalTrasform, generalMods, &geom,
+		                         ri.mtl, ri.traitModel->m_models[ri.iModel].instanceDrawMods);
+	} else {
+		m_constantColorShader.drawGeometry(drawSets.rdest, drawSets.drawCamera->getProjView(), finalTrasform, geom,
+		                                   generalMods.selectionTint);
+	}
+}
+
+void DefaultGameDrawer::draw_TraitViewportIconRenderItem(TraitViewportIconRenderItem& ri,
+                                                         const GameDrawSets& drawSets,
+                                                         DrawReason const drawReason) {
+	vec4f wireframeColor = vec4f(1.f);
+
+	if (drawReason == drawReason_visualizeSelectionPrimary)
+		wireframeColor = getPrimarySelectionColor();
+	else if (drawReason == drawReason_visualizeSelection)
+		wireframeColor = kSecondarySelectionColor;
+
+	Texture* iconTex = ri.traitIcon->getIconTexture();
+
+	if (iconTex != nullptr) {
+		const mat4f node2world = ri.traitIcon->computeNodeToWorldMtx(*drawSets.drawCamera);
+		m_texturedPlaneDraw.draw(drawSets.rdest, drawSets.drawCamera->getProjView() * node2world, iconTex, wireframeColor);
+	}
+};
 
 void DefaultGameDrawer::drawActor(
     const GameDrawSets& drawSets, EditMode const editMode, Actor* actor, int const itemIndex, DrawReason const drawReason) {
@@ -466,24 +641,22 @@ void DefaultGameDrawer::drawTraitModel(TraitModel* modelTrait,
 
 #if 1
 
-	std::vector<IRenderItem*> ris;
+	std::vector<TraitModelRenderItem> renderItems;
 
-	modelTrait->getRenderItems(ris);
+	modelTrait->getRenderItems(renderItems);
 
 	const vec3f camPos = drawSets.drawCamera->getCameraPosition();
 	const vec3f camLookDir = drawSets.drawCamera->getCameraLookDir();
 
 	const mat4f n2w = modelTrait->getActor()->getTransformMtx();
 
-	for (IRenderItem* ri : ris) {
-		TraitModelRenderItem* tri = static_cast<TraitModelRenderItem*>(ri);
+	for (TraitModelRenderItem& ri : renderItems) {
+		ModelNode* node = ri.evalModel->m_model->nodeAt(ri.iEvalNode);
 
-		ModelNode* node = tri->evalModel->m_model->nodeAt(tri->iEvalNode);
-
-		const MeshAttachment& meshAttachment = node->meshAttachments[tri->iEvalNodeMechAttachmentIndex];
-		const EvaluatedMaterial& mtl = tri->evalModel->getEvalMaterial(meshAttachment.attachedMaterialIndex);
-		const EvaluatedMesh& evalMesh = tri->evalModel->getEvalMesh(meshAttachment.attachedMeshIndex);
-		const EvaluatedNode& evalNode = tri->evalModel->getEvalNode(tri->iEvalNode);
+		const MeshAttachment& meshAttachment = node->meshAttachments[ri.iEvalNodeMechAttachmentIndex];
+		const EvaluatedMaterial& mtl = ri.evalModel->getEvalMaterial(meshAttachment.attachedMaterialIndex);
+		const EvaluatedMesh& evalMesh = ri.evalModel->getEvalMesh(meshAttachment.attachedMeshIndex);
+		const EvaluatedNode& evalNode = ri.evalModel->getEvalNode(ri.iEvalNode);
 
 		Material material;
 
@@ -512,7 +685,7 @@ void DefaultGameDrawer::drawTraitModel(TraitModel* modelTrait,
 
 		if (!drawReason_IsVisualizeSelection(drawReason)) {
 			m_modeldraw.drawGeometry(drawSets.rdest, camPos, camLookDir, drawSets.drawCamera->getProjView(), finalTrasform, generalMods,
-			                         &geom, material, modelTrait->m_models[tri->iModel].instanceDrawMods);
+			                         &geom, material, modelTrait->m_models[ri.iModel].instanceDrawMods);
 		} else {
 			m_constantColorShader.drawGeometry(drawSets.rdest, drawSets.drawCamera->getProjView(), finalTrasform, geom,
 			                                   generalMods.selectionTint);

@@ -375,10 +375,9 @@ void SceneWindow::drawOverlay(const GameDrawSets& drawSets) {
 
 	// Draw the selected objects.
 	for (int t = 0; t < inspector->m_selection.size(); ++t) {
-		Actor* const actor = inspector->m_world->getActorById(inspector->m_selection[t].objectId);
-		if (actor != nullptr) {
-			drawSets.gameDrawer->drawActor(drawSets, inspector->editMode, actor, inspector->m_selection[t].index,
-			                               t == 0 ? drawReason_visualizeSelectionPrimary : drawReason_visualizeSelection);
+		SelectedItemDirect selItem = SelectedItemDirect::formSelectedItem(inspector->m_selection[t], *world);
+		if (selItem.gameObject != nullptr) {
+			drawSets.gameDrawer->drawItem(drawSets, selItem, t == 0 ? drawReason_visualizeSelectionPrimary : drawReason_visualizeSelection);
 		}
 	}
 

@@ -174,6 +174,14 @@ struct SelectedItem {
 	int index = 0; // The index of the item. Depends on the edit mode.
 };
 
+struct SelectedItemDirect {
+	EditMode editMode = editMode_actors; // The mode the item was selected.
+	GameObject* gameObject = nullptr;
+	int index = 0; // The index of the item. Depends on the edit mode.
+
+	static SelectedItemDirect formSelectedItem(const SelectedItem& item, GameWorld& world);
+};
+
 /// @brief Traits are properties that can be attached to any game object.
 /// These properties are a way to provide reusable functionallity between different game objects.
 /// These functionallities migtht be, an engine functionallity - Rigid Bodies, Renderable 3D Models/Sprites, Viewport Icons and others.

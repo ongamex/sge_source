@@ -6,20 +6,11 @@
 #include "sge_engine/AssetProperty.h"
 #include "sge_engine/GameDrawer/IRenderItem.h"
 
-
 namespace sge {
 
 struct ICamera;
 struct TraitModel;
-
-struct TraitModelRenderItem : public IRenderItem {
-	TraitModel* traitModel = nullptr;
-	int iModel = -1;
-	const EvaluatedModel* evalModel = nullptr;
-
-	int iEvalNode = -1; // The mesh to be rendered from the model.
-	int iEvalNodeMechAttachmentIndex = -1;
-};
+struct TraitModelRenderItem;
 
 /// @brief TraitModel is a trait designed to be attached in an Actor.
 /// It provides a simple way to assign a renderable 3D Model to the game object (both animated and static).
@@ -60,13 +51,9 @@ struct SGE_ENGINE_API TraitModel : public Trait {
 
 	AABox3f getBBoxOS() const;
 
-	void getRenderItems(std::vector<IRenderItem*>& renderItems);
+	void getRenderItems(std::vector<TraitModelRenderItem>& renderItems);
 
-	void invalidateCachedAssets() {
-		for (PerModelSettings& modelSets : m_models) {
-			modelSets.invalidateCachedAssets();
-		}
-	}
+	void invalidateCachedAssets();
 
 
   private:
@@ -118,6 +105,7 @@ struct SGE_ENGINE_API TraitModel : public Trait {
 		// This holds the evaluated 3D model to be rendered.
 		// If null the static EvaluatedModel of the asset is going to get rendered.
 		Optional<EvaluatedModel> m_evalModel;
+		float alphaMultiplier = 1.f;
 		InstanceDrawMods instanceDrawMods;
 
 		std::vector<MaterialOverride> m_materialOverrides;
@@ -132,8 +120,6 @@ struct SGE_ENGINE_API TraitModel : public Trait {
 	bool isRenderable = true;               ///< True if the whole trait is renderable.
 	bool isFixedModelsSize = true;          ///< if true the interface will not offer adding/removing more models to the trait.
 	std::vector<PerModelSettings> m_models; ///< A list of all models in their settings to rendered by the trait.
-
-	std::vector<TraitModelRenderItem> m_tempRenderItems;
 };
 
 } // namespace sge

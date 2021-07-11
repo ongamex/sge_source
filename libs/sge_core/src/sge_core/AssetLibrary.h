@@ -15,17 +15,24 @@ struct AssetLibrary;
 struct AudioTrack;
 using AudioAsset = std::shared_ptr<AudioTrack>;
 
-struct SGE_CORE_API AssetTexture {
-	GpuHandle<Texture> tex;
+struct AssetTextureMeta {
 	/// The sampler description defined by the asset file.
 	/// This is no necessery the actual descriptor assigned to @tex.
 	SamplerDesc assetSamplerDesc;
+
+	/// True if the texture is semi-trasparent. That means that there are alpha values != for zero or one.
+	bool isSemiTransparent = false;
+};
+
+struct SGE_CORE_API AssetTexture {
+	GpuHandle<Texture> tex;
+	AssetTextureMeta meta;
 
 	bool saveTextureSettingsToInfoFile(Asset& assetSelf);
 	/// @brief
 	/// @param [in] baseAssetPath is the path to the texture. It will get converted automatically to *.info file.
 	/// @return
-	static SamplerDesc loadTextureSettingInfoFile(const std::string& baseAssetPath);
+	static AssetTextureMeta loadTextureSettingInfoFile(const std::string& baseAssetPath);
 };
 
 struct AssetModel {
@@ -36,12 +43,12 @@ struct AssetModel {
 
 // Defines all posible asset types.
 enum class AssetType : int {
-	None,        ///< Just an invalid asset type, used as a default.
-	Model,       ///< A 3D model.
+	None,      ///< Just an invalid asset type, used as a default.
+	Model,     ///< A 3D model.
 	Texture2D, ///< AssetTexture
-	Text,        ///< A file containing some text (including code).
-	Sprite,      ///< A 2D sprite sheet animation.
-	Audio,       ///< Vorbis encoded audio file. Usually used for background music or longer audio tracks.
+	Text,      ///< A file containing some text (including code).
+	Sprite,    ///< A 2D sprite sheet animation.
+	Audio,     ///< Vorbis encoded audio file. Usually used for background music or longer audio tracks.
 
 	Count,
 };

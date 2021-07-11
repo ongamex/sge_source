@@ -1,4 +1,5 @@
 #include "TraitViewportIcon.h"
+#include "TraitViewportIconRenderItem.h"
 #include "sge_engine/Camera.h"
 #include "sge_engine/enums2d.h"
 
@@ -47,6 +48,15 @@ Texture* TraitViewportIcon::getIconTexture() const {
 	Texture* const texture =
 	    (assetTextureView != nullptr && assetTextureView->tex.IsResourceValid()) ? assetTextureView->tex.GetPtr() : nullptr;
 	return texture;
+}
+
+void TraitViewportIcon::getRenderItems(std::vector<TraitViewportIconRenderItem>& renderItems) {
+	Texture* const iconTexture = getIconTexture();
+	if (iconTexture) {
+		TraitViewportIconRenderItem ri;
+		ri.traitIcon = this;
+		renderItems.push_back(ri);
+	}
 }
 
 } // namespace sge

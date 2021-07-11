@@ -29,6 +29,7 @@ cbuffer ParamsCbFWDDefaultShading {
 	
 	float uRoughness;
 	int uPBRMtlFlags;
+	float alphaMultiplier;
 
 	float4 uRimLightColorWWidth;
 	float3 ambientLightColor;
@@ -397,6 +398,7 @@ float4 psMain(VS_OUTPUT IN) : SV_Target0 {
 
 	// Back to linear color space.
 	finalColor.xyz = pow(finalColor, 1.0f / 2.2f);
+	finalColor.w *= alphaMultiplier;
 
 	return finalColor;
 }

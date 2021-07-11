@@ -8,6 +8,8 @@
 #include "sge_engine/TexturedPlaneDraw.h"
 #include "sge_engine/actors/ALight.h"
 #include "sge_engine/traits/TraitParticles.h"
+#include "sge_engine/traits/TraitModelRenderItem.h"
+#include "sge_engine/traits/TraitViewportIconRenderItem.h"
 #include "sge_renderer/renderer/renderer.h"
 #include "sge_utils/math/mat4.h"
 
@@ -35,10 +37,15 @@ struct SGE_ENGINE_API DefaultGameDrawer : public IGameDrawer {
 	void prepareForNewFrame() final;
 	void updateShadowMaps(const GameDrawSets& drawSets) final;
 
-	void drawActor(
-	    const GameDrawSets& drawSets, EditMode const editMode, Actor* actor, int const itemIndex, DrawReason const drawReason) override;
+	void getRenderItemsForActor(const SelectedItemDirect& item, DrawReason drawReason);
 
-	virtual void drawWorld(const GameDrawSets& drawSets, const DrawReason drawReason) override;
+	void drawActor(const GameDrawSets& drawSets, EditMode const editMode, Actor* actor, int const itemIndex, DrawReason const drawReason);
+
+	void drawItem(const GameDrawSets& drawSets, const SelectedItemDirect& item, DrawReason drawReason) override;
+	void drawWorld(const GameDrawSets& drawSets, const DrawReason drawReason) override;
+
+	void drawCurrentRenderItems(const GameDrawSets& drawSets, DrawReason drawReason);
+
 
 	// A Legacy function that should end up not being used.
 	void drawActorLegacy(Actor* actor,
@@ -54,6 +61,15 @@ struct SGE_ENGINE_API DefaultGameDrawer : public IGameDrawer {
 	                            DrawReason const drawReason);
 
 	void drawTraitViewportIcon(TraitViewportIcon* viewportIcon, const GameDrawSets& drawSets, DrawReason const drawReason);
+
+
+	void draw_TraitModelRenderItem(TraitModelRenderItem& ri,
+	                               const GameDrawSets& drawSets,
+	                               const DrawReasonInfo& generalMods,
+	                               DrawReason const drawReason);
+
+	void draw_TraitViewportIconRenderItem(TraitViewportIconRenderItem& viewportIcon, const GameDrawSets& drawSets, DrawReason const drawReason);
+
 
 	void drawTraitModel(TraitModel* modelTrait,
 	                    const GameDrawSets& drawSets,
@@ -81,6 +97,13 @@ struct SGE_ENGINE_API DefaultGameDrawer : public IGameDrawer {
 	bool isInFrustum(const GameDrawSets& drawSets, Actor* actor) const;
 	void fillGeneralModsWithLights(Actor* actor, DrawReasonInfo& generalMods);
 
+	void clearRenderItems() {
+		m_RIs_opaque.clear();
+		m_RIs_alphaSorted.clear();
+		m_RIs_traitModel.clear();
+		m_RIs_traitViewportIcon.clear();
+	}
+
   public:
 	BasicModelDraw m_modeldraw;
 	ConstantColorWireShader m_constantColorShader;
@@ -89,6 +112,11 @@ struct SGE_ENGINE_API DefaultGameDrawer : public IGameDrawer {
 
 	std::vector<ShadingLightData> m_shadingLights;
 	std::vector<const ShadingLightData*> m_shadingLightPerObject;
+
+	std::vector<IRenderItem*> m_RIs_opaque;
+	std::vector<IRenderItem*> m_RIs_alphaSorted;
+	std::vector<TraitModelRenderItem> m_RIs_traitModel;
+	std::vector<TraitViewportIconRenderItem> m_RIs_traitViewportIcon;
 
 	// TODO: find a proper place for this
 	std::map<ObjectId, LightShadowInfo> m_perLightShadowFrameTarget;

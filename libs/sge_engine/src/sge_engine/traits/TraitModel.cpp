@@ -1,5 +1,6 @@
 #include "TraitModel.h"
 #include "IconsForkAwesome/IconsForkAwesome.h"
+#include "TraitModelRenderItem.h"
 #include "sge_core/SGEImGui.h"
 #include "sge_engine/EngineGlobal.h"
 #include "sge_engine/GameInspector.h"
@@ -15,7 +16,7 @@
 
 namespace sge {
 
-struct MDiffuseMaterial;
+struct MDiffuseMaterial; // User for creating material overrides.
 
 // clang-format off
 DefineTypeId(TraitModel, 20'03'01'0004);
@@ -30,10 +31,10 @@ ReflBlock() {
 		ReflMember(TraitModel::MaterialOverride, materialObjId).setPrettyName("Material Object")
 	;
 	ReflAddType(std::vector<TraitModel::MaterialOverride>);
-	
 
 	ReflAddType(TraitModel::PerModelSettings)
 		ReflMember(TraitModel::PerModelSettings, isRenderable)
+		ReflMember(TraitModel::PerModelSettings, alphaMultiplier).uiRange(0.f, 1.f, 0.01f)
 		ReflMember(TraitModel::PerModelSettings, m_assetProperty)
 		ReflMember(TraitModel::PerModelSettings, m_materialOverrides)
 		ReflMember(TraitModel::PerModelSettings, useSkeleton)
@@ -197,10 +198,7 @@ AABox3f TraitModel::getBBoxOS() const {
 	return bbox;
 }
 
-void TraitModel::getRenderItems(std::vector<IRenderItem*>& renderItems) {
-	m_tempRenderItems.clear();
-
-
+void TraitModel::getRenderItems(std::vector<TraitModelRenderItem>& renderItems) {
 	for (int iModel = 0; iModel < int(m_models.size()); iModel++) {
 		PerModelSettings& modelSets = m_models[iModel];
 		if (!modelSets.isRenderable) {
@@ -224,23 +222,54 @@ void TraitModel::getRenderItems(std::vector<IRenderItem*>& renderItems) {
 				TraitModelRenderItem renderItem;
 
 				const EvaluatedNode& evalNode = evalModel->getEvalNode(iNode);
-				for (int iAttach = 0; iAttach < evalModel->m_model->nodeAt(iNode)->meshAttachments.size(); ++iAttach) {
+				const ModelNode* node = evalModel->m_model->nodeAt(iNode);
+				int numAttachments = int(node->meshAttachments.size());
+				for (int iAttach = 0; iAttach < numAttachments; ++iAttach) {
+					const EvaluatedMaterial& mtl = evalModel->getEvalMaterial(node->meshAttachments[iAttach].attachedMaterialIndex);
+					Material material;
+					
+					material.alphaMultiplier = modelSets.alphaMultiplier * mtl.alphaMultiplier;
+
+					material.diffuseColor = mtl.diffuseColor;
+					material.metalness = mtl.metallic;
+					material.roughness = mtl.roughness;
+
+					material.diffuseTexture = isAssetLoaded(mtl.diffuseTexture) && mtl.diffuseTexture->asTextureView()
+					                              ? mtl.diffuseTexture->asTextureView()->tex.GetPtr()
+					                              : nullptr;
+
+					material.texNormalMap = isAssetLoaded(mtl.texNormalMap) && mtl.texNormalMap->asTextureView()
+					                            ? mtl.texNormalMap->asTextureView()->tex.GetPtr()
+					                            : nullptr;
+
+					material.texMetalness = isAssetLoaded(mtl.texMetallic) && mtl.texMetallic->asTextureView()
+					                            ? mtl.texMetallic->asTextureView()->tex.GetPtr()
+					                            : nullptr;
+
+					material.texRoughness = isAssetLoaded(mtl.texRoughness) && mtl.texRoughness->asTextureView()
+					                            ? mtl.texRoughness->asTextureView()->tex.GetPtr()
+					                            : nullptr;
+
+
+					renderItem.mtl = material;
 					renderItem.zSortingPositionWs = mat_mul_pos(node2world, evalNode.aabbGlobalSpace.center());
 					renderItem.traitModel = this;
 					renderItem.evalModel = evalModel;
 					renderItem.iModel = iModel;
 					renderItem.iEvalNode = iNode;
 					renderItem.iEvalNodeMechAttachmentIndex = iAttach;
-					renderItem.needsAlphaSorting = getActor()->m_forceAlphaZSort;
+					renderItem.needsAlphaSorting = getActor()->m_forceAlphaZSort || mtl.needsAlphaSorting || material.alphaMultiplier < 0.999f;
 
-					m_tempRenderItems.push_back(renderItem);
+					renderItems.push_back(renderItem);
 				}
 			}
 		}
 	}
+}
 
-	for (TraitModelRenderItem& ri : m_tempRenderItems) {
-		renderItems.push_back(&ri);
+void TraitModel::invalidateCachedAssets() {
+	for (PerModelSettings& modelSets : m_models) {
+		modelSets.invalidateCachedAssets();
 	}
 }
 
@@ -271,6 +300,10 @@ void editTraitModel(GameInspector& inspector, GameObject* actor, MemberChain cha
 			ImGuiEx::BeginGroupPanel(label.c_str());
 			if (ImGui::CollapsingHeader(label.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
 				chain.add(sgeFindMember(TraitModel::PerModelSettings, isRenderable));
+				ProperyEditorUIGen::doMemberUI(inspector, actor, chain);
+				chain.pop();
+
+				chain.add(sgeFindMember(TraitModel::PerModelSettings, alphaMultiplier));
 				ProperyEditorUIGen::doMemberUI(inspector, actor, chain);
 				chain.pop();
 

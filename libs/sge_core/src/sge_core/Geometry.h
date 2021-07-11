@@ -81,6 +81,7 @@ struct Material {
 
 	float metalness = 0.f;
 	float roughness = 0.30f;
+	float alphaMultiplier = 1.f;
 
 	bool disableCulling = false;
 };

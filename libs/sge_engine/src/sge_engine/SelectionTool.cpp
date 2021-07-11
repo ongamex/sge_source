@@ -24,7 +24,9 @@ int SelectionToolModeActors::getNumItems(GameInspector* inspector) {
 void SelectionToolModeActors::drawItem(GameInspector* inspector, int const itemIndex, const GameDrawSets& gameDrawSets) {
 	Actor* const actor = itemIndexToActor(inspector, itemIndex);
 	if (actor != nullptr) {
-		gameDrawSets.gameDrawer->drawActor(gameDrawSets, editMode_actors, actor, itemIndex, drawReason_selectionTool);
+		SelectedItemDirect sel;
+		sel.gameObject = actor;
+		gameDrawSets.gameDrawer->drawItem(gameDrawSets, sel, drawReason_selectionTool);
 	}
 }
 
@@ -126,9 +128,9 @@ int SelectionToolModePoints::getNumItems(GameInspector* UNUSED(inspector)) {
 }
 
 void SelectionToolModePoints::drawItem(GameInspector* inspector, int const itemIndex, const GameDrawSets& gameDrawSets) {
-	const Actor* const actor = inspector->m_world->getActorById(items[itemIndex].objectId);
-	if (actor) {
-		gameDrawSets.gameDrawer->drawItem(gameDrawSets, items[itemIndex], false);
+	SelectedItemDirect selItem = SelectedItemDirect::formSelectedItem(items[itemIndex], *inspector->m_world);
+	if (selItem.gameObject) {
+		gameDrawSets.gameDrawer->drawItem(gameDrawSets, selItem, drawReason_selectionTool);
 	}
 }
 

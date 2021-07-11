@@ -29,7 +29,8 @@ struct ParamsCbFWDDefaultShading {
 	float uRoughness;
 
 	int uPBRMtlFlags;
-	int uPBRMtlFlags_padding[2];
+	float alphaMultiplier;
+	int uPBRMtlFlags_padding;
 
 
 	vec4f uRimLightColorWWidth;
@@ -390,6 +391,7 @@ void BasicModelDraw::drawGeometry_FWDShading(const RenderDestination& rdest,
 	}
 
 	paramsCb.uPBRMtlFlags = pbrFlags;
+	paramsCb.alphaMultiplier = material.alphaMultiplier;
 
 	if (optUseNormalMap) {
 		shaderPerm.bind<64>(uniforms, uTexNormalMap, (void*)material.texNormalMap);
