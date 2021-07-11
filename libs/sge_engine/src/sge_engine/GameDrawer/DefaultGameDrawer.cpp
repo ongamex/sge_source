@@ -18,7 +18,6 @@
 #include "sge_engine/actors/ASky.h"
 #include "sge_engine/materials/Material.h"
 #include "sge_engine/traits/TraitModel.h"
-#include "sge_engine/traits/TraitMultiModel.h"
 #include "sge_engine/traits/TraitParticles.h"
 #include "sge_engine/traits/TraitRenderableGeom.h"
 #include "sge_engine/traits/TraitSprite.h"
@@ -385,10 +384,6 @@ void DefaultGameDrawer::drawActor(
 
 	if (TraitSprite* const triatSprite = getTrait<TraitSprite>(actor); editMode == editMode_actors && triatSprite) {
 		drawTraitSprite(triatSprite, drawSets, generalMods, drawReason);
-	}
-
-	if (TraitMultiModel* const multiModelTrait = getTrait<TraitMultiModel>(actor); editMode == editMode_actors && multiModelTrait) {
-		drawTraitMultiModel(multiModelTrait, drawSets, generalMods, drawReason);
 	}
 
 	if (TraitRenderableGeom* const ttRendGeom = getTrait<TraitRenderableGeom>(actor); editMode == editMode_actors && ttRendGeom) {
@@ -787,31 +782,6 @@ void DefaultGameDrawer::drawANavMesh(ANavMesh* navMesh,
 		drawSets.quickDraw->drawSolid_Execute(drawSets.rdest, drawSets.drawCamera->getProjView(), false,
 		                                      getCore()->getGraphicsResources().BS_backToFrontAlpha);
 		drawSets.quickDraw->drawWired_Execute(drawSets.rdest, drawSets.drawCamera->getProjView());
-	}
-}
-
-void DefaultGameDrawer::drawTraitMultiModel(TraitMultiModel* multiModelTrait,
-                                            const GameDrawSets& drawSets,
-                                            const DrawReasonInfo& generalMods,
-                                            DrawReason const UNUSED(drawReason)) {
-	const vec3f camPos = drawSets.drawCamera->getCameraPosition();
-	const vec3f camLookDir = drawSets.drawCamera->getCameraLookDir();
-	Actor* actor = multiModelTrait->getActor();
-
-	for (TraitMultiModel::Element& elem : multiModelTrait->models) {
-		if (elem.isRenderable) {
-			AssetModel* const model = elem.assetProperty.getAssetModel();
-			if (model && model->staticEval.isInitialized()) {
-				mat4f n2w;
-				if (elem.isAdditionalTransformInWorldSpace)
-					n2w = elem.additionalTransform;
-				else
-					n2w = actor->getTransformMtx() * elem.additionalTransform;
-
-				m_modeldraw.draw(drawSets.rdest, camPos, camLookDir, drawSets.drawCamera->getProjView(), n2w, generalMods,
-				                 model->staticEval, InstanceDrawMods()); // TODO MODS
-			}
-		}
 	}
 }
 

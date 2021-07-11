@@ -16,7 +16,6 @@ namespace sge {
 struct TraitTexturedPlane;
 struct TraitModel;
 struct TraitSprite;
-struct TraitMultiModel;
 struct TraitViewportIcon;
 struct TraitPath3DFoQuickPlatform;
 struct TraitRenderableGeom;
@@ -65,11 +64,6 @@ struct SGE_ENGINE_API DefaultGameDrawer : public IGameDrawer {
 	                     const GameDrawSets& drawSets,
 	                     const DrawReasonInfo& generalMods,
 	                     DrawReason const drawReason);
-
-	void drawTraitMultiModel(TraitMultiModel* multiModelTrait,
-	                         const GameDrawSets& drawSets,
-	                         const DrawReasonInfo& generalMods,
-	                         DrawReason const drawReason);
 
 	void drawTraitRenderableGeom(TraitRenderableGeom* ttRendGeom, const GameDrawSets& drawSets, const DrawReasonInfo& generalMods);
 
