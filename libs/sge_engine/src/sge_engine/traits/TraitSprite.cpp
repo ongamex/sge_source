@@ -1,9 +1,9 @@
 #include "TraitSprite.h"
 #include "IconsForkAwesome/IconsForkAwesome.h"
 #include "sge_core/SGEImGui.h"
+#include "sge_engine/Camera.h"
 #include "sge_engine/EngineGlobal.h"
 #include "sge_engine/windows/PropertyEditorWindow.h"
-#include "sge_engine/Camera.h"
 
 namespace sge {
 // clang-format off
@@ -150,26 +150,23 @@ AABox3f TraitSprite::ImageSettings::computeBBoxOS(const Asset& asset, const mat4
 void editTraitSprite(GameInspector& inspector, GameObject* actor, MemberChain chain) {
 	TraitSprite& traitSprite = *(TraitSprite*)chain.follow(actor);
 
-	ImGuiEx::BeginGroupPanel("Sprte Trait");
-
-	chain.add(sgeFindMember(TraitSprite, m_assetProperty));
-	ProperyEditorUIGen::doMemberUI(inspector, actor, chain);
-	chain.pop();
-
-	if (traitSprite.m_assetProperty.getAssetSprite()) {
-		chain.add(sgeFindMember(TraitSprite, imageSettings));
+	if (ImGui::CollapsingHeader(ICON_FK_PICTURE_O " Sprte Trait")) {
+		chain.add(sgeFindMember(TraitSprite, m_assetProperty));
 		ProperyEditorUIGen::doMemberUI(inspector, actor, chain);
 		chain.pop();
+
+		if (traitSprite.m_assetProperty.getAssetSprite()) {
+			chain.add(sgeFindMember(TraitSprite, imageSettings));
+			ProperyEditorUIGen::doMemberUI(inspector, actor, chain);
+			chain.pop();
+		}
+
+		if (traitSprite.m_assetProperty.getAssetTexture()) {
+			chain.add(sgeFindMember(TraitSprite, imageSettings));
+			ProperyEditorUIGen::doMemberUI(inspector, actor, chain);
+			chain.pop();
+		}
 	}
-
-	if (traitSprite.m_assetProperty.getAssetTexture()) {
-		chain.add(sgeFindMember(TraitSprite, imageSettings));
-		ProperyEditorUIGen::doMemberUI(inspector, actor, chain);
-		chain.pop();
-	}
-
-
-	ImGuiEx::EndGroupPanel();
 }
 
 SgePluginOnLoad() {

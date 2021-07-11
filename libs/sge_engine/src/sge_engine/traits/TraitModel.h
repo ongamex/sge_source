@@ -15,9 +15,7 @@ struct TraitModel;
 struct TraitModelRenderItem : public IRenderItem {
 	TraitModel* traitModel = nullptr;
 	int iModel = -1;
-
 	const EvaluatedModel* evalModel = nullptr;
-
 
 	int iEvalNode = -1; // The mesh to be rendered from the model.
 	int iEvalNodeMechAttachmentIndex = -1;
@@ -40,7 +38,7 @@ struct TraitModelRenderItem : public IRenderItem {
 ///    Lets say that your 3D artist has prepared a grass and bush models that you want to scatter around the level.
 ///    It would be thedious to have a separate game object for each 3D model.
 ///    Instead you might do what the @AStaticObstacle does, have the model be changed via Propery Editor Window.
-///    In that way you have I generic actor type that could be configured to your desiers.
+///    In that way you have a generic actor type that could be configured to your desiers.
 ///    In order for the game object to take into account the change you need in your Actor::postUpdate to
 ///    to update the trait, see if the model has been changed and maybe update the rigid body for that actor.
 DefineTypeIdExists(TraitModel);
@@ -52,15 +50,8 @@ struct SGE_ENGINE_API TraitModel : public Trait {
 	void setModel(const char* assetPath, bool updateNow);
 	void setModel(std::shared_ptr<Asset>& asset, bool updateNow);
 
-	void addModel(const char* assetPath, bool updateNow) {
-		m_models.push_back(PerModelSettings());
-		m_models.back().setModel(assetPath, updateNow);
-	}
-
-	void addModel(std::shared_ptr<Asset>& asset, bool updateNow) {
-		m_models.push_back(PerModelSettings());
-		m_models.back().setModel(asset, updateNow);
-	}
+	void addModel(const char* assetPath, bool updateNow);
+	void addModel(std::shared_ptr<Asset>& asset, bool updateNow);
 
 	/// Not called automatically see the class comment above.
 	/// Updates the working models.
@@ -71,22 +62,15 @@ struct SGE_ENGINE_API TraitModel : public Trait {
 
 	void getRenderItems(std::vector<IRenderItem*>& renderItems);
 
-	void clear() {
+	void invalidateCachedAssets() {
 		for (PerModelSettings& modelSets : m_models) {
-			modelSets.clear();
+			modelSets.invalidateCachedAssets();
 		}
 	}
 
 
   private:
-	bool updateAssetProperties() {
-		bool hasChange = false;
-		for (PerModelSettings& model : m_models) {
-			hasChange |= model.updateAssetProperty();
-		}
-
-		return hasChange;
-	}
+	bool updateAssetProperties();
 
   public:
 	struct MaterialOverride {
@@ -99,7 +83,7 @@ struct SGE_ENGINE_API TraitModel : public Trait {
 		    : m_assetProperty(AssetType::Model) {}
 
 		/// Invalidates the asset property focing an update.
-		void clear() { m_assetProperty.clear(); }
+		void invalidateCachedAssets() { m_assetProperty.clear(); }
 
 		bool updateAssetProperty() {
 			if (m_assetProperty.update()) {
@@ -118,20 +102,8 @@ struct SGE_ENGINE_API TraitModel : public Trait {
 		void setNoLighting(bool v) { instanceDrawMods.forceNoLighting = v; }
 		bool getNoLighting() const { return instanceDrawMods.forceNoLighting; }
 
-		void setModel(const char* assetPath, bool updateNow) {
-			m_assetProperty.setTargetAsset(assetPath);
-			if (updateNow) {
-				updateAssetProperty();
-			}
-		}
-
-		void setModel(std::shared_ptr<Asset>& asset, bool updateNow) {
-			m_assetProperty.setAsset(asset);
-			m_evalModel = NullOptional();
-			if (updateNow) {
-				updateAssetProperty();
-			}
-		}
+		void setModel(const char* assetPath, bool updateNow);
+		void setModel(std::shared_ptr<Asset>& asset, bool updateNow);
 
 		AABox3f getBBoxOS() const;
 

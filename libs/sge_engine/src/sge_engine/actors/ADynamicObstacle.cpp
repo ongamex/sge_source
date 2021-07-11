@@ -37,7 +37,7 @@ void ADynamicObstacle::onPlayStateChanged(bool const isStartingToPlay) {
 }
 
 void ADynamicObstacle::onDuplocationComplete() {
-	m_traitModel.clear();
+	m_traitModel.invalidateCachedAssets();
 }
 
 void ADynamicObstacle::postUpdate(const GameUpdateSets& UNUSED(u)) {
