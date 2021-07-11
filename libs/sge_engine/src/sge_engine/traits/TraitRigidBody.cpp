@@ -33,7 +33,7 @@ bool TraitRigidBody::createBasedOnModel(const EvaluatedModel& eval, float mass, 
 	destroyRigidBody();
 
 	std::vector<CollsionShapeDesc> shapeDesc;
-	if (initializeCollisionShapeBasedOnModel(shapeDesc, eval)) {
+	if (addCollisionShapeBasedOnModel(shapeDesc, eval)) {
 		getRigidBody()->create(getActor(), shapeDesc.data(), int(shapeDesc.size()), mass, noResponse);
 		getRigidBody()->setTransformAndScaling(getActor()->getTransform(), true);
 

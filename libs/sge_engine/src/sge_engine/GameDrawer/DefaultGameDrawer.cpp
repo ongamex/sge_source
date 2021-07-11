@@ -465,7 +465,7 @@ void DefaultGameDrawer::drawTraitModel(TraitModel* modelTrait,
                                        const GameDrawSets& drawSets,
                                        const DrawReasonInfo& generalMods,
                                        DrawReason const drawReason) {
-	if (modelTrait->getRenderable() == false) {
+	if (modelTrait->isRenderable == false) {
 		return;
 	}
 
@@ -517,7 +517,7 @@ void DefaultGameDrawer::drawTraitModel(TraitModel* modelTrait,
 
 		if (!drawReason_IsVisualizeSelection(drawReason)) {
 			m_modeldraw.drawGeometry(drawSets.rdest, camPos, camLookDir, drawSets.drawCamera->getProjView(), finalTrasform, generalMods,
-			                         &geom, material, modelTrait->instanceDrawMods);
+			                         &geom, material, modelTrait->m_models[tri->iModel].instanceDrawMods);
 		} else {
 			m_constantColorShader.drawGeometry(drawSets.rdest, drawSets.drawCamera->getProjView(), finalTrasform, geom,
 			                                   generalMods.selectionTint);

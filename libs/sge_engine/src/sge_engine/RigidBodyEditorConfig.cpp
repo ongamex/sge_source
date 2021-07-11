@@ -2,6 +2,8 @@
 #include "Actor.h"
 #include "IconsForkAwesome/IconsForkAwesome.h"
 #include "sge_core/SGEImGui.h"
+#include "sge_engine/GameWorld.h"
+#include "sge_engine/RigidBodyFromModel.h"
 #include "sge_engine/windows/PropertyEditorWindow.h"
 #include "traits/TraitModel.h"
 #include "traits/TraitRigidBody.h"
@@ -109,10 +111,17 @@ bool RigidBodyConfigurator::apply(Actor& actor, bool addToWorldNow) const {
 		case shapeSource_fromTraitModel: {
 			TraitModel* const traitModel = getTrait<TraitModel>(&actor);
 			if (traitModel) {
-				AssetModel* const assetModel = traitModel->getAssetProperty().getAssetModel();
-				if (assetModel) {
-					traitRb->destroyRigidBody();
-					traitRb->createBasedOnModel(assetModel->staticEval, mass, false, false);
+				traitRb->destroyRigidBody();
+
+				std::vector<CollsionShapeDesc> collisionShapes;
+				addCollisionShapeBasedOnTraitModel(collisionShapes, *traitModel);
+
+				traitRb->getRigidBody()->create(&actor, collisionShapes.data(), int(collisionShapes.size()), mass, false);
+				traitRb->getRigidBody()->setTransformAndScaling(actor.getTransform(), true);
+
+				if (addToWorldNow) {
+					GameWorld* const world = actor.getWorld();
+					world->physicsWorld.addPhysicsObject(*traitRb->getRigidBody());
 				}
 			}
 		} break;

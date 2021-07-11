@@ -129,9 +129,9 @@ struct Player : public Actor {
 
 		float squash = wobbleAmplitude;
 
-		ttModel.setAdditionalTransform(mat4f::getRotationQuat(getTransform().r.inverse()) * mat4f::getTranslation(0.f, -0.5f, 0.f) *
-		                               mat4f::getSquashyScalingY(squash) * mat4f::getTranslation(0.f, 0.5f, 0.f) *
-		                               mat4f::getRotationQuat(getTransform().r));
+		ttModel.m_models[0].m_additionalTransform = mat4f::getRotationQuat(getTransform().r.inverse()) *
+		                                            mat4f::getTranslation(0.f, -0.5f, 0.f) * mat4f::getSquashyScalingY(squash) *
+		                                            mat4f::getTranslation(0.f, 0.5f, 0.f) * mat4f::getRotationQuat(getTransform().r);
 	}
 };
 

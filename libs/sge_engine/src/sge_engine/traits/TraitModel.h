@@ -14,7 +14,11 @@ struct TraitModel;
 
 struct TraitModelRenderItem : public IRenderItem {
 	TraitModel* traitModel = nullptr;
+	int iModel = -1;
+
 	const EvaluatedModel* evalModel = nullptr;
+
+
 	int iEvalNode = -1; // The mesh to be rendered from the model.
 	int iEvalNodeMechAttachmentIndex = -1;
 };
@@ -43,63 +47,45 @@ DefineTypeIdExists(TraitModel);
 struct SGE_ENGINE_API TraitModel : public Trait {
 	SGE_TraitDecl_Full(TraitModel);
 
-	TraitModel()
-	    : m_assetProperty(AssetType::Model) {}
+	TraitModel() = default;
 
-	void setModel(const char* assetPath, bool updateNow) {
-		m_assetProperty.setTargetAsset(assetPath);
-		if (updateNow) {
-			postUpdate();
-		}
+	void setModel(const char* assetPath, bool updateNow);
+	void setModel(std::shared_ptr<Asset>& asset, bool updateNow);
+
+	void addModel(const char* assetPath, bool updateNow) {
+		m_models.push_back(PerModelSettings());
+		m_models.back().setModel(assetPath, updateNow);
 	}
 
-	void setModel(std::shared_ptr<Asset>& asset, bool updateNow) {
-		m_assetProperty.setAsset(asset);
-		m_evalModel = NullOptional();
-		if (updateNow) {
-			updateAssetProperty();
-		}
+	void addModel(std::shared_ptr<Asset>& asset, bool updateNow) {
+		m_models.push_back(PerModelSettings());
+		m_models.back().setModel(asset, updateNow);
 	}
 
 	/// Not called automatically see the class comment above.
-	/// Updates the working model.
-	/// Returns true if the model has been changed (no matter if it is valid or not).
-	bool postUpdate() { return updateAssetProperty(); }
-
-	/// Invalidates the asset property focing an update.
-	void clear() { m_assetProperty.clear(); }
-
-	AssetProperty& getAssetProperty() { return m_assetProperty; }
-	const AssetProperty& getAssetProperty() const { return m_assetProperty; }
-
-	mat4f getAdditionalTransform() const { return m_additionalTransform; }
-	void setAdditionalTransform(const mat4f& tr) { m_additionalTransform = tr; }
+	/// Updates the working models.
+	/// Returns true if a model has been changed (no matter if it is valid or not).
+	bool postUpdate() { return updateAssetProperties(); }
 
 	AABox3f getBBoxOS() const;
 
-	void setRenderable(bool v) { isRenderable = v; }
-	bool getRenderable() const { return isRenderable; }
-	void setNoLighting(bool v) { instanceDrawMods.forceNoLighting = v; }
-	bool getNoLighting() const { return instanceDrawMods.forceNoLighting; }
-
-	void computeNodeToBoneIds();
-	void computeSkeleton(std::vector<mat4f>& boneOverrides);
-
 	void getRenderItems(std::vector<IRenderItem*>& renderItems);
 
-  private:
-	bool updateAssetProperty() {
-		if (m_assetProperty.update()) {
-			m_evalModel = NullOptional();
-			return true;
+	void clear() {
+		for (PerModelSettings& modelSets : m_models) {
+			modelSets.clear();
 		}
-		return false;
 	}
 
-	void onModelChanged() {
-		useSkeleton = false;
-		rootSkeletonId = ObjectId();
-		nodeToBoneId.clear();
+
+  private:
+	bool updateAssetProperties() {
+		bool hasChange = false;
+		for (PerModelSettings& model : m_models) {
+			hasChange |= model.updateAssetProperty();
+		}
+
+		return hasChange;
 	}
 
   public:
@@ -108,22 +94,72 @@ struct SGE_ENGINE_API TraitModel : public Trait {
 		ObjectId materialObjId;
 	};
 
+	struct PerModelSettings {
+		PerModelSettings()
+		    : m_assetProperty(AssetType::Model) {}
+
+		/// Invalidates the asset property focing an update.
+		void clear() { m_assetProperty.clear(); }
+
+		bool updateAssetProperty() {
+			if (m_assetProperty.update()) {
+				m_evalModel = NullOptional();
+				return true;
+			}
+			return false;
+		}
+
+		void onModelChanged() {
+			useSkeleton = false;
+			rootSkeletonId = ObjectId();
+			nodeToBoneId.clear();
+		}
+
+		void setNoLighting(bool v) { instanceDrawMods.forceNoLighting = v; }
+		bool getNoLighting() const { return instanceDrawMods.forceNoLighting; }
+
+		void setModel(const char* assetPath, bool updateNow) {
+			m_assetProperty.setTargetAsset(assetPath);
+			if (updateNow) {
+				updateAssetProperty();
+			}
+		}
+
+		void setModel(std::shared_ptr<Asset>& asset, bool updateNow) {
+			m_assetProperty.setAsset(asset);
+			m_evalModel = NullOptional();
+			if (updateNow) {
+				updateAssetProperty();
+			}
+		}
+
+		AABox3f getBBoxOS() const;
+
+		void computeNodeToBoneIds(TraitModel& ownerTraitModel);
+		void computeSkeleton(TraitModel& ownerTraitModel, std::vector<mat4f>& boneOverrides);
+
+		bool isRenderable = true;
+		AssetProperty m_assetProperty;
+		mat4f m_additionalTransform = mat4f::getIdentity();
+
+		// Used when the trait is going to render an animated model.
+		// This holds the evaluated 3D model to be rendered.
+		// If null the static EvaluatedModel of the asset is going to get rendered.
+		Optional<EvaluatedModel> m_evalModel;
+		InstanceDrawMods instanceDrawMods;
+
+		std::vector<MaterialOverride> m_materialOverrides;
+
+		// External skeleton, useful for IK. Not sure for regular skinned meshes.
+		bool useSkeleton = false;
+		ObjectId rootSkeletonId;
+		std::unordered_map<int, ObjectId> nodeToBoneId;
+	};
+
   public:
-	bool isRenderable = true;
-	AssetProperty m_assetProperty;
-	mat4f m_additionalTransform = mat4f::getIdentity();
-
-	// Used when the trait is going to render an animated model.
-	// This hold the evaluated 3D model to be rendered.
-	Optional<EvaluatedModel> m_evalModel;
-	InstanceDrawMods instanceDrawMods;
-
-	std::vector<MaterialOverride> m_materialOverrides;
-
-	// External skeleton, useful for IK. Not sure for regular skinned meshes.
-	bool useSkeleton = false;
-	ObjectId rootSkeletonId;
-	std::unordered_map<int, ObjectId> nodeToBoneId;
+	bool isRenderable = true;               ///< True if the whole trait is renderable.
+	bool isFixedModelsSize = true;          ///< if true the interface will not offer adding/removing more models to the trait.
+	std::vector<PerModelSettings> m_models; ///< A list of all models in their settings to rendered by the trait.
 
 	std::vector<TraitModelRenderItem> m_tempRenderItems;
 };

@@ -36,7 +36,10 @@ void AStaticObstacle::create() {
 	registerTrait(m_traitRB);
 	registerTrait(m_traitModel);
 	registerTrait(m_traitSprite);
-	m_traitModel.getAssetProperty().setTargetAsset("assets/editor/models/box.mdl");
+
+	m_traitModel.isFixedModelsSize = false;
+	m_traitModel.m_models.resize(1);
+	m_traitModel.m_models[0].m_assetProperty.setTargetAsset("assets/editor/models/box.mdl");
 }
 
 void AStaticObstacle::postUpdate(const GameUpdateSets& UNUSED(updateSets)) {
@@ -48,21 +51,17 @@ void AStaticObstacle::postUpdate(const GameUpdateSets& UNUSED(updateSets)) {
 			m_traitRB.getRigidBody()->destroy();
 		}
 
-		const AssetModel* const assetModel = m_traitModel.getAssetProperty().getAssetModel();
-		if (assetModel && assetModel->staticEval.isInitialized()) {
-			// Create the new rigid body if we succesfully created a shape.
-			std::vector<CollsionShapeDesc> shapeDescs;
-			const bool hasShape = initializeCollisionShapeBasedOnModel(shapeDescs, assetModel->staticEval);
-			if (hasShape) {
-				m_traitRB.getRigidBody()->create((Actor*)this, shapeDescs.data(), int(shapeDescs.size()), 0.f, false);
+		std::vector<CollsionShapeDesc> shapeDescs;
+		const bool hasShape = addCollisionShapeBasedOnTraitModel(shapeDescs, m_traitModel);
+		if (shapeDescs.empty() == false) {
+			m_traitRB.getRigidBody()->create((Actor*)this, shapeDescs.data(), int(shapeDescs.size()), 0.f, false);
 
-				// CAUTION: this looks a bit hacky but it is used to set the physics scaling.
-				// TODO: Check if it would be better if we explicitly set it here.
-				setTransform(getTransform(), true);
-				getWorld()->physicsWorld.addPhysicsObject(*m_traitRB.getRigidBody());
-			} else {
-				SGE_DEBUG_ERR("Static obstacle failed to create rigid body, the shape isn't valid!\n");
-			}
+			// CAUTION: this looks a bit hacky but it is used to set the physics scaling.
+			// TODO: Check if it would be better if we explicitly set it here.
+			setTransform(getTransform(), true);
+			getWorld()->physicsWorld.addPhysicsObject(*m_traitRB.getRigidBody());
+		} else {
+			SGE_DEBUG_ERR("Static obstacle failed to create rigid body, the shape isn't valid!\n");
 		}
 	}
 }

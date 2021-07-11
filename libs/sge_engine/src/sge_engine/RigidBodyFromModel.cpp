@@ -3,10 +3,12 @@
 #include "sge_core/ICore.h"
 #include "sge_core/model/EvaluatedModel.h"
 #include "sge_engine/Physics.h"
+#include "sge_engine/traits/TraitModel.h"
+
 
 namespace sge {
 
-bool initializeCollisionShapeBasedOnModel(std::vector<CollsionShapeDesc>& shapeDescs, const EvaluatedModel& evaluatedMode) {
+bool addCollisionShapeBasedOnModel(std::vector<CollsionShapeDesc>& shapeDescs, const EvaluatedModel& evaluatedMode) {
 	const Model* const model = evaluatedMode.m_model;
 	if (model == nullptr) {
 		return false;
@@ -66,13 +68,25 @@ bool initializeCollisionShapeBasedOnModel(std::vector<CollsionShapeDesc>& shapeD
 	return true;
 }
 
-bool initializeCollisionShapeBasedOnModel(std::vector<CollsionShapeDesc>& shapeDescs, const char* modelAssetPath) {
+bool addCollisionShapeBasedOnModel(std::vector<CollsionShapeDesc>& shapeDescs, const char* modelAssetPath) {
 	std::shared_ptr<Asset> modelAsset = getCore()->getAssetLib()->getAsset(AssetType::Model, modelAssetPath, true);
 	if (!isAssetLoaded(modelAsset)) {
 		return false;
 	}
 
-	return initializeCollisionShapeBasedOnModel(shapeDescs, modelAsset->asModel()->staticEval);
+	return addCollisionShapeBasedOnModel(shapeDescs, modelAsset->asModel()->staticEval);
+}
+
+bool addCollisionShapeBasedOnTraitModel(std::vector<CollsionShapeDesc>& shapeDescs, TraitModel& traitModel) {
+	bool hadShapes = false;
+	for (TraitModel::PerModelSettings& mdlSets : traitModel.m_models) {
+		AssetModel* const assetModel = mdlSets.m_assetProperty.getAssetModel();
+		if (assetModel) {
+			hadShapes |= addCollisionShapeBasedOnModel(shapeDescs, assetModel->staticEval);
+		}
+	}
+
+	return hadShapes;
 }
 
 } // namespace sge
