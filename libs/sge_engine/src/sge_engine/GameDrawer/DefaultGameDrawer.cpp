@@ -41,10 +41,11 @@ struct LegacyRenderItem : IRenderItem {
 	std::function<void()> drawFn;
 };
 
-static inline const vec4f kPrimarySelectionColor1 = vec4f(0.25f, 0.8f, 0.63f, 1.f);
-static inline const vec4f kPrimarySelectionColor2 = vec4f(0.25f, 1.f, 0.63f, 1.f);
 vec4f getPrimarySelectionColor() {
-	float k = 0.5f * (sinf(2.f * Timer::now_seconds() * pi()) + 1.f);
+	const vec4f kPrimarySelectionColor1 = vec4f(0.17f, 0.75f, 0.53f, 1.f);
+	const vec4f kPrimarySelectionColor2 = vec4f(0.25f, 1.f, 0.63f, 1.f);
+
+	float k = 1.f - fabsf(sinf(0.5f * Timer::now_seconds() * pi()));
 	return lerp(kPrimarySelectionColor1, kPrimarySelectionColor2, k);
 }
 static inline const vec4f kSecondarySelectionColor = colorFromIntRgba(245, 158, 66, 255);
@@ -317,7 +318,7 @@ void DefaultGameDrawer::fillGeneralModsWithLights(Actor* actor, DrawReasonInfo& 
 	generalMods.lightsCount = int(m_shadingLightPerObject.size());
 }
 
-void DefaultGameDrawer::getRenderItemsForActor(const SelectedItemDirect& item, DrawReason UNUSED(drawReason)) {
+void DefaultGameDrawer::getRenderItemsForActor(const SelectedItemDirect& item, DrawReason drawReason) {
 	if (item.gameObject == nullptr) {
 		return;
 	}
@@ -327,7 +328,7 @@ void DefaultGameDrawer::getRenderItemsForActor(const SelectedItemDirect& item, D
 		return;
 	}
 
-	//if(isInFrustum(drawSets, actor)) {
+	// if(isInFrustum(drawSets, actor)) {
 	//
 	//}
 
@@ -335,8 +336,10 @@ void DefaultGameDrawer::getRenderItemsForActor(const SelectedItemDirect& item, D
 		trait->getRenderItems(m_RIs_traitModel);
 	}
 
-	if (TraitViewportIcon* const trait = getTrait<TraitViewportIcon>(actor)) {
-		trait->getRenderItems(m_RIs_traitViewportIcon);
+	if (drawReason_IsEditOrSelectionTool(drawReason)) {
+		if (TraitViewportIcon* const trait = getTrait<TraitViewportIcon>(actor)) {
+			trait->getRenderItems(m_RIs_traitViewportIcon);
+		}
 	}
 }
 
@@ -352,6 +355,8 @@ void DefaultGameDrawer::drawCurrentRenderItems(const GameDrawSets& drawSets, Dra
 
 	generalMods.selectionTint = selectionTint;
 	generalMods.isRenderingShadowMap = (drawReason == drawReason_gameplayShadow);
+	generalMods.isShadowMapForPointLight = drawSets.shadowMapBuildInfo ? drawSets.shadowMapBuildInfo->isPointLight : false;
+	generalMods.shadowMapPointLightDepthRange = drawSets.shadowMapBuildInfo ? drawSets.shadowMapBuildInfo->pointLightFarPlaneDistance : 0.f;
 	generalMods.ambientLightColor = getWorld()->m_ambientLight;
 	generalMods.uRimLightColorWWidth = vec4f(getWorld()->m_rimLight, getWorld()->m_rimCosineWidth);
 
@@ -383,13 +388,11 @@ void DefaultGameDrawer::drawCurrentRenderItems(const GameDrawSets& drawSets, Dra
 		}
 	}
 
-	std::sort(m_RIs_opaque.begin(), m_RIs_opaque.end(), [](IRenderItem* a, IRenderItem* b)->bool {
-		return a->zSortingValue < b->zSortingValue;
-	});
+	std::sort(m_RIs_opaque.begin(), m_RIs_opaque.end(),
+	          [](IRenderItem* a, IRenderItem* b) -> bool { return a->zSortingValue < b->zSortingValue; });
 
-	std::sort(m_RIs_alphaSorted.rbegin(), m_RIs_alphaSorted.rend(), [](IRenderItem* a, IRenderItem* b)->bool {
-		return a->zSortingValue < b->zSortingValue;
-	});
+	std::sort(m_RIs_alphaSorted.rbegin(), m_RIs_alphaSorted.rend(),
+	          [](IRenderItem* a, IRenderItem* b) -> bool { return a->zSortingValue < b->zSortingValue; });
 
 	// TODO Sort the render items.
 
@@ -397,7 +400,11 @@ void DefaultGameDrawer::drawCurrentRenderItems(const GameDrawSets& drawSets, Dra
 	auto drawRenderItems = [&](std::vector<IRenderItem*>& renderItems) -> void {
 		for (auto& riRaw : renderItems) {
 			if (auto riTraitModel = dynamic_cast<TraitModelRenderItem*>(riRaw)) {
-				draw_TraitModelRenderItem(*riTraitModel, drawSets, generalMods, drawReason);
+				// Find all the lights that can affect this object.
+				DrawReasonInfo reasonInfo = generalMods;
+				fillGeneralModsWithLights(riTraitModel->traitModel->getActor(), reasonInfo);
+
+				draw_TraitModelRenderItem(*riTraitModel, drawSets, reasonInfo, drawReason);
 			} else if (auto riTraitViewportIcon = dynamic_cast<TraitViewportIconRenderItem*>(riRaw)) {
 				draw_TraitViewportIconRenderItem(*riTraitViewportIcon, drawSets, drawReason);
 			} else {
@@ -425,7 +432,7 @@ void DefaultGameDrawer::drawWorld(const GameDrawSets& drawSets, const DrawReason
 	if (drawReason_IsGameOrEditNoShadowPass(drawReason)) {
 		const std::vector<GameObject*>* allSkies = getWorld()->getObjects(sgeTypeId(ASky));
 
-		ASky* sky = allSkies ? static_cast<ASky*>(allSkies->at(0)) : nullptr;
+		ASky* const sky = (allSkies && !allSkies->empty()) ? static_cast<ASky*>(allSkies->at(0)) : nullptr;
 
 		if (sky) {
 			SkyShaderSettings skyShaderSettings = sky->getSkyShaderSetting();
@@ -553,9 +560,9 @@ void DefaultGameDrawer::drawActor(
 		drawTraitParticles2(particles2Trait, drawSets, generalMods);
 	}
 
-	if (TraitModel* const modelTrait = getTrait<TraitModel>(actor); editMode == editMode_actors && modelTrait) {
-		drawTraitModel(modelTrait, drawSets, generalMods, drawReason);
-	}
+	// if (TraitModel* const modelTrait = getTrait<TraitModel>(actor); editMode == editMode_actors && modelTrait) {
+	//	drawTraitModel(modelTrait, drawSets, generalMods, drawReason);
+	//}
 
 	if (TraitSprite* const triatSprite = getTrait<TraitSprite>(actor); editMode == editMode_actors && triatSprite) {
 		drawTraitSprite(triatSprite, drawSets, generalMods, drawReason);
@@ -630,7 +637,7 @@ void DefaultGameDrawer::drawTraitViewportIcon(TraitViewportIcon* viewportIcon, c
 	}
 };
 
-
+#if 0
 void DefaultGameDrawer::drawTraitModel(TraitModel* modelTrait,
                                        const GameDrawSets& drawSets,
                                        const DrawReasonInfo& generalMods,
@@ -638,63 +645,6 @@ void DefaultGameDrawer::drawTraitModel(TraitModel* modelTrait,
 	if (modelTrait->isRenderable == false) {
 		return;
 	}
-
-#if 1
-
-	std::vector<TraitModelRenderItem> renderItems;
-
-	modelTrait->getRenderItems(renderItems);
-
-	const vec3f camPos = drawSets.drawCamera->getCameraPosition();
-	const vec3f camLookDir = drawSets.drawCamera->getCameraLookDir();
-
-	const mat4f n2w = modelTrait->getActor()->getTransformMtx();
-
-	for (TraitModelRenderItem& ri : renderItems) {
-		ModelNode* node = ri.evalModel->m_model->nodeAt(ri.iEvalNode);
-
-		const MeshAttachment& meshAttachment = node->meshAttachments[ri.iEvalNodeMechAttachmentIndex];
-		const EvaluatedMaterial& mtl = ri.evalModel->getEvalMaterial(meshAttachment.attachedMaterialIndex);
-		const EvaluatedMesh& evalMesh = ri.evalModel->getEvalMesh(meshAttachment.attachedMeshIndex);
-		const EvaluatedNode& evalNode = ri.evalModel->getEvalNode(ri.iEvalNode);
-
-		Material material;
-
-		material.diffuseColor = mtl.diffuseColor;
-		material.metalness = mtl.metallic;
-		material.roughness = mtl.roughness;
-
-		material.diffuseTexture = isAssetLoaded(mtl.diffuseTexture) && mtl.diffuseTexture->asTextureView()
-		                              ? mtl.diffuseTexture->asTextureView()->tex.GetPtr()
-		                              : nullptr;
-
-		material.texNormalMap = isAssetLoaded(mtl.texNormalMap) && mtl.texNormalMap->asTextureView()
-		                            ? mtl.texNormalMap->asTextureView()->tex.GetPtr()
-		                            : nullptr;
-
-		material.texMetalness =
-		    isAssetLoaded(mtl.texMetallic) && mtl.texMetallic->asTextureView() ? mtl.texMetallic->asTextureView()->tex.GetPtr() : nullptr;
-
-		material.texRoughness = isAssetLoaded(mtl.texRoughness) && mtl.texRoughness->asTextureView()
-		                            ? mtl.texRoughness->asTextureView()->tex.GetPtr()
-		                            : nullptr;
-
-		const Geometry& geom = evalMesh.geometry;
-
-		mat4f const finalTrasform = (evalMesh.geometry.hasVertexSkinning()) ? n2w : n2w * evalNode.evalGlobalTransform;
-
-		if (!drawReason_IsVisualizeSelection(drawReason)) {
-			m_modeldraw.drawGeometry(drawSets.rdest, camPos, camLookDir, drawSets.drawCamera->getProjView(), finalTrasform, generalMods,
-			                         &geom, material, modelTrait->m_models[ri.iModel].instanceDrawMods);
-		} else {
-			m_constantColorShader.drawGeometry(drawSets.rdest, drawSets.drawCamera->getProjView(), finalTrasform, geom,
-			                                   generalMods.selectionTint);
-		}
-	}
-
-#else
-
-
 
 	const vec3f camPos = drawSets.drawCamera->getCameraPosition();
 	const vec3f camLookDir = drawSets.drawCamera->getCameraLookDir();
@@ -767,8 +717,8 @@ void DefaultGameDrawer::drawTraitModel(TraitModel* modelTrait,
 			}
 		}
 	}
-#endif
 }
+#endif
 
 void DefaultGameDrawer::drawTraitSprite(TraitSprite* spriteTrait,
                                         const GameDrawSets& drawSets,

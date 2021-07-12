@@ -71,10 +71,10 @@ struct SGE_ENGINE_API DefaultGameDrawer : public IGameDrawer {
 	void draw_TraitViewportIconRenderItem(TraitViewportIconRenderItem& viewportIcon, const GameDrawSets& drawSets, DrawReason const drawReason);
 
 
-	void drawTraitModel(TraitModel* modelTrait,
-	                    const GameDrawSets& drawSets,
-	                    const DrawReasonInfo& generalMods,
-	                    DrawReason const drawReason);
+	//void drawTraitModel(TraitModel* modelTrait,
+	//                    const GameDrawSets& drawSets,
+	//                    const DrawReasonInfo& generalMods,
+	//                    DrawReason const drawReason);
 
 	void drawTraitSprite(TraitSprite* modelTrait,
 	                     const GameDrawSets& drawSets,

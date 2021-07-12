@@ -98,12 +98,12 @@ void BasicModelDraw::drawGeometry_FWDBuildShadowMap(const RenderDestination& rde
 		};
 
 		const std::vector<ShadingProgramPermuator::Unform> uniformsToCache = {
-		    {uWorld, "world"},
-		    {uProjView, "projView"},
-		    {uPointLightPositionWs, "uPointLightPositionWs"},
-		    {uPointLightFarPlaneDistance, "uPointLightFarPlaneDistance"},
-		    {uSkinningBones, "uSkinningBones"},
-		    {uSkinningFirstBoneOffsetInTex, "uSkinningFirstBoneOffsetInTex"}};
+		    {uWorld, "world", ShaderType::VertexShader},
+		    {uProjView, "projView", ShaderType::VertexShader},
+		    {uPointLightPositionWs, "uPointLightPositionWs", ShaderType::PixelShader},
+		    {uPointLightFarPlaneDistance, "uPointLightFarPlaneDistance", ShaderType::PixelShader},
+		    {uSkinningBones, "uSkinningBones", ShaderType::VertexShader},
+		    {uSkinningFirstBoneOffsetInTex, "uSkinningFirstBoneOffsetInTex", ShaderType::VertexShader}};
 
 		SGEDevice* const sgedev = rdest.getDevice();
 		shadingPermutFWDBuildShadowMaps->createFromFile(sgedev, "core_shaders/FWDDefault_buildShadowMaps.shader", compileTimeOptions,
