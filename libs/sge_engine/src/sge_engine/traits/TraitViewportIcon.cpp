@@ -55,6 +55,8 @@ void TraitViewportIcon::getRenderItems(std::vector<TraitViewportIconRenderItem>&
 	if (iconTexture) {
 		TraitViewportIconRenderItem ri;
 		ri.traitIcon = this;
+		ri.needsAlphaSorting = true;
+		ri.zSortingPositionWs = getActor()->getTransform().p;
 		renderItems.push_back(ri);
 	}
 }

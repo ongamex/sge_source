@@ -21,7 +21,6 @@
 #include "sge_engine/traits/TraitParticles.h"
 #include "sge_engine/traits/TraitRenderableGeom.h"
 #include "sge_engine/traits/TraitSprite.h"
-#include "sge_engine/traits/TraitTexturedPlane.h"
 #include "sge_engine/traits/TraitViewportIcon.h"
 #include "sge_utils/math/Frustum.h"
 #include "sge_utils/math/color.h"
@@ -318,22 +317,24 @@ void DefaultGameDrawer::fillGeneralModsWithLights(Actor* actor, DrawReasonInfo& 
 	generalMods.lightsCount = int(m_shadingLightPerObject.size());
 }
 
-void DefaultGameDrawer::getRenderItemsForActor(const SelectedItemDirect& item, DrawReason drawReason) {
-	if (item.gameObject == nullptr) {
-		return;
-	}
-
-	Actor* actor = item.gameObject->getActor();
+void DefaultGameDrawer::getRenderItemsForActor(const GameDrawSets& drawSets, const SelectedItemDirect& item, DrawReason drawReason) {
+	Actor* actor = item.gameObject ? item.gameObject->getActor() : nullptr;
 	if (actor == nullptr) {
 		return;
 	}
 
-	// if(isInFrustum(drawSets, actor)) {
-	//
-	//}
+	// Check if the actor is in the camera frustum.
+	// If it isn't don't bother getting any render items.
+	if (!isInFrustum(drawSets, actor)) {
+		return;
+	}
 
 	if (TraitModel* const trait = getTrait<TraitModel>(actor); item.editMode == editMode_actors && trait != nullptr) {
 		trait->getRenderItems(m_RIs_traitModel);
+	}
+
+	if (TraitSprite* const trait = getTrait<TraitSprite>(actor); item.editMode == editMode_actors && trait != nullptr) {
+		trait->getRenderItems(drawSets, m_RIs_traitSprite);
 	}
 
 	if (drawReason_IsEditOrSelectionTool(drawReason)) {
@@ -378,6 +379,15 @@ void DefaultGameDrawer::drawCurrentRenderItems(const GameDrawSets& drawSets, Dra
 		}
 	}
 
+	for (auto& ri : m_RIs_traitSprite) {
+		ri.zSortingValue = zSortPlane.Distance(ri.zSortingPositionWs);
+		if (ri.needsAlphaSorting) {
+			m_RIs_alphaSorted.push_back(&ri);
+		} else {
+			m_RIs_opaque.push_back(&ri);
+		}
+	}
+
 	for (auto& ri : m_RIs_traitViewportIcon) {
 		ri.zSortingValue = zSortPlane.Distance(ri.zSortingPositionWs);
 
@@ -404,9 +414,15 @@ void DefaultGameDrawer::drawCurrentRenderItems(const GameDrawSets& drawSets, Dra
 				DrawReasonInfo reasonInfo = generalMods;
 				fillGeneralModsWithLights(riTraitModel->traitModel->getActor(), reasonInfo);
 
-				draw_TraitModelRenderItem(*riTraitModel, drawSets, reasonInfo, drawReason);
+				drawRenderItem_TraitModel(*riTraitModel, drawSets, reasonInfo, drawReason);
+			} else if (auto riSprite = dynamic_cast<TraitSpriteRenderItem*>(riRaw)) {
+				// Find all the lights that can affect this object.
+				DrawReasonInfo reasonInfo = generalMods;
+				fillGeneralModsWithLights(riSprite->actor, reasonInfo);
+
+				drawRenderItem_TraitSprite(*riSprite, drawSets, reasonInfo, drawReason);
 			} else if (auto riTraitViewportIcon = dynamic_cast<TraitViewportIconRenderItem*>(riRaw)) {
-				draw_TraitViewportIconRenderItem(*riTraitViewportIcon, drawSets, drawReason);
+				drawRenderItem_TraitViewportIcon(*riTraitViewportIcon, drawSets, drawReason);
 			} else {
 				sgeAssert(false && "Render Item does not have a drawing implementation");
 			}
@@ -420,7 +436,7 @@ void DefaultGameDrawer::drawCurrentRenderItems(const GameDrawSets& drawSets, Dra
 void DefaultGameDrawer::drawItem(const GameDrawSets& drawSets, const SelectedItemDirect& item, DrawReason drawReason) {
 	clearRenderItems();
 
-	getRenderItemsForActor(item, drawReason);
+	getRenderItemsForActor(drawSets, item, drawReason);
 	drawCurrentRenderItems(drawSets, drawReason);
 }
 
@@ -465,7 +481,7 @@ void DefaultGameDrawer::drawWorld(const GameDrawSets& drawSets, const DrawReason
 			    SelectedItemDirect item;
 			    item.editMode = editMode_actors;
 			    item.gameObject = actor;
-			    getRenderItemsForActor(item, drawReason);
+			    getRenderItemsForActor(drawSets, item, drawReason);
 		    }
 
 		    return true;
@@ -479,7 +495,7 @@ void DefaultGameDrawer::drawWorld(const GameDrawSets& drawSets, const DrawReason
 	getCore()->getDebugDraw().draw(drawSets.rdest, drawSets.drawCamera->getProjView());
 }
 
-void DefaultGameDrawer::draw_TraitModelRenderItem(TraitModelRenderItem& ri,
+void DefaultGameDrawer::drawRenderItem_TraitModel(TraitModelRenderItem& ri,
                                                   const GameDrawSets& drawSets,
                                                   const DrawReasonInfo& generalMods,
                                                   DrawReason const drawReason) {
@@ -507,21 +523,45 @@ void DefaultGameDrawer::draw_TraitModelRenderItem(TraitModelRenderItem& ri,
 	}
 }
 
-void DefaultGameDrawer::draw_TraitViewportIconRenderItem(TraitViewportIconRenderItem& ri,
+void DefaultGameDrawer::drawRenderItem_TraitSprite(const TraitSpriteRenderItem& ri,
+                                                   const GameDrawSets& drawSets,
+                                                   const DrawReasonInfo& generalMods,
+                                                   DrawReason const drawReason) {
+	if (ri.spriteTexture) {
+		const vec3f camPos = drawSets.drawCamera->getCameraPosition();
+		const vec3f camLookDir = drawSets.drawCamera->getCameraLookDir();
+
+		Geometry texPlaneGeom = m_texturedPlaneDraw.getGeometry(drawSets.rdest.getDevice());
+		Material texPlaneMtl = m_texturedPlaneDraw.getMaterial(ri.spriteTexture);
+		texPlaneMtl.diffuseColor = ri.colorTint;
+
+		if (drawReason_IsVisualizeSelection(drawReason)) {
+			texPlaneMtl.diffuseColor *= generalMods.selectionTint;
+		}
+
+		InstanceDrawMods mods;
+		mods.gameTime = getWorld()->timeSpendPlaying;
+		mods.forceNoLighting = ri.forceNoLighting;
+		mods.forceNoCulling = ri.forceNoCulling;
+
+		m_modeldraw.drawGeometry(drawSets.rdest, camPos, camLookDir, drawSets.drawCamera->getProjView(), ri.obj2world, generalMods,
+		                         &texPlaneGeom, texPlaneMtl, mods);
+	}
+}
+
+void DefaultGameDrawer::drawRenderItem_TraitViewportIcon(TraitViewportIconRenderItem& ri,
                                                          const GameDrawSets& drawSets,
                                                          DrawReason const drawReason) {
-	vec4f wireframeColor = vec4f(1.f);
+	if (Texture* iconTex = ri.traitIcon->getIconTexture()) {
+		vec4f tintColor = vec4f(1.f);
 
-	if (drawReason == drawReason_visualizeSelectionPrimary)
-		wireframeColor = getPrimarySelectionColor();
-	else if (drawReason == drawReason_visualizeSelection)
-		wireframeColor = kSecondarySelectionColor;
+		if (drawReason == drawReason_visualizeSelectionPrimary)
+			tintColor = getPrimarySelectionColor();
+		else if (drawReason == drawReason_visualizeSelection)
+			tintColor = kSecondarySelectionColor;
 
-	Texture* iconTex = ri.traitIcon->getIconTexture();
-
-	if (iconTex != nullptr) {
 		const mat4f node2world = ri.traitIcon->computeNodeToWorldMtx(*drawSets.drawCamera);
-		m_texturedPlaneDraw.draw(drawSets.rdest, drawSets.drawCamera->getProjView() * node2world, iconTex, wireframeColor);
+		m_texturedPlaneDraw.draw(drawSets.rdest, drawSets.drawCamera->getProjView() * node2world, iconTex, tintColor);
 	}
 };
 
@@ -564,22 +604,8 @@ void DefaultGameDrawer::drawActor(
 	//	drawTraitModel(modelTrait, drawSets, generalMods, drawReason);
 	//}
 
-	if (TraitSprite* const triatSprite = getTrait<TraitSprite>(actor); editMode == editMode_actors && triatSprite) {
-		drawTraitSprite(triatSprite, drawSets, generalMods, drawReason);
-	}
-
 	if (TraitRenderableGeom* const ttRendGeom = getTrait<TraitRenderableGeom>(actor); editMode == editMode_actors && ttRendGeom) {
 		drawTraitRenderableGeom(ttRendGeom, drawSets, generalMods);
-	}
-
-	if (TraitTexturedPlane* const traitTexPlane = getTrait<TraitTexturedPlane>(actor); traitTexPlane) {
-		drawTraitTexturedPlane(traitTexPlane, drawSets, generalMods, drawReason);
-	}
-
-	if (drawReason_IsEditOrSelectionTool(drawReason)) {
-		if (TraitViewportIcon* const traitViewportIcon = getTrait<TraitViewportIcon>(actor); traitViewportIcon) {
-			drawTraitViewportIcon(traitViewportIcon, drawSets, drawReason);
-		}
 	}
 
 	const TypeId actorType = actor->getType();
@@ -589,53 +615,6 @@ void DefaultGameDrawer::drawActor(
 
 	drawActorLegacy(actor, drawSets, editMode, itemIndex, generalMods, drawReason);
 }
-
-void DefaultGameDrawer::drawTraitTexturedPlane(TraitTexturedPlane* traitTexPlane,
-                                               const GameDrawSets& drawSets,
-                                               const DrawReasonInfo& generalMods,
-                                               DrawReason const UNUSED(drawReason)) {
-	const vec3f camPos = drawSets.drawCamera->getCameraPosition();
-	const vec3f camLookDir = drawSets.drawCamera->getCameraLookDir();
-	Actor* actor = traitTexPlane->getActor();
-
-	AssetTexture* assetTexture = traitTexPlane->getAssetProperty().getAssetTexture();
-	if (assetTexture && assetTexture->tex.IsResourceValid()) {
-		Texture* const texture = assetTexture->tex.GetPtr();
-		if (texture) {
-			const mat4f localOffsetmtx = mat4f::getTranslation(traitTexPlane->m_localXOffset, 0.f, 0.f);
-			const mat4f anchorAlignMtx = traitTexPlane->getAnchorAlignMtxOS();
-			const mat4f billboardFacingMtx =
-			    billboarding_getOrentationMtx(traitTexPlane->m_billboarding, actor->getTransform(),
-			                                  drawSets.drawCamera->getCameraPosition(), drawSets.drawCamera->getView(), false);
-			const mat4f objToWorld = billboardFacingMtx * anchorAlignMtx * localOffsetmtx;
-
-			Geometry texPlaneGeom = m_texturedPlaneDraw.getGeometry(drawSets.rdest.getDevice());
-			Material texPlaneMtl = m_texturedPlaneDraw.getMaterial(texture);
-
-			InstanceDrawMods mods;
-			mods.gameTime = getWorld()->timeSpendPlaying;
-
-			m_modeldraw.drawGeometry(drawSets.rdest, camPos, camLookDir, drawSets.drawCamera->getProjView(), objToWorld, generalMods,
-			                         &texPlaneGeom, texPlaneMtl, mods);
-		}
-	}
-};
-
-void DefaultGameDrawer::drawTraitViewportIcon(TraitViewportIcon* viewportIcon, const GameDrawSets& drawSets, DrawReason const drawReason) {
-	vec4f wireframeColor = vec4f(1.f);
-
-	if (drawReason == drawReason_visualizeSelectionPrimary)
-		wireframeColor = getPrimarySelectionColor();
-	else if (drawReason == drawReason_visualizeSelection)
-		wireframeColor = kSecondarySelectionColor;
-
-	Texture* const iconTexture = viewportIcon->getIconTexture();
-
-	if (iconTexture != nullptr) {
-		const mat4f node2world = viewportIcon->computeNodeToWorldMtx(*drawSets.drawCamera);
-		m_texturedPlaneDraw.draw(drawSets.rdest, drawSets.drawCamera->getProjView() * node2world, iconTexture, wireframeColor);
-	}
-};
 
 #if 0
 void DefaultGameDrawer::drawTraitModel(TraitModel* modelTrait,
@@ -719,77 +698,6 @@ void DefaultGameDrawer::drawTraitModel(TraitModel* modelTrait,
 	}
 }
 #endif
-
-void DefaultGameDrawer::drawTraitSprite(TraitSprite* spriteTrait,
-                                        const GameDrawSets& drawSets,
-                                        const DrawReasonInfo& generalMods,
-                                        DrawReason const drawReason) {
-	const vec3f camPos = drawSets.drawCamera->getCameraPosition();
-	const vec3f camLookDir = drawSets.drawCamera->getCameraLookDir();
-	Actor* const actor = spriteTrait->getActor();
-
-	PAsset const asset = spriteTrait->getAssetProperty().getAsset();
-
-	if (isAssetLoaded(asset) && asset->getType() == AssetType::Texture2D) {
-		AssetTexture* ppTexture = asset->asTextureView();
-		if (ppTexture && ppTexture->tex.IsResourceValid()) {
-			Texture* const texture = ppTexture->tex.GetPtr();
-			if (texture) {
-				mat4f obj2world = spriteTrait->imageSettings.computeObjectToWorldTransform(
-				    *asset.get(), drawSets.drawCamera, actor->getTransform(), spriteTrait->m_additionalTransform);
-
-				Geometry texPlaneGeom = m_texturedPlaneDraw.getGeometry(drawSets.rdest.getDevice());
-				Material texPlaneMtl = m_texturedPlaneDraw.getMaterial(texture);
-				texPlaneMtl.diffuseColor = vec4f(spriteTrait->imageSettings.colorTint);
-
-				if (drawReason_IsVisualizeSelection(drawReason)) {
-					texPlaneMtl.diffuseColor *= generalMods.selectionTint;
-				}
-
-				InstanceDrawMods mods;
-				mods.gameTime = getWorld()->timeSpendPlaying;
-				mods.forceNoLighting = spriteTrait->imageSettings.forceNoLighting;
-				mods.forceNoCulling = spriteTrait->imageSettings.forceNoCulling;
-
-				m_modeldraw.drawGeometry(drawSets.rdest, camPos, camLookDir, drawSets.drawCamera->getProjView(), obj2world, generalMods,
-				                         &texPlaneGeom, texPlaneMtl, mods);
-			}
-		}
-	} else if (isAssetLoaded(asset) && asset->getType() == AssetType::Sprite) {
-		SpriteAnimationAsset* const pSprite = asset->asSprite();
-		if (pSprite && isAssetLoaded(pSprite->textureAsset) && pSprite->textureAsset->asTextureView() != nullptr &&
-		    pSprite->textureAsset->asTextureView()->tex.GetPtr() != nullptr) {
-			// Get the frame of the sprite to be rendered.
-			const SpriteAnimation::Frame* const frame =
-			    pSprite->spriteAnimation.getFrameForTime(spriteTrait->imageSettings.spriteFrameTime);
-			if (frame) {
-				mat4f obj2world = spriteTrait->imageSettings.computeObjectToWorldTransform(
-				    *asset.get(), drawSets.drawCamera, actor->getTransform(), spriteTrait->m_additionalTransform);
-
-				Geometry texPlaneGeom = m_texturedPlaneDraw.getGeometry(drawSets.rdest.getDevice());
-				Material texPlaneMtl = m_texturedPlaneDraw.getMaterial(pSprite->textureAsset->asTextureView()->tex.GetPtr());
-				texPlaneMtl.diffuseColor = vec4f(spriteTrait->imageSettings.colorTint);
-
-				if (drawReason_IsVisualizeSelection(drawReason)) {
-					texPlaneMtl.diffuseColor *= generalMods.selectionTint;
-				}
-
-				InstanceDrawMods mods;
-				mods.gameTime = getWorld()->timeSpendPlaying;
-				mods.forceNoLighting = spriteTrait->imageSettings.forceNoLighting;
-				mods.forceNoCulling = spriteTrait->imageSettings.forceNoCulling;
-
-				// Compute the UVW transform so we get only this frame portion of the texture to be displayed.
-				texPlaneMtl.uvwTransform =
-				    mat4f::getTranslation(frame->uvRegion.x, frame->uvRegion.y, 0.f) *
-				    mat4f::getScaling(frame->uvRegion.z - frame->uvRegion.x, frame->uvRegion.w - frame->uvRegion.y, 0.f);
-
-				m_modeldraw.drawGeometry(drawSets.rdest, camPos, camLookDir, drawSets.drawCamera->getProjView(), obj2world, generalMods,
-				                         &texPlaneGeom, texPlaneMtl, mods);
-			}
-		}
-	}
-}
 
 void DefaultGameDrawer::drawTraitParticles(TraitParticles* particlesTrait, const GameDrawSets& drawSets, DrawReasonInfo generalMods) {
 	const vec3f camPos = drawSets.drawCamera->getCameraPosition();

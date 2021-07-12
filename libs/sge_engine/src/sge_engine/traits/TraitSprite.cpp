@@ -1,5 +1,6 @@
 #include "TraitSprite.h"
 #include "IconsForkAwesome/IconsForkAwesome.h"
+#include "TraitSpriteRrenderItem.h"
 #include "sge_core/SGEImGui.h"
 #include "sge_engine/Camera.h"
 #include "sge_engine/EngineGlobal.h"
@@ -144,6 +145,67 @@ AABox3f TraitSprite::ImageSettings::computeBBoxOS(const Asset& asset, const mat4
 	}
 
 	return bboxOs;
+}
+
+void TraitSprite::getRenderItems(const GameDrawSets& drawSets, std::vector<TraitSpriteRenderItem>& renderItems) {
+	TraitSpriteRenderItem renderItem;
+
+	renderItem.actor = getActor();
+	renderItem.forceNoCulling = imageSettings.forceNoCulling;
+	renderItem.forceNoLighting = imageSettings.forceNoLighting;
+	renderItem.colorTint = imageSettings.colorTint;
+
+	const vec3f camPos = drawSets.drawCamera->getCameraPosition();
+	const vec3f camLookDir = drawSets.drawCamera->getCameraLookDir();
+	Actor* const actor = getActor();
+
+	PAsset const asset = getAssetProperty().getAsset();
+
+	if (isAssetLoaded(asset) && asset->getType() == AssetType::Texture2D) {
+		AssetTexture* ppTexture = asset->asTextureView();
+		if (ppTexture && ppTexture->tex.IsResourceValid()) {
+			Texture* const texture = ppTexture->tex.GetPtr();
+			if (texture) {
+				renderItem.spriteTexture = texture;
+
+				mat4f obj2world = imageSettings.computeObjectToWorldTransform(*asset.get(), drawSets.drawCamera, actor->getTransform(),
+				                                                              m_additionalTransform);
+
+				renderItem.obj2world = obj2world;
+
+				renderItem.zSortingPositionWs = obj2world.c3.xyz();
+				renderItem.needsAlphaSorting = ppTexture->meta.isSemiTransparent || renderItem.colorTint.w < 0.999f;
+			}
+		}
+	} else if (isAssetLoaded(asset) && asset->getType() == AssetType::Sprite) {
+		SpriteAnimationAsset* const pSprite = asset->asSprite();
+		if (pSprite && isAssetLoaded(pSprite->textureAsset, AssetType::Texture2D)) {
+			// Get the frame of the sprite to be rendered.
+			const SpriteAnimation::Frame* const frame = pSprite->spriteAnimation.getFrameForTime(imageSettings.spriteFrameTime);
+			if (frame) {
+				renderItem.spriteTexture = pSprite->textureAsset->asTextureView()->tex.GetPtr();
+
+				mat4f obj2world = imageSettings.computeObjectToWorldTransform(*asset.get(), drawSets.drawCamera, actor->getTransform(),
+				                                                              m_additionalTransform);
+				renderItem.obj2world = obj2world;
+
+				// Compute the UVW transform so we get only this frame portion of the texture to be displayed.
+				renderItem.uvwTransform =
+				    mat4f::getTranslation(frame->uvRegion.x, frame->uvRegion.y, 0.f) *
+				    mat4f::getScaling(frame->uvRegion.z - frame->uvRegion.x, frame->uvRegion.w - frame->uvRegion.y, 0.f);
+
+				renderItem.zSortingPositionWs = obj2world.c3.xyz();
+				renderItem.needsAlphaSorting =
+				    pSprite->textureAsset->asTextureView()->meta.isSemiTransparent || renderItem.colorTint.w < 0.999f;
+			}
+		}
+	} else {
+		return;
+	}
+
+	if (renderItem.spriteTexture != nullptr) {
+		renderItems.emplace_back(renderItem);
+	}
 }
 
 /// TraitSprite Attribute Editor.

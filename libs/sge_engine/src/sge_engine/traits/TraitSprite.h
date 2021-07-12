@@ -10,6 +10,7 @@ namespace sge {
 
 struct ICamera;
 struct TraitModel;
+struct TraitSpriteRenderItem;
 
 DefineTypeIdExists(TraitSprite);
 struct SGE_ENGINE_API TraitSprite : public Trait {
@@ -56,7 +57,7 @@ struct SGE_ENGINE_API TraitSprite : public Trait {
 	void computeNodeToBoneIds();
 	void computeSkeleton(std::vector<mat4f>& boneOverrides);
 
-	void getRenderItems(std::vector<IRenderItem*>& renderItems);
+	void getRenderItems(const GameDrawSets& drawSets, std::vector<TraitSpriteRenderItem>& renderItems);
 
   private:
 	bool updateAssetProperty() {
