@@ -344,7 +344,7 @@ void DefaultGameDrawer::getRenderItemsForActor(const GameDrawSets& drawSets, con
 	}
 }
 
-void DefaultGameDrawer::drawCurrentRenderItems(const GameDrawSets& drawSets, DrawReason drawReason) {
+void DefaultGameDrawer::drawCurrentRenderItems(const GameDrawSets& drawSets, DrawReason drawReason, bool shouldDrawSky) {
 	// DrawReasonInfo is overused for multiple things.
 	DrawReasonInfo generalMods;
 	const bool useWireframe = drawReason_IsVisualizeSelection(drawReason);
@@ -366,7 +366,7 @@ void DefaultGameDrawer::drawCurrentRenderItems(const GameDrawSets& drawSets, Dra
 	const vec3f zSortingPlaneNormal = drawSets.drawCamera->getCameraLookDir();
 	const Plane zSortPlane = Plane::FromPosAndDir(zSortingPlanePosWs, zSortingPlaneNormal);
 
-	// Gather and stort the render items.
+	// Gather and sort the render items.
 	m_RIs_opaque.clear();
 	m_RIs_alphaSorted.clear();
 
@@ -398,9 +398,14 @@ void DefaultGameDrawer::drawCurrentRenderItems(const GameDrawSets& drawSets, Dra
 		}
 	}
 
+	// The opaque items don't need to be sorted in any way for the rendering to appear correct.
+	// However, if we sort them fron-to-back we would reduce the pixel shader overdraw,
+	// as for objects further back, there would be already a bigger z-depth value.
 	std::sort(m_RIs_opaque.begin(), m_RIs_opaque.end(),
 	          [](IRenderItem* a, IRenderItem* b) -> bool { return a->zSortingValue < b->zSortingValue; });
 
+	// Sort the semi-transparent render items as they need to be draw in back-to-front order
+	// so that the alpha blending and z-depth could be done correctly.
 	std::sort(m_RIs_alphaSorted.rbegin(), m_RIs_alphaSorted.rend(),
 	          [](IRenderItem* a, IRenderItem* b) -> bool { return a->zSortingValue < b->zSortingValue; });
 
@@ -430,6 +435,13 @@ void DefaultGameDrawer::drawCurrentRenderItems(const GameDrawSets& drawSets, Dra
 	};
 
 	drawRenderItems(m_RIs_opaque);
+
+	// Draw the sky after the opaque objects to reduce the overdraw done by its pixel shader.
+	// However draw it before the transparent objects, as it might be visible trough them.
+	if (shouldDrawSky) {
+		drawSky(drawSets, drawReason);
+	}
+
 	drawRenderItems(m_RIs_alphaSorted);
 }
 
@@ -437,14 +449,36 @@ void DefaultGameDrawer::drawItem(const GameDrawSets& drawSets, const SelectedIte
 	clearRenderItems();
 
 	getRenderItemsForActor(drawSets, item, drawReason);
-	drawCurrentRenderItems(drawSets, drawReason);
+	drawCurrentRenderItems(drawSets, drawReason, false);
 }
 
 void DefaultGameDrawer::drawWorld(const GameDrawSets& drawSets, const DrawReason drawReason) {
 	clearRenderItems();
 
-	// Draw the sky.
-	// TODO: render it after the opaque objects and before alpha sorted ones.
+	// Get the render items for all actors in the scene.
+	getWorld()->iterateOverPlayingObjects(
+	    [&](GameObject* object) -> bool {
+		    // TODO: Skip this check for whole types. We know they are not actors...
+		    if (Actor* actor = object->getActor()) {
+			    AABox3f actorBboxOS = actor->getBBoxOS();
+			    SelectedItemDirect item;
+			    item.editMode = editMode_actors;
+			    item.gameObject = actor;
+			    getRenderItemsForActor(drawSets, item, drawReason);
+		    }
+
+		    return true;
+	    },
+	    false);
+
+	// Draw the render items.
+	drawCurrentRenderItems(drawSets, drawReason, true);
+
+	// Draw the debug draw commands.
+	getCore()->getDebugDraw().draw(drawSets.rdest, drawSets.drawCamera->getProjView());
+}
+
+void DefaultGameDrawer::drawSky(const GameDrawSets& drawSets, const DrawReason drawReason) {
 	if (drawReason_IsGameOrEditNoShadowPass(drawReason)) {
 		const std::vector<GameObject*>* allSkies = getWorld()->getObjects(sgeTypeId(ASky));
 
@@ -471,28 +505,6 @@ void DefaultGameDrawer::drawWorld(const GameDrawSets& drawSets, const DrawReason
 			m_skyShader.draw(drawSets.rdest, camPosWs, view, proj, skyShaderSettings);
 		}
 	}
-
-	// Get the render items for all actors in the scene.
-	getWorld()->iterateOverPlayingObjects(
-	    [&](GameObject* object) -> bool {
-		    // TODO: Skip this check for whole types. We know they are not actors...
-		    if (Actor* actor = object->getActor()) {
-			    AABox3f actorBboxOS = actor->getBBoxOS();
-			    SelectedItemDirect item;
-			    item.editMode = editMode_actors;
-			    item.gameObject = actor;
-			    getRenderItemsForActor(drawSets, item, drawReason);
-		    }
-
-		    return true;
-	    },
-	    false);
-
-	// Draw the render items.
-	drawCurrentRenderItems(drawSets, drawReason);
-
-	// Draw the debug draw commands.
-	getCore()->getDebugDraw().draw(drawSets.rdest, drawSets.drawCamera->getProjView());
 }
 
 void DefaultGameDrawer::drawRenderItem_TraitModel(TraitModelRenderItem& ri,

@@ -37,7 +37,8 @@ struct SGE_ENGINE_API DefaultGameDrawer : public IGameDrawer {
 	void getRenderItemsForActor(const GameDrawSets& drawSets, const SelectedItemDirect& item, DrawReason drawReason);
 	void drawItem(const GameDrawSets& drawSets, const SelectedItemDirect& item, DrawReason drawReason) override;
 	void drawWorld(const GameDrawSets& drawSets, const DrawReason drawReason) override;
-	void drawCurrentRenderItems(const GameDrawSets& drawSets, DrawReason drawReason);
+	void drawSky(const GameDrawSets& drawSets, const DrawReason drawReason);
+	void drawCurrentRenderItems(const GameDrawSets& drawSets, DrawReason drawReason, bool shouldDrawSky);
 
 	void drawRenderItem_TraitModel(TraitModelRenderItem& ri,
 	                               const GameDrawSets& drawSets,
