@@ -12,6 +12,8 @@
 namespace sge {
 
 struct ICamera;
+struct TraitParticlesRenderItem;
+
 //--------------------------------------------------------------
 // ParticleGroupDesc
 //--------------------------------------------------------------
@@ -153,6 +155,8 @@ struct SGE_ENGINE_API TraitParticles : public Trait {
 
 	void update(const GameUpdateSets& u);
 	AABox3f getBBoxOS() const;
+
+	void getRenderItems(std::vector<TraitParticlesRenderItem>& renderItems);
 
   public:
 	bool m_isEnabled = true;

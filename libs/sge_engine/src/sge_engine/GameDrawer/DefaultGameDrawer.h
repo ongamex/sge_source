@@ -12,6 +12,7 @@
 #include "sge_utils/math/mat4.h"
 
 #include "sge_engine/GameDrawer/RenderItems/TraitModelRenderItem.h"
+#include "sge_engine/GameDrawer/RenderItems/TraitParticlesRenderItem.h"
 #include "sge_engine/GameDrawer/RenderItems/TraitSpriteRrenderItem.h"
 #include "sge_engine/GameDrawer/RenderItems/TraitViewportIconRenderItem.h"
 
@@ -25,8 +26,9 @@ struct ANavMesh;
 struct LightShadowInfo {
 	ShadowMapBuildInfo buildInfo;
 	GpuHandle<Texture> pointLightDepthTexture; ///< This could be a single 2D or a Cube texture depending on the light source.
-	GpuHandle<FrameTarget> pointLightFrameTargets[signedAxis_numElements]; ///< FrameTarget used specifically for rendering point light shadow maps.
-	GpuHandle<FrameTarget> frameTarget; ///< Regular frame target for spot and directional lights.
+	GpuHandle<FrameTarget>
+	    pointLightFrameTargets[signedAxis_numElements]; ///< FrameTarget used specifically for rendering point light shadow maps.
+	GpuHandle<FrameTarget> frameTarget;                 ///< Regular frame target for spot and directional lights.
 	bool isCorrectlyUpdated = false;
 };
 
@@ -54,6 +56,8 @@ struct SGE_ENGINE_API DefaultGameDrawer : public IGameDrawer {
 	                                      const GameDrawSets& drawSets,
 	                                      DrawReason const drawReason);
 
+	void drawRenderItem_TraitParticles(TraitParticlesRenderItem& ri, const GameDrawSets& drawSets, DrawReasonInfo generalMods);
+
 
 	// Legacy Functions to be removed:
 
@@ -66,8 +70,8 @@ struct SGE_ENGINE_API DefaultGameDrawer : public IGameDrawer {
 	                     int const itemIndex,
 	                     const DrawReasonInfo& generalMods,
 	                     DrawReason const drawReason);
-	
-	void drawTraitParticles(TraitParticles* particlesTrait, const GameDrawSets& drawSets, DrawReasonInfo generalMods);
+
+
 	void drawTraitParticles2(TraitParticles2* particlesTrait, const GameDrawSets& drawSets, DrawReasonInfo generalMods);
 	void drawANavMesh(ANavMesh* navMesh,
 	                  const GameDrawSets& drawSets,
@@ -88,6 +92,7 @@ struct SGE_ENGINE_API DefaultGameDrawer : public IGameDrawer {
 		m_RIs_traitModel.clear();
 		m_RIs_traitSprite.clear();
 		m_RIs_traitViewportIcon.clear();
+		m_RIs_traitParticles.clear();
 	}
 
   public:
@@ -107,14 +112,15 @@ struct SGE_ENGINE_API DefaultGameDrawer : public IGameDrawer {
 	/// These could safely be a member variable in @drawWorld or @drawItem
 	/// However in order to save up from alocating them again and again for each frame
 	/// We store the containers here.
-	
-	std::vector<IRenderItem*> m_RIs_opaque; ///< Pointers to all opaque render items. Pointers are not owned.
+
+	std::vector<IRenderItem*> m_RIs_opaque;      ///< Pointers to all opaque render items. Pointers are not owned.
 	std::vector<IRenderItem*> m_RIs_alphaSorted; ///< Pointers to all semi-transparent render items. Pointers are not owned.
 
 	// Render items cache to save up on memory.
 	std::vector<TraitModelRenderItem> m_RIs_traitModel;
 	std::vector<TraitSpriteRenderItem> m_RIs_traitSprite;
 	std::vector<TraitViewportIconRenderItem> m_RIs_traitViewportIcon;
+	std::vector<TraitParticlesRenderItem> m_RIs_traitParticles;
 };
 
 } // namespace sge

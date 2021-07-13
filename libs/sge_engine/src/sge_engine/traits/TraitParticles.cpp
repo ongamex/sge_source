@@ -1,13 +1,13 @@
 #include "sge_engine/traits/TraitParticles.h"
 #include "sge_engine/Camera.h"
+#include "sge_engine/GameDrawer/RenderItems/TraitParticlesRenderItem.h"
 #include "sge_engine/GameWorld.h"
 
 
 namespace sge {
 
-DefineTypeId(TraitParticles, 20'03'02'0051);
 // clang-format off
-
+DefineTypeId(TraitParticles, 20'03'02'0051);
 ReflBlock() {
 	ReflAddType(TraitParticles)
 		ReflMember(TraitParticles, m_isEnabled)
@@ -15,13 +15,8 @@ ReflBlock() {
 		ReflMember(TraitParticles, m_pgroups)
 	;
 }
-// clang-format on
-
-
 
 DefineTypeId(ParticleGroupDesc::SpawnShape, 20'03'02'0046);
-// clang-format off
-
 ReflBlock() {
 	ReflAddType(ParticleGroupDesc::SpawnShape)
 		ReflEnumVal(ParticleGroupDesc::spawnShape_sphere, "sphere")
@@ -30,30 +25,22 @@ ReflBlock() {
 		ReflEnumVal(ParticleGroupDesc::spawnShape_disc, "disc")
 	;
 }
-// clang-format on
 
 DefineTypeId(ParticleGroupDesc::BirthType, 20'03'02'0047);
-// clang-format off
-
 ReflBlock() {
 	ReflAddType(ParticleGroupDesc::BirthType)
 		ReflEnumVal(ParticleGroupDesc::birthType_constant, "Constant")
 		ReflEnumVal(ParticleGroupDesc::birthType_fromCurve, "Curve")
 	;
 }
-// clang-format on
-
 
 DefineTypeId(ParticleGroupDesc::Visualization, 20'03'02'0048);
-// clang-format off
-
 ReflBlock() {
 	ReflAddType(ParticleGroupDesc::Visualization)
 		ReflEnumVal(ParticleGroupDesc::vis_model3D, "Model")
 		ReflEnumVal(ParticleGroupDesc::vis_sprite, "Sprite")
 	;
 }
-// clang-format on
 
 DefineTypeId(ParticleGroupDesc::VelocityType, 20'03'06'0007);
 ReflBlock() {
@@ -64,7 +51,6 @@ ReflBlock() {
 
 DefineTypeId(ParticleGroupDesc, 20'03'02'0049);
 DefineTypeId(std::vector<ParticleGroupDesc>, 20'03'02'0050);
-// clang-format off
 
 ReflBlock() {
 	ReflAddType(ParticleGroupDesc)
@@ -101,8 +87,6 @@ ReflBlock() {
 	ReflAddType(std::vector<ParticleGroupDesc>);
 }
 // clang-format on
-
-
 
 //--------------------------------------------------------------
 // ParticleGroupState
@@ -455,6 +439,19 @@ AABox3f TraitParticles::getBBoxOS() const {
 		}
 		return bbox;
 	}
+}
+
+void TraitParticles::getRenderItems(std::vector<TraitParticlesRenderItem>& renderItems) {
+	TraitParticlesRenderItem renderItem;
+
+	renderItem.traitParticles = this;
+
+	// TODO: Is this the best alpha sorting point that we can come up with?
+	// TODO: We do not really always need alpha sorting for particles. Add some logic to determine if we need it.
+	renderItem.needsAlphaSorting = true;
+	renderItem.zSortingPositionWs = mat_mul_pos(getActor()->getTransformMtx(), getBBoxOS().center());
+
+	renderItems.push_back(renderItem);
 }
 
 //--------------------------------------------------------------
