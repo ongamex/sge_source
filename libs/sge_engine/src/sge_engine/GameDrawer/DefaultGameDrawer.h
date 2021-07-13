@@ -11,13 +11,13 @@
 #include "sge_renderer/renderer/renderer.h"
 #include "sge_utils/math/mat4.h"
 
-#include "sge_engine/traits/TraitModelRenderItem.h"
-#include "sge_engine/traits/TraitSpriteRrenderItem.h"
-#include "sge_engine/traits/TraitViewportIconRenderItem.h"
+#include "sge_engine/GameDrawer/RenderItems/TraitModelRenderItem.h"
+#include "sge_engine/GameDrawer/RenderItems/TraitSpriteRrenderItem.h"
+#include "sge_engine/GameDrawer/RenderItems/TraitViewportIconRenderItem.h"
 
 namespace sge {
 
-struct TraitRenderableGeom;
+struct TraitRenderGeometry;
 struct TraitParticles;
 struct TraitParticles2;
 struct ANavMesh;
@@ -67,7 +67,6 @@ struct SGE_ENGINE_API DefaultGameDrawer : public IGameDrawer {
 	                     const DrawReasonInfo& generalMods,
 	                     DrawReason const drawReason);
 	
-	void drawTraitRenderableGeom(TraitRenderableGeom* ttRendGeom, const GameDrawSets& drawSets, const DrawReasonInfo& generalMods);
 	void drawTraitParticles(TraitParticles* particlesTrait, const GameDrawSets& drawSets, DrawReasonInfo generalMods);
 	void drawTraitParticles2(TraitParticles2* particlesTrait, const GameDrawSets& drawSets, DrawReasonInfo generalMods);
 	void drawANavMesh(ANavMesh* navMesh,

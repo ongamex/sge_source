@@ -19,7 +19,6 @@
 #include "sge_engine/materials/Material.h"
 #include "sge_engine/traits/TraitModel.h"
 #include "sge_engine/traits/TraitParticles.h"
-#include "sge_engine/traits/TraitRenderableGeom.h"
 #include "sge_engine/traits/TraitSprite.h"
 #include "sge_engine/traits/TraitViewportIcon.h"
 #include "sge_utils/math/Frustum.h"
@@ -616,10 +615,6 @@ void DefaultGameDrawer::drawActor(
 	//	drawTraitModel(modelTrait, drawSets, generalMods, drawReason);
 	//}
 
-	if (TraitRenderableGeom* const ttRendGeom = getTrait<TraitRenderableGeom>(actor); editMode == editMode_actors && ttRendGeom) {
-		drawTraitRenderableGeom(ttRendGeom, drawSets, generalMods);
-	}
-
 	const TypeId actorType = actor->getType();
 	if (actorType == sgeTypeId(ANavMesh) && drawReason_IsEditOrSelectionTool(drawReason)) {
 		drawANavMesh(static_cast<ANavMesh*>(actor), drawSets, generalMods, drawReason, wireframeColorInt);
@@ -825,22 +820,6 @@ void DefaultGameDrawer::drawANavMesh(ANavMesh* navMesh,
 		drawSets.quickDraw->drawSolid_Execute(drawSets.rdest, drawSets.drawCamera->getProjView(), false,
 		                                      getCore()->getGraphicsResources().BS_backToFrontAlpha);
 		drawSets.quickDraw->drawWired_Execute(drawSets.rdest, drawSets.drawCamera->getProjView());
-	}
-}
-
-void DefaultGameDrawer::drawTraitRenderableGeom(TraitRenderableGeom* ttRendGeom,
-                                                const GameDrawSets& drawSets,
-                                                const DrawReasonInfo& generalMods) {
-	const mat4f actorToWorld = ttRendGeom->getActor()->getTransformMtx();
-	const vec3f camPos = drawSets.drawCamera->getCameraPosition();
-	const vec3f camLookDir = drawSets.drawCamera->getCameraLookDir();
-
-	for (const TraitRenderableGeom::Element& elem : ttRendGeom->geoms) {
-		if (elem.isRenderable && elem.pGeom && elem.pMtl) {
-			mat4f n2w = elem.isTformInWorldSpace ? elem.tform : actorToWorld * elem.tform;
-			m_modeldraw.drawGeometry(drawSets.rdest, camPos, camLookDir, drawSets.drawCamera->getProjView(), n2w, generalMods, elem.pGeom,
-			                         *elem.pMtl, InstanceDrawMods());
-		}
 	}
 }
 

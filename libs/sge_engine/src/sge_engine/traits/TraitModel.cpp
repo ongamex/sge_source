@@ -1,6 +1,6 @@
 #include "TraitModel.h"
 #include "IconsForkAwesome/IconsForkAwesome.h"
-#include "TraitModelRenderItem.h"
+#include "sge_engine/GameDrawer/RenderItems/TraitModelRenderItem.h"
 #include "sge_core/SGEImGui.h"
 #include "sge_engine/EngineGlobal.h"
 #include "sge_engine/GameInspector.h"

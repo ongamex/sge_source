@@ -1,6 +1,6 @@
 #include "TraitSprite.h"
 #include "IconsForkAwesome/IconsForkAwesome.h"
-#include "TraitSpriteRrenderItem.h"
+#include "sge_engine/GameDrawer/RenderItems/TraitSpriteRrenderItem.h"
 #include "sge_core/SGEImGui.h"
 #include "sge_engine/Camera.h"
 #include "sge_engine/EngineGlobal.h"

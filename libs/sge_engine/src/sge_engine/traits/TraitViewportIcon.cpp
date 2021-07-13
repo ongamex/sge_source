@@ -1,5 +1,5 @@
 #include "TraitViewportIcon.h"
-#include "TraitViewportIconRenderItem.h"
+#include "sge_engine/GameDrawer/RenderItems/TraitViewportIconRenderItem.h"
 #include "sge_engine/Camera.h"
 #include "sge_engine/enums2d.h"
 
