@@ -12,7 +12,8 @@
 namespace sge {
 
 struct ICamera;
-struct TraitParticlesRenderItem;
+struct TraitParticlesSimpleRenderItem;
+struct TraitParticlesProgrammableRenderItem;
 
 //--------------------------------------------------------------
 // ParticleGroupDesc
@@ -147,16 +148,16 @@ struct SGE_ENGINE_API ParticleGroupState {
 };
 
 //--------------------------------------------------------------
-// TraitParticles
+// TraitParticlesSimple
 //--------------------------------------------------------------
-DefineTypeIdExists(TraitParticles);
-struct SGE_ENGINE_API TraitParticles : public Trait {
-	SGE_TraitDecl_Full(TraitParticles);
+DefineTypeIdExists(TraitParticlesSimple);
+struct SGE_ENGINE_API TraitParticlesSimple : public Trait {
+	SGE_TraitDecl_Full(TraitParticlesSimple);
 
 	void update(const GameUpdateSets& u);
 	AABox3f getBBoxOS() const;
 
-	void getRenderItems(std::vector<TraitParticlesRenderItem>& renderItems);
+	void getRenderItems(std::vector<TraitParticlesSimpleRenderItem>& renderItems);
 
   public:
 	bool m_isEnabled = true;
@@ -166,11 +167,11 @@ struct SGE_ENGINE_API TraitParticles : public Trait {
 };
 
 //--------------------------------------------------------------
-// TriatParticles2
+// TraitParticlesProgrammable
 //--------------------------------------------------------------
-DefineTypeIdExists(TraitParticles2);
-struct SGE_ENGINE_API TraitParticles2 : public Trait {
-	SGE_TraitDecl_BaseFamily(TraitParticles2);
+DefineTypeIdExists(TraitParticlesProgrammable);
+struct SGE_ENGINE_API TraitParticlesProgrammable : public Trait {
+	SGE_TraitDecl_BaseFamily(TraitParticlesProgrammable);
 
 	struct ParticleGroup {
 		struct ParticleData {
@@ -190,9 +191,12 @@ struct SGE_ENGINE_API TraitParticles2 : public Trait {
 		bool isInWorldSpace = true;
 		std::vector<ParticleData> allParticles;
 		std::shared_ptr<Asset> spriteTexture;
-		vec2i spriteFramsCount = vec2i(1); // the number of images in X and Y direction.
-		AABox3f bbox;                      // the bounding box of the particles in world or in object space.
+		vec2i spriteFramsCount = vec2i(1); /// The number of sub-images in X and Y direction.
+		AABox3f bbox;                      /// The bounding box of the particles in world or in object space depending on @isInWorldSpace.
+		bool needsZAlphaSorting = false;
 	};
+
+	void getRenderItems(std::vector<TraitParticlesProgrammableRenderItem>& renderItems);
 
 	virtual int getNumPGroups() const { return 0; }
 	virtual ParticleGroup* getPGroup(const int UNUSED(idx)) { return nullptr; }
@@ -214,7 +218,7 @@ struct SGE_ENGINE_API ParticleRenderDataGen {
 
   public:
 	/// Returns true if there was data ready for rendering and it succeeded.
-	bool generate(const TraitParticles2::ParticleGroup& particles, SGEContext& sgecon, const ICamera& camera, const mat4f& n2w);
+	bool generate(const TraitParticlesProgrammable::ParticleGroup& particles, SGEContext& sgecon, const ICamera& camera, const mat4f& n2w);
 
 	std::vector<SortingData> indicesForSorting;
 	std::vector<Pair<vec2f, vec2f>> spriteFramesUVCache;

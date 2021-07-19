@@ -86,7 +86,7 @@ void SkyShader::draw(const RenderDestination& rdest, const vec3f&, const mat4f v
 	// Scale the sky sphere, so it is big enough to not get clipped troug the near plane
 	// and when in orthographics view it is bigger and the screen plane so we see something,
 	// as the ray for sampling are generated based on the camera position and the pixel poisition in world space.
-	const float sphereScaling = maxOf(fabsf(right.x - left.x), fabsf(top.y - bottom.y));
+	const float sphereScaling = maxOf(fabsf(right.x - left.x), fabsf(top.y - bottom.y)) * 2.f;
 
 	SkyShaderCBufferParams cbParamsData;
 	cbParamsData.uView = view;

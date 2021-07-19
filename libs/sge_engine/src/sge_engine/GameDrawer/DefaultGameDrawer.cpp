@@ -336,8 +336,13 @@ void DefaultGameDrawer::getRenderItemsForActor(const GameDrawSets& drawSets, con
 		trait->getRenderItems(drawSets, m_RIs_traitSprite);
 	}
 
-	if (TraitParticles* const trait = getTrait<TraitParticles>(actor); item.editMode == editMode_actors && trait != nullptr) {
+	if (TraitParticlesSimple* const trait = getTrait<TraitParticlesSimple>(actor); item.editMode == editMode_actors && trait != nullptr) {
 		trait->getRenderItems(m_RIs_traitParticles);
+	}
+
+	if (TraitParticlesProgrammable* const trait = getTrait<TraitParticlesProgrammable>(actor);
+	    item.editMode == editMode_actors && trait != nullptr) {
+		trait->getRenderItems(m_RIs_traitParticlesProgrammable);
 	}
 
 	if (drawReason_IsEditOrSelectionTool(drawReason)) {
@@ -400,6 +405,15 @@ void DefaultGameDrawer::drawCurrentRenderItems(const GameDrawSets& drawSets, Dra
 		}
 	}
 
+	for (auto& ri : m_RIs_traitParticlesProgrammable) {
+		ri.zSortingValue = zSortPlane.Distance(ri.zSortingPositionWs);
+		if (ri.needsAlphaSorting) {
+			m_RIs_alphaSorted.push_back(&ri);
+		} else {
+			m_RIs_opaque.push_back(&ri);
+		}
+	}
+
 	for (auto& ri : m_RIs_traitViewportIcon) {
 		ri.zSortingValue = zSortPlane.Distance(ri.zSortingPositionWs);
 
@@ -440,8 +454,10 @@ void DefaultGameDrawer::drawCurrentRenderItems(const GameDrawSets& drawSets, Dra
 				drawRenderItem_TraitSprite(*riSprite, drawSets, reasonInfo, drawReason);
 			} else if (auto riTraitViewportIcon = dynamic_cast<TraitViewportIconRenderItem*>(riRaw)) {
 				drawRenderItem_TraitViewportIcon(*riTraitViewportIcon, drawSets, drawReason);
-			} else if (auto riTraitParticles = dynamic_cast<TraitParticlesRenderItem*>(riRaw)) {
-				drawRenderItem_TraitParticles(*riTraitParticles, drawSets, generalMods);
+			} else if (auto riTraitParticles = dynamic_cast<TraitParticlesSimpleRenderItem*>(riRaw)) {
+				drawRenderItem_TraitParticlesSimple(*riTraitParticles, drawSets, generalMods);
+			} else if (auto riTraitParticlesProgrammable = dynamic_cast<TraitParticlesProgrammableRenderItem*>(riRaw)) {
+				drawRenderItem_TraitParticlesProgrammable(*riTraitParticlesProgrammable, drawSets, generalMods);
 			} else {
 				sgeAssert(false && "Render Item does not have a drawing implementation");
 			}
@@ -558,20 +574,22 @@ void DefaultGameDrawer::drawRenderItem_TraitSprite(const TraitSpriteRenderItem& 
 		const vec3f camLookDir = drawSets.drawCamera->getCameraLookDir();
 
 		Geometry texPlaneGeom = m_texturedPlaneDraw.getGeometry(drawSets.rdest.getDevice());
-		Material texPlaneMtl = m_texturedPlaneDraw.getMaterial(ri.spriteTexture);
-		texPlaneMtl.diffuseColor = ri.colorTint;
 
 		if (drawReason_IsVisualizeSelection(drawReason)) {
-			texPlaneMtl.diffuseColor *= generalMods.selectionTint;
+			m_constantColorShader.drawGeometry(drawSets.rdest, drawSets.drawCamera->getProjView(), ri.obj2world, texPlaneGeom,
+			                                   generalMods.selectionTint);
+		} else {
+			Material texPlaneMtl = m_texturedPlaneDraw.getMaterial(ri.spriteTexture);
+			texPlaneMtl.diffuseColor = ri.colorTint;
+
+			InstanceDrawMods mods;
+			mods.gameTime = getWorld()->timeSpendPlaying;
+			mods.forceNoLighting = ri.forceNoLighting;
+			mods.forceNoCulling = ri.forceNoCulling;
+
+			m_modeldraw.drawGeometry(drawSets.rdest, camPos, camLookDir, drawSets.drawCamera->getProjView(), ri.obj2world, generalMods,
+			                         &texPlaneGeom, texPlaneMtl, mods);
 		}
-
-		InstanceDrawMods mods;
-		mods.gameTime = getWorld()->timeSpendPlaying;
-		mods.forceNoLighting = ri.forceNoLighting;
-		mods.forceNoCulling = ri.forceNoCulling;
-
-		m_modeldraw.drawGeometry(drawSets.rdest, camPos, camLookDir, drawSets.drawCamera->getProjView(), ri.obj2world, generalMods,
-		                         &texPlaneGeom, texPlaneMtl, mods);
 	}
 }
 
@@ -591,10 +609,10 @@ void DefaultGameDrawer::drawRenderItem_TraitViewportIcon(TraitViewportIconRender
 	}
 };
 
-void DefaultGameDrawer::drawRenderItem_TraitParticles(TraitParticlesRenderItem& ri,
-                                                      const GameDrawSets& drawSets,
-                                                      DrawReasonInfo generalMods) {
-	TraitParticles* traitParticles = ri.traitParticles;
+void DefaultGameDrawer::drawRenderItem_TraitParticlesSimple(TraitParticlesSimpleRenderItem& ri,
+                                                            const GameDrawSets& drawSets,
+                                                            DrawReasonInfo generalMods) {
+	TraitParticlesSimple* traitParticles = ri.traitParticles;
 
 	const vec3f camPos = drawSets.drawCamera->getCameraPosition();
 	const vec3f camLookDir = drawSets.drawCamera->getCameraLookDir();
@@ -639,6 +657,44 @@ void DefaultGameDrawer::drawRenderItem_TraitParticles(TraitParticlesRenderItem& 
 	}
 }
 
+void DefaultGameDrawer::drawRenderItem_TraitParticlesProgrammable(TraitParticlesProgrammableRenderItem& ri,
+                                                                  const GameDrawSets& drawSets,
+                                                                  DrawReasonInfo generalMods) {
+	TraitParticlesProgrammable* particlesTrait = ri.traitParticles;
+
+	const mat4f n2w = particlesTrait->getActor()->getTransformMtx();
+
+	const vec3f camPos = drawSets.drawCamera->getCameraPosition();
+	const vec3f camLookDir = drawSets.drawCamera->getCameraLookDir();
+
+	generalMods.selectionTint = vec4f(0.f);
+
+	const int numPGroups = particlesTrait->getNumPGroups();
+	for (int iGroup = 0; iGroup < numPGroups; ++iGroup) {
+		TraitParticlesProgrammable::ParticleGroup* pgrp = particlesTrait->getPGroup(iGroup);
+
+		if (pgrp->spriteTexture->getType() == AssetType::Model) {
+			for (const TraitParticlesProgrammable::ParticleGroup::ParticleData& particle : pgrp->allParticles) {
+				mat4f particleTForm =
+				    mat4f::getTranslation(particle.position) * mat4f::getRotationQuat(particle.spin) * mat4f::getScaling(particle.scale);
+
+				m_modeldraw.draw(drawSets.rdest, camPos, camLookDir, drawSets.drawCamera->getProjView(), particleTForm, generalMods,
+				                 pgrp->spriteTexture->asModel()->staticEval, InstanceDrawMods());
+			}
+		} else {
+			if (m_partRendDataGen.generate(*pgrp, *drawSets.rdest.sgecon, *drawSets.drawCamera, n2w)) {
+				InstanceDrawMods mods;
+				mods.forceNoLighting = true;
+				mods.forceAdditiveBlending = true;
+
+				const mat4f identity = mat4f::getIdentity();
+				m_modeldraw.drawGeometry(drawSets.rdest, camPos, camLookDir, drawSets.drawCamera->getProjView(), identity, generalMods,
+				                         &m_partRendDataGen.geometry, m_partRendDataGen.material, mods);
+			}
+		}
+	}
+}
+
 
 void DefaultGameDrawer::drawActor(
     const GameDrawSets& drawSets, EditMode const editMode, Actor* actor, int const itemIndex, DrawReason const drawReason) {
@@ -667,9 +723,10 @@ void DefaultGameDrawer::drawActor(
 	// Find all the lights that can affect this object.
 	fillGeneralModsWithLights(actor, generalMods);
 
-	if (TraitParticles2* const particles2Trait = getTrait<TraitParticles2>(actor); editMode == editMode_actors && particles2Trait) {
-		drawTraitParticles2(particles2Trait, drawSets, generalMods);
-	}
+	//if (TraitParticlesProgrammable* const particles2Trait = getTrait<TraitParticlesProgrammable>(actor);
+	//    editMode == editMode_actors && particles2Trait) {
+	//	drawTraitParticles2(particles2Trait, drawSets, generalMods);
+	//}
 
 	// if (TraitModel* const modelTrait = getTrait<TraitModel>(actor); editMode == editMode_actors && modelTrait) {
 	//	drawTraitModel(modelTrait, drawSets, generalMods, drawReason);
@@ -767,39 +824,6 @@ void DefaultGameDrawer::drawTraitModel(TraitModel* modelTrait,
 #endif
 
 
-void DefaultGameDrawer::drawTraitParticles2(TraitParticles2* particlesTrait, const GameDrawSets& drawSets, DrawReasonInfo generalMods) {
-	const mat4f n2w = particlesTrait->getActor()->getTransformMtx();
-
-	const vec3f camPos = drawSets.drawCamera->getCameraPosition();
-	const vec3f camLookDir = drawSets.drawCamera->getCameraLookDir();
-
-	generalMods.selectionTint = vec4f(0.f);
-
-	const int numPGroups = particlesTrait->getNumPGroups();
-	for (int iGroup = 0; iGroup < numPGroups; ++iGroup) {
-		TraitParticles2::ParticleGroup* pgrp = particlesTrait->getPGroup(iGroup);
-
-		if (pgrp->spriteTexture->getType() == AssetType::Model) {
-			for (const TraitParticles2::ParticleGroup::ParticleData& particle : pgrp->allParticles) {
-				mat4f particleTForm =
-				    mat4f::getTranslation(particle.position) * mat4f::getRotationQuat(particle.spin) * mat4f::getScaling(particle.scale);
-
-				m_modeldraw.draw(drawSets.rdest, camPos, camLookDir, drawSets.drawCamera->getProjView(), particleTForm, generalMods,
-				                 pgrp->spriteTexture->asModel()->staticEval, InstanceDrawMods());
-			}
-		} else {
-			if (m_partRendDataGen.generate(*pgrp, *drawSets.rdest.sgecon, *drawSets.drawCamera, n2w)) {
-				InstanceDrawMods mods;
-				mods.forceNoLighting = true;
-				mods.forceAdditiveBlending = true;
-
-				const mat4f identity = mat4f::getIdentity();
-				m_modeldraw.drawGeometry(drawSets.rdest, camPos, camLookDir, drawSets.drawCamera->getProjView(), identity, generalMods,
-				                         &m_partRendDataGen.geometry, m_partRendDataGen.material, mods);
-			}
-		}
-	}
-}
 
 void DefaultGameDrawer::drawANavMesh(ANavMesh* navMesh,
                                      const GameDrawSets& drawSets,

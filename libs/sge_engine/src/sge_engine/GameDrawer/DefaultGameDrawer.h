@@ -19,8 +19,8 @@
 namespace sge {
 
 struct TraitRenderGeometry;
-struct TraitParticles;
-struct TraitParticles2;
+struct TraitParticlesSimple;
+struct TraitParticlesProgrammable;
 struct ANavMesh;
 
 struct LightShadowInfo {
@@ -56,8 +56,11 @@ struct SGE_ENGINE_API DefaultGameDrawer : public IGameDrawer {
 	                                      const GameDrawSets& drawSets,
 	                                      DrawReason const drawReason);
 
-	void drawRenderItem_TraitParticles(TraitParticlesRenderItem& ri, const GameDrawSets& drawSets, DrawReasonInfo generalMods);
+	void drawRenderItem_TraitParticlesSimple(TraitParticlesSimpleRenderItem& ri, const GameDrawSets& drawSets, DrawReasonInfo generalMods);
 
+	void drawRenderItem_TraitParticlesProgrammable(TraitParticlesProgrammableRenderItem& ri,
+	                                               const GameDrawSets& drawSets,
+	                                               DrawReasonInfo generalMods);
 
 	// Legacy Functions to be removed:
 
@@ -71,8 +74,6 @@ struct SGE_ENGINE_API DefaultGameDrawer : public IGameDrawer {
 	                     const DrawReasonInfo& generalMods,
 	                     DrawReason const drawReason);
 
-
-	void drawTraitParticles2(TraitParticles2* particlesTrait, const GameDrawSets& drawSets, DrawReasonInfo generalMods);
 	void drawANavMesh(ANavMesh* navMesh,
 	                  const GameDrawSets& drawSets,
 	                  const DrawReasonInfo& generalMods,
@@ -93,6 +94,7 @@ struct SGE_ENGINE_API DefaultGameDrawer : public IGameDrawer {
 		m_RIs_traitSprite.clear();
 		m_RIs_traitViewportIcon.clear();
 		m_RIs_traitParticles.clear();
+		m_RIs_traitParticlesProgrammable.clear();
 	}
 
   public:
@@ -120,7 +122,8 @@ struct SGE_ENGINE_API DefaultGameDrawer : public IGameDrawer {
 	std::vector<TraitModelRenderItem> m_RIs_traitModel;
 	std::vector<TraitSpriteRenderItem> m_RIs_traitSprite;
 	std::vector<TraitViewportIconRenderItem> m_RIs_traitViewportIcon;
-	std::vector<TraitParticlesRenderItem> m_RIs_traitParticles;
+	std::vector<TraitParticlesSimpleRenderItem> m_RIs_traitParticles;
+	std::vector<TraitParticlesProgrammableRenderItem> m_RIs_traitParticlesProgrammable;
 };
 
 } // namespace sge

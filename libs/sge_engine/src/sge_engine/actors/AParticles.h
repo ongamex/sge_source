@@ -7,8 +7,8 @@
 
 namespace sge {
 
-DefineTypeIdExists(AParticles);
-struct SGE_ENGINE_API AParticles : public Actor, public IActorCustomAttributeEditorTrait {
+DefineTypeIdExists(AParticlesSimple);
+struct SGE_ENGINE_API AParticlesSimple : public Actor, public IActorCustomAttributeEditorTrait {
 	AABox3f getBBoxOS() const final;
 	void create() final;
 	void postUpdate(const GameUpdateSets& u) final;
@@ -16,7 +16,7 @@ struct SGE_ENGINE_API AParticles : public Actor, public IActorCustomAttributeEdi
 	virtual void doAttributeEditor(GameInspector* inspector) final;
 
   public:
-	TraitParticles m_particles;
+	TraitParticlesSimple m_particles;
 	TraitViewportIcon m_traitViewportIcon;
 
 	int m_uiSelectedGroup = 0;

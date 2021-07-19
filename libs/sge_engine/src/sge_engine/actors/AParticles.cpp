@@ -8,36 +8,36 @@ namespace sge {
 //--------------------------------------------------------------------
 //
 //--------------------------------------------------------------------
-DefineTypeId(AParticles, 20'03'02'0052);
+DefineTypeId(AParticlesSimple, 20'03'02'0052);
 // clang-format off
 
 ReflBlock() {
-	// AParticles
-	ReflAddActor(AParticles)
-		ReflMember(AParticles, m_particles)
+	// AParticlesSimple
+	ReflAddActor(AParticlesSimple)
+		ReflMember(AParticlesSimple, m_particles)
 	;
 }
 // clang-format on
 
-AABox3f AParticles::getBBoxOS() const {
+AABox3f AParticlesSimple::getBBoxOS() const {
 	return m_particles.getBBoxOS();
 }
 
-void AParticles::create() {
+void AParticlesSimple::create() {
 	registerTrait(m_particles);
 	registerTrait(*static_cast<IActorCustomAttributeEditorTrait*>(this));
 	registerTrait(m_traitViewportIcon);
 	m_traitViewportIcon.setTexture("assets/editor/textures/icons/obj/AParticles.png", true);
 }
 
-void AParticles::doAttributeEditor(GameInspector* inspector) {
+void AParticlesSimple::doAttributeEditor(GameInspector* inspector) {
 	MemberChain chain;
 
-	const TypeDesc* const tdAParticles = typeLib().find<AParticles>();
-	const TypeDesc* const tdPartTrait = typeLib().find<TraitParticles>();
+	const TypeDesc* const tdAParticles = typeLib().find<AParticlesSimple>();
+	const TypeDesc* const tdPartTrait = typeLib().find<TraitParticlesSimple>();
 	const TypeDesc* const tdPartDesc = typeLib().find<ParticleGroupDesc>();
-	chain.add(tdAParticles->findMember(&AParticles::m_particles));
-#define CHAIN_ADD(member) chain.add(tdPartTrait->findMember(&TraitParticles::member));
+	chain.add(tdAParticles->findMember(&AParticlesSimple::m_particles));
+#define CHAIN_ADD(member) chain.add(tdPartTrait->findMember(&TraitParticlesSimple::member));
 #define CHAIN_POP() chain.pop()
 
 	CHAIN_ADD(m_isEnabled);
@@ -83,7 +83,7 @@ void AParticles::doAttributeEditor(GameInspector* inspector) {
 			ImGui::SetNextItemOpen(true);
 		}
 		if (ImGui::CollapsingHeader(pdesc.m_name.c_str())) {
-			chain.add(tdPartTrait->findMember(&TraitParticles::m_pgroups), m_uiSelectedGroup);
+			chain.add(tdPartTrait->findMember(&TraitParticlesSimple::m_pgroups), m_uiSelectedGroup);
 
 			chain.add(tdPartDesc->findMember(&ParticleGroupDesc::m_name));
 			ProperyEditorUIGen::doMemberUI(*inspector, this, chain);
@@ -232,7 +232,7 @@ void AParticles::doAttributeEditor(GameInspector* inspector) {
 	}
 }
 
-void AParticles::postUpdate(const GameUpdateSets& u) {
+void AParticlesSimple::postUpdate(const GameUpdateSets& u) {
 	m_particles.update(u);
 }
 

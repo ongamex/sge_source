@@ -4,10 +4,15 @@
 
 namespace sge {
 
-struct TraitParticles;
+struct TraitParticlesSimple;
+struct TraitParticlesProgrammable;
 
-struct TraitParticlesRenderItem : public IRenderItem {
-	TraitParticles* traitParticles = nullptr;
+struct TraitParticlesSimpleRenderItem : public IRenderItem {
+	TraitParticlesSimple* traitParticles = nullptr;
+};
+
+struct TraitParticlesProgrammableRenderItem : public IRenderItem {
+	TraitParticlesProgrammable* traitParticles = nullptr;
 };
 
 } // namespace sge

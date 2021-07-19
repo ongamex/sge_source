@@ -3,16 +3,15 @@
 #include "sge_engine/GameDrawer/RenderItems/TraitParticlesRenderItem.h"
 #include "sge_engine/GameWorld.h"
 
-
 namespace sge {
 
 // clang-format off
-DefineTypeId(TraitParticles, 20'03'02'0051);
+DefineTypeId(TraitParticlesSimple, 20'03'02'0051);
 ReflBlock() {
-	ReflAddType(TraitParticles)
-		ReflMember(TraitParticles, m_isEnabled)
-		ReflMember(TraitParticles, m_isInWorldSpace)
-		ReflMember(TraitParticles, m_pgroups)
+	ReflAddType(TraitParticlesSimple)
+		ReflMember(TraitParticlesSimple, m_isEnabled)
+		ReflMember(TraitParticlesSimple, m_isInWorldSpace)
+		ReflMember(TraitParticlesSimple, m_pgroups)
 	;
 }
 
@@ -407,10 +406,10 @@ ParticleGroupState::SpriteRendData*
 }
 
 //--------------------------------------------------------------
-// TraitParticles
+// TraitParticlesSimple
 //--------------------------------------------------------------
 
-void TraitParticles::update(const GameUpdateSets& u) {
+void TraitParticlesSimple::update(const GameUpdateSets& u) {
 	if (u.isGamePaused() || !m_isEnabled) {
 		return;
 	}
@@ -424,7 +423,7 @@ void TraitParticles::update(const GameUpdateSets& u) {
 	}
 }
 
-AABox3f TraitParticles::getBBoxOS() const {
+AABox3f TraitParticlesSimple::getBBoxOS() const {
 	if (m_isInWorldSpace) {
 		const mat4f ownerWorld2Object = inverse(getActor()->getTransformMtx());
 		AABox3f bbox;
@@ -441,8 +440,8 @@ AABox3f TraitParticles::getBBoxOS() const {
 	}
 }
 
-void TraitParticles::getRenderItems(std::vector<TraitParticlesRenderItem>& renderItems) {
-	TraitParticlesRenderItem renderItem;
+void TraitParticlesSimple::getRenderItems(std::vector<TraitParticlesSimpleRenderItem>& renderItems) {
+	TraitParticlesSimpleRenderItem renderItem;
 
 	renderItem.traitParticles = this;
 
@@ -454,11 +453,35 @@ void TraitParticles::getRenderItems(std::vector<TraitParticlesRenderItem>& rende
 	renderItems.push_back(renderItem);
 }
 
+
 //--------------------------------------------------------------
-//
+// TraitParticlesProgrammable
 //--------------------------------------------------------------
-DefineTypeId(TraitParticles2, 20'11'23'0001);
-bool ParticleRenderDataGen::generate(const TraitParticles2::ParticleGroup& particles,
+void TraitParticlesProgrammable::getRenderItems(std::vector<TraitParticlesProgrammableRenderItem>& renderItems) {
+	// TODO: add separate render item for each group.
+
+	TraitParticlesProgrammableRenderItem renderItem;
+
+	renderItem.traitParticles = this;
+
+	// TODO: Is this the best alpha sorting point that we can come up with?
+	// TODO: We do not really always need alpha sorting for particles. Add some logic to determine if we need it.
+	renderItem.needsAlphaSorting = false;
+	
+
+	
+	//renderItem.zSortingPositionWs = mat_mul_pos(getActor()->getTransformMtx(), getBBoxOS().center());
+
+
+
+	renderItems.push_back(renderItem);
+}
+
+//--------------------------------------------------------------
+// ParticleRenderDataGen
+//--------------------------------------------------------------
+DefineTypeId(TraitParticlesProgrammable, 20'11'23'0001);
+bool ParticleRenderDataGen::generate(const TraitParticlesProgrammable::ParticleGroup& particles,
                                      SGEContext& sgecon,
                                      const ICamera& camera,
                                      const mat4f& n2w) {
@@ -519,7 +542,7 @@ bool ParticleRenderDataGen::generate(const TraitParticles2::ParticleGroup& parti
 
 	// Generate the vertices so they are oriented towards the camera.
 	for (const SortingData& sortedData : indicesForSorting) {
-		const TraitParticles2::ParticleGroup::ParticleData& p = particles.allParticles[sortedData.index];
+		const TraitParticlesProgrammable::ParticleGroup::ParticleData& p = particles.allParticles[sortedData.index];
 		// Compute the transformation that will make the particle face the camera.
 		vec3f particlePosRaw = p.position;
 		vec3f particlePosTransformed = (!particles.isInWorldSpace) ? n2w.transfPos(particlePosRaw) : particlePosRaw;
